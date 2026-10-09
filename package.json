@@ -1,0 +1,41 @@
+{
+  "name": "tv-eam",
+  "version": "0.3.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/unit/*.test.ts",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.6",
+    "@supabase/supabase-js": "2.117.3",
+    "next": "16.4.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "qrcode": "1.5.4",
+    "zod": "3.25.76",
+    "google-auth-library": "9.15.1",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.14",
+    "tailwindcss": "4.1.14",
+    "typescript": "5.9.3",
+    "@types/node": "22.18.6",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@types/qrcode": "1.5.5",
+    "tsx": "4.20.6",
+    "@playwright/test": "1.56.1",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0",
+    "@types/pngjs": "6.0.5"
+  }
+}

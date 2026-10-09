@@ -2,7 +2,7 @@ name: TV-EAM database checks
 on:
   pull_request:
   push:
-    branches: [codex/tv-eam-phase2]
+    branches: [codex/tv-eam-phase3]
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,3 +40,7 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/regression.sql
       - name: Verify simultaneous case creation and retries
         run: python3 tests/concurrency.py
+      - name: Verify Phase 3 analytics, independent hours and component life
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/phase3.sql
+      - name: Verify Sheets snapshots and all-or-nothing multi-chunk import
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/sheet_sources.sql

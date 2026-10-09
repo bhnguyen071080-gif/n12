@@ -1,54 +1,65 @@
 # TV-EAM – Tan Vu Equipment & Asset Management
 
-Repository nguồn công khai; tuyệt đối không đưa khóa Supabase, dữ liệu thật, hồ sơ doanh nghiệp hoặc ảnh hiện trường vào Git.
+Nguồn công khai, dữ liệu riêng tư. Không đưa hồ sơ thật, spreadsheet ID/URL riêng tư, khóa Google/Supabase hoặc ảnh hiện trường vào repository.
 
-## Tình trạng
+## Giai đoạn 3 trên nền Giai đoạn 2
 
-Đây là nền tảng cơ sở dữ liệu Giai đoạn 2 trên một nhánh phát triển, **chưa phải ứng dụng Next.js/PWA hoàn thiện hay bản triển khai sử dụng thật**. Repository ban đầu chưa có mã MVP để nâng cấp; các migration này dành cho database Supabase mới, không chạy đè database đang có dữ liệu.
+Next.js App Router + TypeScript strict + Tailwind + Supabase SSR/Auth/RLS + PWA:
+- Ba bảng độc lập: tổng giờ máy thực chạy tháng, container Boxes/TEU tháng, hàng khác theo loại/đơn vị.
+- Giờ lũy kế theo chênh lệch tháng; định mức cáp/búa khung cẩu và bảo dưỡng lấy cùng nguồn giờ, không trộn giờ hư hỏng.
+- Báo cáo MTTR/MTBF/Availability, hai nhóm tồn đọng, chi phí vật tư/1.000 TEU và nguyên nhân.
+- QR có workspace, bắt đăng nhập và RLS; kiểm tra/báo hỏng nhanh, chuyển KT sang SC một lần.
+- Adapter Google Sheets tab TH dạng bảng ngang: đọc số nguyên gốc, không dùng chuỗi hiển thị; Boxes là số chiếc, TEU chưa có=NULL.
+- Đọc nguồn → xem trước → kiểm tra mã → xác nhận cập nhật nguyên tử, snapshot và audit trên PostgreSQL cloud.
 
-- Danh mục thiết bị / thông số, hồ sơ nhiều hạng mục, bốn nội dung kỹ thuật và sáu tiến độ độc lập.
-- Vụ việc SC / BD / VS / KT, ngày giờ thực tế và chống gửi trùng.
-- Sản lượng và giờ tháng, import nguyên tử, điều chỉnh lũy kế theo chênh lệch.
-- Kế hoạch bảo dưỡng theo ngày/giờ, kiểm tra đầu ca chuyển hồ sơ sửa chữa.
-- Danh mục vật tư, bút toán kho có chống âm tồn và chống gửi trùng.
-- Hồ sơ kỹ thuật với bucket riêng tư, RLS theo tài liệu.
-- RBAC/RLS, bảo vệ trường nghiệm thu/đóng hồ sơ, audit old/new.
-- Views lịch sử, cảnh báo bảo dưỡng, tổng hợp tháng và tồn kho.
+**Chưa triển khai production**: hiện chưa có Supabase project trong tài khoản được kết nối. Build/CI fixture không chứng minh đăng nhập, Google service account, upload Storage hay giao diện với dữ liệu thật đã được kiểm thử trên cloud. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện.
+
+## Không cài WSL2 trên máy sử dụng
+
+Máy tính/điện thoại chỉ cần trình duyệt HTTPS; app và database chạy cloud sau khi cấp tài nguyên. CI chạy build/test trên GitHub, không cài database ở doanh nghiệp. Chưa tự tạo tài nguyên trả phí.
+
+## Thiết lập cloud
+
+1. Chọn Supabase project. Với DB mới áp dụng migration 001→005 theo thứ tự. Với DB đã áp dụng Giai đoạn 2, chỉ áp dụng 004→005. Không chạy foundation đè DB cũ.
+2. Tạo Auth user qua Supabase; quản trị bootstrap workspace và các membership. Một cá nhân có thể giữ cả bốn vai trò. Không mở endpoint tự cấp quyền.
+3. Đưa mã lên nền tảng Next.js cloud; cấu hình các biến trong .env.example bằng secret/config của môi trường, không commit file .env.
+4. Nhập danh mục thiết bị và loại hàng, baseline giờ đồng hồ. Không nhập các tháng giờ đã nằm trong baseline.
+5. Cho mỗi workspace toàn chi nhánh một nhóm thiết bị và nhiều người dùng, cấp quyền bằng set_member_roles của Giai đoạn 2. equipment_teams là phân nhóm, chưa phải ranh giới quyền theo đội.
+
+### Google Sheets (không cần Publish to web)
+
+Tài khoản Google của plugin trong chat không tự trở thành quyền Google của ứng dụng đã triển khai. Luồng app có kết nối đọc riêng:
+- Chủ file cấp Viewer cho service account chỉ dùng đọc nguồn; bật Sheets API.
+- GOOGLE_SHEETS_CLIENT_EMAIL / GOOGLE_SHEETS_PRIVATE_KEY chỉ nằm phía server.
+- GOOGLE_SHEETS_ALLOWED_SOURCES là JSON ánh xạ workspace UUID → các spreadsheet ID được quản trị triển khai cho phép. Thiếu cấu hình thì từ chối đọc.
+- Trưởng bộ phận đăng ký link nguồn trong màn hình /sheets; link lưu trong database RLS, không nằm trong mã nguồn.
+- Adapter TH mặc định vùng A3:BH76: hàng đầu của vùng là mã thiết bị, B năm, C tháng; vùng tối đa 50.000 ô. Alias và vùng có thể quản trị tại bảng sheet_sources.
+- Preview báo mã chưa có trong danh mục. Không tự tạo thiết bị thiếu giờ gốc.
+- Khi xác nhận, app đọc lại nguồn và so hash với preview; nếu đổi dữ liệu yêu cầu xem trước lại.
+- Cập nhật tối đa 10.000 dòng trong một giao dịch; chunk nội bộ 1000 dòng, một dòng sai rollback tất cả.
+- Boxes-only không tự tính TEU, không ghi đè TEU đã được đo và nhập riêng. Ô trống không xóa dòng cũ; nếu cần xóa/hủy phải thực hiện thao tác được kiểm soát.
+- Chỉ cập nhật khi người dùng bấm xác nhận, chưa có lịch đồng bộ tự động.
+- accepted_rows trong sheet_sync_runs là snapshot đã chuẩn hóa; audit_logs giữ old/new. Đây không thay thế backup database định kỳ của nhà cung cấp.
+
+Chưa tạo Google project/service account hay cài khóa; không gửi khóa riêng tư vào chat.
 
 ## Kiểm chứng
 
-GitHub Actions chạy PostgreSQL 17 độc lập, tạo fixture Auth/Storage tối thiểu rồi áp dụng migration và kiểm thử. Fixture chỉ mô phỏng DB API; **không thay thế kiểm thử đăng nhập, upload thực tế và giao diện trên Supabase**.
-
-Chạy CI PostgreSQL không cần WSL2, Docker hay cài database vào máy cá nhân. Xem kết quả trên tab Actions của repository. Không áp dụng file `tests/sql/fixture.sql` vào Supabase.
-
-## Triển khai dữ liệu sau khi duyệt
-
-1. Chọn/tạo dự án Supabase cloud và kiểm tra chi phí trước khi xác nhận.
-2. Sao lưu dữ liệu nếu có. Không áp dụng foundation này lên schema cũ.
-3. Áp dụng lần lượt `supabase/migrations/*.sql`.
-4. Tạo tài khoản qua Supabase Auth. Owner dự án bootstrap workspace và vai trò bằng SQL quản trị, không mở API tự nâng quyền.
-5. Giai đoạn tiếp theo nối Next.js SSR/Auth/PWA, form nghiệp vụ và kiểm thử đầu-cuối.
-
-SQL bootstrap quản trị (thay UUID, không dùng giá trị mẫu):
-
-```sql
-begin;
-insert into public.workspaces(id,name) values ('<WORKSPACE_UUID>','TV-EAM cá nhân');
-insert into public.workspace_memberships(workspace_id,user_id,role)
-select '<WORKSPACE_UUID>'::uuid,'<AUTH_USER_UUID>'::uuid,unnest(enum_range(null::public.eam_role));
-commit;
-```
-
-Một cá nhân có thể giữ bốn vai trò. Dữ liệu thuộc workspace; thành viên khác không được đọc/ghi nếu chưa được cấp quyền. Khóa service role chỉ dùng quản trị tin cậy, không đưa vào trình duyệt.
+GitHub Actions chạy PostgreSQL 17, RLS regression, import rollback/corrections/Sheet snapshots, strict typecheck, unit tests, giải mã QR PNG và Next.js production build. Browser smoke chỉ kiểm tra shell/login khi chưa có cloud credentials, không phải end-to-end Auth thật.
 
 ## Cấu trúc
 
 ```
-docs/work-case-model.md
-supabase/migrations/
-tests/sql/fixture.sql
-tests/sql/regression.sql
-.github/workflows/database.yml
+src/app/                 # App Router, pages, actions, API
+src/components/          # Forms mobile, import previews
+src/lib/                 # Typed contracts, Supabase, CSV, TH adapter
+public/                  # PWA shell, không cache dữ liệu riêng tư
+supabase/migrations/     # PostgreSQL, RLS, audit, reports, snapshots
+tests/sql/               # Fixture và regression
+tests/unit/              # Parser/time/QR decode
+tests/browser/           # Smoke không dùng dữ liệu thật
+docs/phase3.md            # Hợp đồng công thức, giờ, đơn vị
+docs/work-case-model.md   # Mã SC/BD/VS/KT
 ```
 
-Xem [quy tắc mã vụ việc](docs/work-case-model.md). Nguyên tắc lý lịch: truy vấn nguồn nghiệp vụ qua SQL view, không nhập lại lịch sử.
+Dev (chỉ dành cho người viết mã, không cần trên máy dùng app): Node>=22, npm install, npm run dev.

@@ -1,0 +1,27 @@
+name: TV-EAM web checks
+on:
+  pull_request:
+  push:
+    branches: [codex/tv-eam-phase3]
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install pinned direct dependencies
+        run: npm install
+      - name: Strict TypeScript
+        run: npm run typecheck
+      - name: Test data mapping, time semantics and QR decode
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Public shell and mobile login smoke tests
+        run: npm run test:browser
