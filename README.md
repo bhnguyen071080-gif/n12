@@ -9,7 +9,7 @@ Next.js App Router + TypeScript strict + Tailwind + Supabase SSR/Auth/RLS + PWA:
 - Giờ lũy kế theo chênh lệch tháng; định mức cáp/búa khung cẩu và bảo dưỡng lấy cùng nguồn giờ, không trộn giờ hư hỏng.
 - Báo cáo MTTR/MTBF/Availability, hai nhóm tồn đọng, tổng chi phí vật tư và nguyên nhân.
 - QR có workspace, bắt đăng nhập và RLS; kiểm tra/báo hỏng nhanh, chuyển KT sang SC một lần.
-- Adapter Google Sheets tab TH dạng bảng ngang: đọc số nguyên gốc, không dùng chuỗi hiển thị; chỉ ghi số container (chiếc), không có trường quy đổi.
+- Hai adapter Google Sheets TH: số container nguyên (chiếc) và giờ máy thực chạy (tối đa 2 chữ số thập phân). Không có trường quy đổi; không trộn giờ dừng.
 - Đọc nguồn → xem trước → kiểm tra mã → xác nhận cập nhật nguyên tử, snapshot và audit trên PostgreSQL cloud.
 
 **Chưa triển khai production**: hiện chưa có Supabase project trong tài khoản được kết nối. Build/CI fixture không chứng minh đăng nhập, Google service account, upload Storage hay giao diện với dữ liệu thật đã được kiểm thử trên cloud. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện.
@@ -20,7 +20,7 @@ Máy tính/điện thoại chỉ cần trình duyệt HTTPS; app và database ch
 
 ## Thiết lập cloud
 
-1. Chọn Supabase project. Với DB mới áp dụng migration 001→006 theo thứ tự. Với DB đã áp dụng Giai đoạn 2, chỉ áp dụng 004→006. Không chạy foundation đè DB cũ.
+1. Chọn Supabase project. Với DB mới áp dụng migration 001→007 theo thứ tự. Với DB đã áp dụng Giai đoạn 2, chỉ áp dụng 004→007. Không chạy foundation đè DB cũ.
 2. Tạo Auth user qua Supabase; quản trị bootstrap workspace và các membership. Một cá nhân có thể giữ cả bốn vai trò. Không mở endpoint tự cấp quyền.
 3. Đưa mã lên nền tảng Next.js cloud; cấu hình các biến trong .env.example bằng secret/config của môi trường, không commit file .env.
 4. Nhập danh mục thiết bị và loại hàng, baseline giờ đồng hồ. Không nhập các tháng giờ đã nằm trong baseline.
@@ -33,7 +33,7 @@ Tài khoản Google của plugin trong chat không tự trở thành quyền Goo
 - GOOGLE_SHEETS_CLIENT_EMAIL / GOOGLE_SHEETS_PRIVATE_KEY chỉ nằm phía server.
 - GOOGLE_SHEETS_ALLOWED_SOURCES là JSON ánh xạ workspace UUID → các spreadsheet ID được quản trị triển khai cho phép. Thiếu cấu hình thì từ chối đọc.
 - Trưởng bộ phận đăng ký link nguồn trong màn hình /sheets; link lưu trong database RLS, không nằm trong mã nguồn.
-- Adapter TH mặc định vùng A3:BH76: hàng đầu của vùng là mã thiết bị, B năm, C tháng; vùng tối đa 50.000 ô. Alias và vùng có thể quản trị tại bảng sheet_sources.
+- Nguồn có loại cố định container/hours. TH: hàng 3 mã thiết bị, B năm, C tháng; đăng ký nguồn cho phép nhập vùng đọc tối đa 50.000 ô, mặc định A3:BH200 (container) / A3:AR200 (giờ). Vùng rộng có giới hạn đọc thêm tháng mới mà bỏ ô trống/dòng tổng. Alias quản trị tại sheet_sources.
 - Preview báo mã chưa có trong danh mục. Không tự tạo thiết bị thiếu giờ gốc.
 - Khi xác nhận, app đọc lại nguồn và so hash với preview; nếu đổi dữ liệu yêu cầu xem trước lại.
 - Cập nhật tối đa 10.000 dòng trong một giao dịch; chunk nội bộ 1000 dòng, một dòng sai rollback tất cả.
@@ -65,3 +65,14 @@ docs/work-case-model.md   # Mã SC/BD/VS/KT
 Dev (chỉ dành cho người viết mã, không cần trên máy dùng app): Node>=22, npm ci, npm run dev. package-lock.json khóa cả phụ thuộc gián tiếp; CI quét npm audit ở mức moderate trở lên.
 
 Hợp đồng container hiện tại: CSV `equipment_code,month,boxes`; ví dụ số nguyên `3382` nghĩa là 3382 chiếc, không dùng hệ số quy đổi. Bản cài đã chạy 001–005 cần áp dụng 006 cùng bản web mới; không chạy lại các migration đã áp dụng.
+
+### Nguồn giờ hoạt động độc lập (migration 007)
+
+- Đăng ký nguồn giờ trong /sheets, chọn tháng bắt đầu nhập. Không gộp hai file vào một nguồn.
+- Số giờ ban đầu phải là giờ đồng hồ trước tháng bắt đầu. Nếu baseline hiện tại đã gồm các tháng lịch sử, cần đối chiếu/chọn tháng phù hợp trước khi nhập; hệ thống không tự đoán baseline.
+- Đọc giá trị số gốc, giữ 0 khác ô trống; không cộng dòng TB/tổng hay giờ dừng.
+- Preview và database kiểm tra giờ không vượt số giờ tháng lịch; chưa xác nhận kỳ chốt khác nên không mở ngoại lệ.
+- Xác nhận lô yêu cầu đối chiếu baseline; app đọc lại và so hash gắn với loại nguồn, tháng bắt đầu và dữ liệu.
+- sync_hours_source chỉ nhận equipment_code, month, operating_hours; từ chối trường container, sai loại nguồn, tháng trước mốc.
+- Upsert theo phương tiện/tháng, cộng lũy kế theo chênh lệch, snapshot/audit cloud. Một dòng sai kể cả chunk sau rollback toàn bộ.
+- Cần áp dụng 007 và bản web tương ứng. Chưa nhập dữ liệu thật vào database hay cấu hình quyền Google của app.

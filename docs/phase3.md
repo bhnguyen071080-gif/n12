@@ -61,3 +61,12 @@ Form, CSV, Google Sheets preview/snapshot, bảng tháng và CSV báo cáo khôn
 Bỏ chỉ tiêu chi phí/1.000 TEU; không tự thay bằng chi phí/1.000 container khi chưa được yêu cầu.
 Migration 006 giữ cột và snapshot lịch sử cũ, khóa thay đổi trường quy đổi bằng trigger, ngừng API/view cũ. Không xóa dữ liệu để chuyển yêu cầu.
 Bộ kiểm thử nâng cấp tạo dữ liệu ở hợp đồng 001–005, chạy regression lịch sử, sau đó áp dụng 006 và kiểm tra hợp đồng mới. Đây không phải cho phép TEU ở phiên bản hiện tại.
+
+## Nguồn Google Sheets giờ hoạt động
+
+Nguồn có source_kind=hours, start_month bắt buộc. Một nguồn không thể đổi loại sau khi tạo; các snapshot giữ nguyên ý nghĩa.
+Adapter TH đọc giá trị số gốc, hỗ trợ tối đa 2 chữ số thập phân, bỏ tổng/trung bình và ô trống; chỉ lấy tháng từ mốc đã chọn.
+Giờ thực chạy không được vượt giờ lịch của tháng. Nếu kỳ chốt thực tế khác tháng lịch thì cần thiết kế lại kỳ trước khi nới kiểm tra, không tự chấp nhận.
+Snapshot và các chunk dùng một giao dịch. Sai dòng ở chunk sau không thay đổi giờ tháng, accumulated_hours hay ledger nhập của chunk trước.
+Đối chiếu baseline là bước thiết lập nghiệp vụ: checkbox không thay thế việc xác định giờ đồng hồ ban đầu; không tự suy baseline từ tổng Sheet.
+Không sửa nguồn Google Sheets từ ứng dụng; khóa đọc Viewer, allowlist nguồn theo workspace và RLS vẫn giữ nguyên.

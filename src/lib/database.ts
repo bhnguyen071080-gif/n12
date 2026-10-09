@@ -13,7 +13,7 @@ export interface Database {
  public:{
   Tables:{
    workspaces:Table<Workspace>;
-   sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;created_by:string;created_at:string}>;
+   sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;source_kind:"container"|"hours";start_month:string|null;created_by:string;created_at:string}>;
    sheet_sync_runs:Table<{id:string;source_id:string;workspace_id:string;request_key:string;actor_id:string;fingerprint:string;accepted_rows:Json;row_count:number;created_at:string}>;
    equipment:Table<Equipment>;
    workspace_memberships:Table<{workspace_id:string;user_id:string;role:string;active:boolean}>;
@@ -35,6 +35,7 @@ export interface Database {
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
   Functions:{
+   sync_hours_source:{Args:{p_source:string;p_rows:Json;p_key:string};Returns:number};
    sync_container_source:{Args:{p_source:string;p_rows:Json;p_key:string};Returns:number};
    report_reliability:{Args:PeriodArgs;Returns:Reliability[]};
    report_material_costs:{Args:PeriodArgs;Returns:Cost[]};

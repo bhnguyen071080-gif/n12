@@ -3,10 +3,10 @@ import {createHash} from "node:crypto";
 import {JWT} from "google-auth-library";
 import {z} from "zod";
 import {equipmentCode} from "./domain";
-import {thContainerRows} from "./sheets-layout";
+import {thContainerRows,thHoursRows,hoursIssues} from "./sheets-layout";
 export const sourceSchema=z.object({
  id:z.string().uuid(),workspace_id:z.string().uuid(),spreadsheet_id:z.string().regex(/^[A-Za-z0-9_-]{20,150}$/),
- tab_name:z.string().min(1).max(100),a1_range:z.string(),equipment_aliases:z.record(equipmentCode)
+ tab_name:z.string().min(1).max(100),a1_range:z.string(),equipment_aliases:z.record(equipmentCode),source_kind:z.enum(["container","hours"]),start_month:z.string().nullable()
 });
 export function boundedRange(range:string){
  const m=/^([A-Z]{1,2})([1-9]\d{0,3}):([A-Z]{1,2})([1-9]\d{0,3})$/.exec(range);
@@ -31,7 +31,11 @@ export async function previewSource(source:unknown){
  if(!response.ok)throw new Error("Không đọc được file nguồn bằng quyền Viewer");
  const body:unknown=await response.json();
  const data=z.object({values:z.array(z.array(z.unknown())).optional()}).parse(body);
- const rows=thContainerRows(data.values??[],s.equipment_aliases);
- const hash=createHash("sha256").update(JSON.stringify(rows)).digest("hex");
- return {rows,hash,sourceId:s.id,workspace:s.workspace_id};
+ if(s.source_kind==="hours" && !s.start_month)throw new Error("Nguồn giờ cần tháng bắt đầu quản lý");
+ const matrix=data.values??[],kind=s.source_kind;
+ const hourRows=kind==="hours"?thHoursRows(matrix,s.equipment_aliases,s.start_month!):undefined;
+ const rows=hourRows??thContainerRows(matrix,s.equipment_aliases);
+ const issues=hourRows?hoursIssues(hourRows):[];
+ const hash=createHash("sha256").update(JSON.stringify({kind,startMonth:s.start_month,rows})).digest("hex");
+ return {rows,issues,kind,startMonth:s.start_month,hash,sourceId:s.id,workspace:s.workspace_id};
 }

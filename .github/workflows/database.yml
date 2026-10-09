@@ -56,3 +56,6 @@ jobs:
           done
       - name: Verify active counts-only contract and preservation of historical data
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/container_counts.sql
+
+      - name: Verify independent hours sources, baseline window, correction deltas and RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/hours_sources.sql

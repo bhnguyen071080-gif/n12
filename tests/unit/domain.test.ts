@@ -5,7 +5,7 @@ import jsQR from "jsqr";
 import {PNG} from "pngjs";
 import {actualTimestamp,containerRows,period,quickUrl,safeNext} from "../../src/lib/domain";
 import {csvOutput,monthlyCsv,parseCsv} from "../../src/lib/csv";
-import {thContainerRows} from "../../src/lib/sheets-layout";
+import {thContainerRows,thHoursRows,hoursIssues} from "../../src/lib/sheets-layout";
 test("actual local time is UTC+7; invalid dates are rejected",()=>{
  assert.equal(actualTimestamp("2026-10-09T07:00"),"2026-10-09T00:00:00.000Z");
  assert.throws(()=>actualTimestamp("2026-02-30T08:00"));
@@ -59,4 +59,15 @@ test("QR round trip decodes the exact workspace-bound HTTPS target",async()=>{
  assert.equal(decoded?.data,target);
  assert.throws(()=>quickUrl("https://user:secret@eam.example.com","QC10","00000000-0000-0000-0000-000000000001"));
  assert.throws(()=>quickUrl("javascript:alert(1)","QC10","00000000-0000-0000-0000-000000000001"));
+});
+
+test("TH hours parser has a separate decimal-hours contract and a declared start month",()=>{
+ const matrix=[["","","","QC10"],["Giờ",2025,"Tháng 12",12],["Giờ",2026,"Tháng 1",100.25],["","","Tháng 2",0],["TB","","",50],["","","Tháng 3",""]];
+ const rows=thHoursRows(matrix,{},"2026-01-01");
+ assert.deepEqual(rows,[{equipment_code:"QC10",month:"2026-01-01",operating_hours:100.25},{equipment_code:"QC10",month:"2026-02-01",operating_hours:0}]);
+ assert.equal(rows.some(r=>"boxes" in r),false);assert.equal(hoursIssues(rows).length,0);
+ assert.equal(hoursIssues([{equipment_code:"QC10",month:"2026-02-01",operating_hours:673}]).length,1);
+ assert.throws(()=>thHoursRows([["","","","QC10"],["",2026,"Tháng 1","100,25"]],{},"2026-01-01"));
+ assert.throws(()=>thHoursRows([["","","","QC10"],["",2026,"Tháng 1",1.234]],{},"2026-01-01"));
+ assert.throws(()=>thHoursRows(matrix,{},""));
 });

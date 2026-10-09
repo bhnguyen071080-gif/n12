@@ -11,6 +11,6 @@ export async function GET(request:Request){
   const preview=await previewSource(result.data);
   const equipment=await client.from("equipment").select("code").eq("workspace_id",preview.workspace);if(equipment.error)throw new Error("Không đọc danh mục");
   const codes=new Set(equipment.data?.map(e=>e.code)),unknownCodes=[...new Set(preview.rows.map(r=>r.equipment_code).filter(c=>!codes.has(c)))];
-  return Response.json({sourceId:preview.sourceId,hash:preview.hash,count:preview.rows.length,sample:preview.rows.slice(0,12),unknownCodes},{headers:{"Cache-Control":"private, no-store"}});
+  return Response.json({sourceId:preview.sourceId,kind:preview.kind,startMonth:preview.startMonth,issues:preview.issues,hash:preview.hash,count:preview.rows.length,sample:preview.rows.slice(0,12),unknownCodes},{headers:{"Cache-Control":"private, no-store"}});
  }catch{return Response.json({error:"Chưa đọc được nguồn. Cần kết nối Google Sheets Viewer và đúng vùng TH."},{status:503});}
 }

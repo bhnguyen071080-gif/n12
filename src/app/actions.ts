@@ -2,7 +2,7 @@
 import {z} from "zod";
 import {redirect} from "next/navigation";
 import {revalidatePath} from "next/cache";
-import {actualTimestamp,causes,containerRows,hoursRows,otherRows,safeNext,uuid} from "@/lib/domain";
+import {actualTimestamp,causes,containerRows,hoursRows,otherRows,safeNext,uuid,monthStart} from "@/lib/domain";
 import {serverClient,session} from "@/lib/supabase";
 export type ActionResult={ok:boolean;message:string;id?:string};
 const value=(data:FormData,key:string)=>String(data.get(key)??"");
@@ -69,7 +69,12 @@ export async function saveSheetSource(data:FormData):Promise<ActionResult>{
   const url=new URL(value(data,"url"));
   if(url.protocol!=="https:" || url.hostname!=="docs.google.com")return denied();
   const match=/^\/spreadsheets\/d\/([A-Za-z0-9_-]{20,150})(?:\/|$)/.exec(url.pathname);if(!match)return denied();
-  const result=await client.from("sheet_sources").insert({workspace_id:workspace,name:z.string().trim().min(1).max(100).parse(value(data,"name")),spreadsheet_id:match[1],tab_name:"TH",a1_range:"A3:BH76",equipment_aliases:{}}).select("id").single();
+  const kind=z.enum(["container","hours"]).parse(value(data,"source_kind"));
+  const start=kind==="hours"?monthStart(value(data,"start_month")):null;
+  const {boundedRange}=await import("@/lib/google-sheets");
+  const range=boundedRange(value(data,"a1_range") || (kind==="hours"?"A3:AR200":"A3:BH200"));
+  if(!range.startsWith("A3:"))return denied();
+  const result=await client.from("sheet_sources").insert({source_kind:kind,start_month:start,workspace_id:workspace,name:z.string().trim().min(1).max(100).parse(value(data,"name")),spreadsheet_id:match[1],tab_name:"TH",a1_range:range,equipment_aliases:{}}).select("id").single();
   if(result.error)return denied();revalidatePath("/sheets");return {ok:true,message:"Đã lưu cấu hình nguồn riêng tư; cần cấp quyền Viewer cho kết nối đọc.",id:result.data.id};
  }catch{return denied();}
 }
@@ -80,8 +85,11 @@ export async function saveGoogleSheet(data:FormData):Promise<ActionResult>{
   const source=await client.from("sheet_sources").select("*").eq("id",id).single();if(source.error)return denied();
   const preview=await previewSource(source.data);
   if(preview.hash!==value(data,"preview_hash"))return {ok:false,message:"Nguồn đã thay đổi sau khi xem trước. Hãy đọc lại và xác nhận phiên bản mới."};
-  const result=await client.rpc("sync_container_source",{p_source:id,p_key:key,p_rows:preview.rows});
-  if(result.error)return denied();revalidatePath("/monthly");revalidatePath("/sheets");revalidatePath("/reports");
-  return {ok:true,message:"Đã cập nhật "+result.data+" dòng số container (chiếc). Bản chụp lô nhập được lưu trên database cloud."};
+  if(preview.issues.length)return {ok:false,message:"Nguồn có giờ vượt giới hạn tháng; cần đối chiếu rồi đọc lại. Chưa có dòng nào được ghi."};
+  if(preview.kind==="hours" && data.get("baseline_confirmed")!=="on")return {ok:false,message:"Cần xác nhận số giờ ban đầu chỉ bao gồm thời gian trước tháng bắt đầu nhập."};
+  const args={p_source:id,p_key:key,p_rows:preview.rows};
+  const result=preview.kind==="hours"?await client.rpc("sync_hours_source",args):await client.rpc("sync_container_source",args);
+  if(result.error)return denied();revalidatePath("/monthly");revalidatePath("/sheets");revalidatePath("/reports");revalidatePath("/life");revalidatePath("/");
+  return {ok:true,message:"Đã cập nhật "+result.data+(preview.kind==="hours"?" dòng giờ hoạt động.":" dòng số container (chiếc).")+" Bản chụp lô nhập được lưu trên database cloud."};
  }catch{return {ok:false,message:"Chưa cập nhật được. Kiểm tra kết nối Viewer, mã phương tiện và cấu hình nguồn; không có thay đổi file Google Sheets."};}
 }
