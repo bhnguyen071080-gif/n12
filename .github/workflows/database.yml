@@ -1,0 +1,40 @@
+name: TV-EAM database checks
+on:
+  pull_request:
+  push:
+    branches: [codex/tv-eam-phase2]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: fixture-only-password
+          POSTGRES_DB: tv_eam_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: fixture-only-password
+      PGDATABASE: tv_eam_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable Supabase fixture
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/fixture.sql
+      - name: Apply ordered migrations
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify RLS and business invariants
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/regression.sql
