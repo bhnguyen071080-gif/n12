@@ -34,7 +34,12 @@ select test.fails($q$select public.sync_hours_source('d1000000-0000-0000-0000-00
  from generate_series(0,999) n) || '[{"equipment_code":"UNKNOWN","month":"2026-01-01","operating_hours":1}]'::jsonb,
  'f1000000-0000-0000-0000-000000000009')$q$,'22023','invalid second chunk rolls back the entire hours-source import');
 select test.ok((select accumulated_hours=1090.25 from public.equipment where code='QC11'),'multi-chunk failure leaves cumulative meter unchanged');
-select test.ok(exists(select 1 from public.audit_logs where table_name='monthly_operating_hours' and actor_id=auth.uid()),'hours correction remains audited');
+select test.ok(not exists(select 1 from public.audit_logs),'technician cannot read head-only audit log');
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+select test.ok(exists(select 1 from public.audit_logs where table_name='monthly_operating_hours'
+ and actor_id='10000000-0000-0000-0000-000000000002' and operation='UPDATE'
+ and new_data->>'equipment_id'='20000000-0000-0000-0000-000000000003'
+ and (old_data->>'operating_hours')::numeric=80 and (new_data->>'operating_hours')::numeric=90.25),'head verifies audited hours correction with actor and old/new values');
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',false);
 select test.fails($q$select public.sync_hours_source('d1000000-0000-0000-0000-000000000001',
  '[{"equipment_code":"QC11","month":"2026-09-01","operating_hours":20}]','f1000000-0000-0000-0000-000000000008')$q$,'42501','production role cannot import technical monthly hours');
