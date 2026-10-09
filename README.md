@@ -62,4 +62,4 @@ docs/phase3.md            # Hợp đồng công thức, giờ, đơn vị
 docs/work-case-model.md   # Mã SC/BD/VS/KT
 ```
 
-Dev (chỉ dành cho người viết mã, không cần trên máy dùng app): Node>=22, npm install, npm run dev.
+Dev (chỉ dành cho người viết mã, không cần trên máy dùng app): Node>=22, npm ci, npm run dev. package-lock.json khóa cả phụ thuộc gián tiếp; CI quét npm audit ở mức moderate trở lên.

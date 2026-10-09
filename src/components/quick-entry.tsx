@@ -6,8 +6,8 @@ import {causes,causeLabels,localInputNow} from "@/lib/domain";
 export function QuickEntry({equipment,mode}:{equipment:string;mode:"inspection"|"fault"}){
  const [kind,setKind]=useState(mode),[abnormal,setAbnormal]=useState(false),[inspection,setInspection]=useState<string>();
  return <section className="panel"><h2>Kiểm tra / báo hỏng nhanh</h2>
-  <div className="flex gap-3"><button type="button" onClick={()=>setKind("inspection")}>KT · Kiểm tra</button><button type="button" onClick={()=>setKind("fault")}>SC · Báo hỏng</button></div>
-  <AsyncForm key={kind} action={saveQuick} onSuccess={r=>{if(kind==="inspection")setInspection(r.id);}}>
+  <div className="flex gap-3"><button type="button" onClick={()=>{setKind("inspection");setInspection(undefined);}}>KT · Kiểm tra</button><button type="button" onClick={()=>{setKind("fault");setInspection(undefined);}}>SC · Báo hỏng</button></div>
+  <AsyncForm key={kind} action={saveQuick} onReset={()=>{setInspection(undefined);setAbnormal(false);}} onSuccess={r=>{if(kind==="inspection")setInspection(r.id);}}>
    <input type="hidden" name="equipment" value={equipment}/><input type="hidden" name="kind" value={kind}/>
    <label>Thời gian thực tế (UTC+7)<input type="datetime-local" name="actual_time" defaultValue={localInputNow()} required/></label>
    <label>{kind==="inspection"?"Kết quả kiểm tra":"Hiện tượng hư hỏng"}<textarea name="notes" rows={3} required maxLength={4000}/></label>

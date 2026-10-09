@@ -1,9 +1,9 @@
 "use client";
 import {useRef,useState,type FormEvent,type ReactNode} from "react";
 import type {ActionResult} from "@/app/actions";
-export function AsyncForm({action,children,prepare,onSuccess,label="Lưu"}:{
+export function AsyncForm({action,children,prepare,onSuccess,onReset,label="Lưu"}:{
  action:(data:FormData)=>Promise<ActionResult>;children:ReactNode;
- prepare?:(data:FormData)=>void;onSuccess?:(result:ActionResult)=>void;label?:string
+ prepare?:(data:FormData)=>void;onSuccess?:(result:ActionResult)=>void;onReset?:()=>void;label?:string
 }){
  const [pending,setPending]=useState(false),[result,setResult]=useState<ActionResult>();
  const request=useRef<{fingerprint:string;key:string}|undefined>(undefined);
@@ -22,6 +22,6 @@ export function AsyncForm({action,children,prepare,onSuccess,label="Lưu"}:{
  return <form onSubmit={submit} className="space-y-3">
   <fieldset disabled={pending || result?.ok} className="space-y-3">{children}<button type="submit">{pending?"Đang lưu…":label}</button></fieldset>
   <p role="status" aria-live="polite" className={result?.ok?"text-emerald-800":"text-red-800"}>{result?.message}</p>
-  {result?.ok && <button type="button" onClick={()=>{request.current=undefined;setResult(undefined);}}>Nhập lần mới</button>}
+  {result?.ok && <button type="button" onClick={()=>{request.current=undefined;setResult(undefined);onReset?.();}}>Nhập lần mới</button>}
  </form>;
 }
