@@ -15,6 +15,20 @@ jobs:
           node-version: "22"
       - name: Install pinned direct dependencies
         run: npm install
+      - name: Inspect generated lock and dependency advisories
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import {spawnSync} from "node:child_process";
+          console.log("TV_EAM_LOCK_BEGIN");
+          console.log(fs.readFileSync("package-lock.json","utf8"));
+          console.log("TV_EAM_LOCK_END");
+          const audit=spawnSync("npm",["audit","--json"],{encoding:"utf8"});
+          console.log("TV_EAM_AUDIT_BEGIN");
+          console.log(audit.stdout);
+          console.log("TV_EAM_AUDIT_END");
+          if(audit.error) throw audit.error;
+          NODE
       - name: Strict TypeScript
         run: npm run typecheck
       - name: Test data mapping, time semantics and QR decode

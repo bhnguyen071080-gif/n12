@@ -5,8 +5,8 @@ import {WorkspaceSelect} from "@/components/workspace-select";
 export const dynamic="force-dynamic";
 export default async function Reports({searchParams}:{searchParams:Promise<{workspace?:string;from?:string;to?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa có workspace.</p>;
- const to=p.to??localInputNow().slice(0,7),fallback=new Date(to+"-01T00:00:00Z");fallback.setUTCMonth(fallback.getUTCMonth()-1);
- const from=p.from??fallback.toISOString().slice(0,7);let span:{from:string;to:string};try{span=period(from,to);}catch{return <p>Kỳ báo cáo không hợp lệ; chọn 1–36 tháng, kết thúc không bao gồm tháng đó.</p>;}
+ const to=p.to??localInputNow().slice(0,7);let from:string,span:{from:string;to:string};
+ try{const fallback=new Date(to+"-01T00:00:00Z");fallback.setUTCMonth(fallback.getUTCMonth()-1);from=p.from??fallback.toISOString().slice(0,7);span=period(from,to);}catch{return <p>Kỳ báo cáo không hợp lệ; chọn 1–36 tháng, kết thúc không bao gồm tháng đó.</p>;}
  const w=c.workspace.id,args={p_workspace:w,p_from:span.from,p_to:span.to};
  const [reliability,costs,causes,tech,paper]=await Promise.all([
   c.client.rpc("report_reliability",args),c.client.rpc("report_material_costs",args),c.client.rpc("report_failure_causes",args),
