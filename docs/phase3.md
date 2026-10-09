@@ -5,10 +5,10 @@
 | Bảng vật lý | Nội dung | Khóa nghiệp vụ | RPC import |
 |---|---|---|---|
 | monthly_operating_hours | Tổng giờ máy thực chạy trong tháng | equipment_id + month | import_operating_months |
-| monthly_production | Sản lượng container: Boxes, TEU | equipment_id + month | import_container_months |
+| monthly_production | Số container (chiếc), không quy đổi | equipment_id + month | import_container_months |
 | monthly_other_cargo | Sản lượng hàng khác, đơn vị theo cargo_types | equipment_id + month + cargo_type_id | import_other_cargo_months |
 
-Bảng giờ hoạt động không có cột giờ hư hỏng. Không điền giờ chạy giả khi chỉ nhập TEU. Import độc lập, retry idempotent, upsert theo khóa nghiệp vụ, một lô sai rollback toàn bộ. RPC import_monthly_metrics cũ giữ tương thích nhưng giao diện mới không dùng nó.
+Bảng giờ hoạt động không có cột giờ hư hỏng. Không điền giờ chạy giả khi chỉ nhập số container. Import độc lập, retry idempotent, upsert theo khóa nghiệp vụ, một lô sai rollback toàn bộ. Migration 006 ngừng API import_monthly_metrics cũ; giao diện chỉ dùng ba luồng import độc lập.
 
 initial_hours là số đồng hồ lúc bắt đầu quản lý. accumulated_hours = initial_hours + tổng các tháng đã nhập. Chỉ nhập các tháng sau mốc baseline, không nhập lại những giờ đã nằm trong baseline. Hiệu chỉnh tháng tính chênh lệch, không cộng toàn bộ lần nữa.
 
@@ -39,7 +39,7 @@ RLS và security-invoker: https://supabase.com/docs/guides/database/postgres/row
 ## Chi phí
 
 Giá snapshot ở repair_material_usages.unit_cost_vnd, VND. Ngày hạch toán kỹ thuật = ngày lắp thực tế UTC+7, không phải ngày hoàn thiện giấy tờ. Chi phí kỳ = lượng × đơn giá snapshot; không nhân với giá danh mục hiện tại.
-Chưa định giá có bộ đếm riêng; tỷ suất/1.000 TEU=NULL khi còn thiếu giá, thiếu tháng container hoặc TEU=0/NULL. Hàng tấn/m³/chuyến không quy đổi TEU.
+Chưa định giá có bộ đếm riêng. Chỉ ghi tổng chi phí VND và tổng số container (chiếc) trong kỳ; không tính TEU hoặc tỷ suất quy đổi. Khi thiếu tháng container, có bộ đếm chất lượng dữ liệu; ô trống không ép thành 0.
 Báo cáo ghi rõ kỳ [from,to), lọc tháng/quý bằng cách chọn biên tháng. Đây là báo cáo chi phí vật tư, chưa bao gồm nhân công/dịch vụ/khấu hao/thuế.
 
 ## Tồn đọng
@@ -53,3 +53,11 @@ Một workspace dùng chung cho chi nhánh, equipment_teams phân nhóm đội q
 Đội quản lý là phân nhóm báo cáo, không phải ranh giới phân quyền mới. Nếu cần chỉ xem thiết bị đội mình thì phải thiết kế thêm chính sách; không giả định đã có.
 QR chứa URL tuyệt đối từ APP_BASE_URL, equipment code và workspace UUID; không chứa token. Quét vẫn bắt đăng nhập và RLS. Mã phương tiện trùng giữa các workspace không bị chọn nhầm.
 Chưa tạo dự án Supabase/Vercel; cần chọn dự án và xác nhận chi phí trước khi cấp tài nguyên thật. Không cần WSL2 hay máy chủ doanh nghiệp.
+
+## Sửa yêu cầu: chỉ số container, không TEU
+
+Luồng hiện hành chỉ nhận equipment_code, month, boxes (số nguyên không âm).
+Form, CSV, Google Sheets preview/snapshot, bảng tháng và CSV báo cáo không có TEU.
+Bỏ chỉ tiêu chi phí/1.000 TEU; không tự thay bằng chi phí/1.000 container khi chưa được yêu cầu.
+Migration 006 giữ cột và snapshot lịch sử cũ, khóa thay đổi trường quy đổi bằng trigger, ngừng API/view cũ. Không xóa dữ liệu để chuyển yêu cầu.
+Bộ kiểm thử nâng cấp tạo dữ liệu ở hợp đồng 001–005, chạy regression lịch sử, sau đó áp dụng 006 và kiểm tra hợp đồng mới. Đây không phải cho phép TEU ở phiên bản hiện tại.

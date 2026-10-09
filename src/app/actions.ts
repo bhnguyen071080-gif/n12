@@ -82,6 +82,6 @@ export async function saveGoogleSheet(data:FormData):Promise<ActionResult>{
   if(preview.hash!==value(data,"preview_hash"))return {ok:false,message:"Nguồn đã thay đổi sau khi xem trước. Hãy đọc lại và xác nhận phiên bản mới."};
   const result=await client.rpc("sync_container_source",{p_source:id,p_key:key,p_rows:preview.rows});
   if(result.error)return denied();revalidatePath("/monthly");revalidatePath("/sheets");revalidatePath("/reports");
-  return {ok:true,message:"Đã cập nhật "+result.data+" dòng Boxes. Giữ TEU đã có; không tạo TEU giả. Bản chụp lô nhập được lưu trên database cloud."};
+  return {ok:true,message:"Đã cập nhật "+result.data+" dòng số container (chiếc). Bản chụp lô nhập được lưu trên database cloud."};
  }catch{return {ok:false,message:"Chưa cập nhật được. Kiểm tra kết nối Viewer, mã phương tiện và cấu hình nguồn; không có thay đổi file Google Sheets."};}
 }

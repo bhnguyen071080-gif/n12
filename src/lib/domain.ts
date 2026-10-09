@@ -14,7 +14,7 @@ export const reliabilitySchema = z.object({
 });
 export const costSchema = z.object({
  equipment_id:uuid,equipment_code:equipmentCode,known_cost_vnd:numeric,unpriced_usages:numeric,
- container_teu:nullableNumeric,missing_container_months:numeric,cost_per_1000_teu_vnd:nullableNumeric
+ container_boxes:nullableNumeric,missing_container_months:numeric
 });
 export const causes = ["ELECTRICAL_PLC","HYDRAULICS_SPREADER","MECHANICAL_CABLE","ENGINE_DRIVE","UNCLASSIFIED"] as const;
 export const causeLabels: Record<typeof causes[number],string> = {
@@ -79,5 +79,5 @@ export type MonthlyKind="hours"|"container"|"other";
 const decimal=(scale:number)=>z.number().finite().nonnegative().refine(x=>Number.isSafeInteger(Math.round(x*10**scale)) && Math.abs(x*10**scale-Math.round(x*10**scale))<0.000001,"Sai số chữ số thập phân");
 const base={equipment_code:equipmentCode,month:z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-01$/)};
 export const hoursRows=z.array(z.object({...base,operating_hours:decimal(2)}).strict()).min(1).max(1000);
-export const containerRows=z.array(z.object({...base,boxes:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),teu:decimal(2).nullable()}).strict()).min(1).max(1000);
+export const containerRows=z.array(z.object({...base,boxes:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)}).strict()).min(1).max(1000);
 export const otherRows=z.array(z.object({...base,cargo_code:z.string().min(1).max(40),quantity:decimal(3)}).strict()).min(1).max(1000);

@@ -21,8 +21,12 @@ test("whole-month period guards zero and unbounded intervals",()=>{
 test("independent imports never require data for another module",()=>{
  assert.deepEqual(monthlyCsv("equipment_code,month,operating_hours\nQC10,2026-09,100","hours"),
  [{equipment_code:"QC10",month:"2026-09-01",operating_hours:100}]);
- const row=monthlyCsv("equipment_code,month,boxes,teu\nQC10,2026-09,1234,","container")[0];
- assert.equal("teu" in row?row.teu:undefined,null);
+ const row=monthlyCsv("equipment_code,month,boxes\nQC10,2026-09,3382","container")[0];
+ assert.deepEqual(row,{equipment_code:"QC10",month:"2026-09-01",boxes:3382});
+ assert.equal("teu" in row,false);
+ assert.throws(()=>monthlyCsv("equipment_code,month,boxes,teu\nQC10,2026-09,3382,","container"));
+ assert.throws(()=>containerRows.parse([{equipment_code:"QC10",month:"2026-09-01",boxes:3382,teu:null}]));
+ assert.throws(()=>containerRows.parse([{equipment_code:"QC10",month:"2026-09-01",boxes:1.5}]));
  assert.throws(()=>monthlyCsv("equipment_code,month,operating_hours\nQC10,2026-09,","hours"));
  assert.throws(()=>monthlyCsv("equipment_code,month,operating_hours\nQC10,2026-09,1.234","hours"));
 });
@@ -41,8 +45,8 @@ test("TH adapter reads raw integers, carries year, skips seed/totals and preserv
  ["","","Tháng 3","",""]
  ]);
  assert.equal(rows.length,3);
- assert.deepEqual(rows[0],{equipment_code:"QC10",month:"2026-01-01",boxes:1234,teu:null});
- assert.deepEqual(rows[1],{equipment_code:"RTG22",month:"2026-01-01",boxes:0,teu:null});
+ assert.deepEqual(rows[0],{equipment_code:"QC10",month:"2026-01-01",boxes:1234});
+ assert.deepEqual(rows[1],{equipment_code:"RTG22",month:"2026-01-01",boxes:0});
  assert.equal(rows[2].month,"2026-02-01");
  assert.throws(()=>thContainerRows([["","","","QC10"],["Số container",2026,"Tháng 1","#N/A"]]));
  assert.throws(()=>thContainerRows([["","","","QC10","QC 10"],["",2026,"Tháng 1",1,2]]));

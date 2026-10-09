@@ -18,7 +18,7 @@ export interface Database {
    equipment:Table<Equipment>;
    workspace_memberships:Table<{workspace_id:string;user_id:string;role:string;active:boolean}>;
    monthly_operating_hours:Table<{id:string;equipment_id:string;month:string;operating_hours:number}>;
-   monthly_production:Table<{id:string;equipment_id:string;month:string;boxes:number;teu:number|null}>;
+   monthly_production:Table<{id:string;equipment_id:string;month:string;boxes:number}>;
    monthly_other_cargo:Table<{id:string;equipment_id:string;cargo_type_id:string;month:string;quantity:number}>;
    cargo_types:Table<{id:string;workspace_id:string;code:string;name:string;unit:string}>;
    failure_incidents:Table<{id:string;equipment_id:string;repair_order_id:string;occurred_at:string;restored_at:string|null;confirmed:boolean;primary_cause_group:Cause["cause"];created_by:string}>;
@@ -30,7 +30,7 @@ export interface Database {
    vw_component_life:View<Life>;
    vw_technical_backlog:View<TechBacklog>;
    vw_procedural_backlog:View<ProceduralBacklog>;
-   vw_monthly_metrics:View<{workspace_id:string;equipment_id:string;equipment_code:string;month:string;boxes:number|null;teu:number|null;operating_hours:number|null;accumulated_hours:number}>;
+   vw_monthly_activity:View<{workspace_id:string;equipment_id:string;equipment_code:string;month:string;boxes:number|null;operating_hours:number|null;accumulated_hours:number}>;
    vw_other_cargo_monthly:View<{workspace_id:string;equipment_code:string;month:string;cargo_code:string;cargo_name:string;unit:string;quantity:number}>;
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };

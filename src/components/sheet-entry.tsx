@@ -3,7 +3,7 @@ import {useState} from "react";
 import {z} from "zod";
 import {saveGoogleSheet,saveSheetSource} from "@/app/actions";
 import {AsyncForm} from "./async-form";
-const previewSchema=z.object({sourceId:z.string().uuid(),hash:z.string(),count:z.number(),sample:z.array(z.object({equipment_code:z.string(),month:z.string(),boxes:z.number(),teu:z.null()})),unknownCodes:z.array(z.string())});
+const previewSchema=z.object({sourceId:z.string().uuid(),hash:z.string(),count:z.number(),sample:z.array(z.object({equipment_code:z.string(),month:z.string(),boxes:z.number()})),unknownCodes:z.array(z.string())});
 type Preview=z.infer<typeof previewSchema>;
 export function SheetEntry({workspace,sources}:{workspace:string;sources:{id:string;name:string}[]}){
  const [source,setSource]=useState(sources[0]?.id??""),[preview,setPreview]=useState<Preview>(),[error,setError]=useState(""),[pending,setPending]=useState(false);
@@ -17,7 +17,7 @@ export function SheetEntry({workspace,sources}:{workspace:string;sources:{id:str
  return <div className="grid gap-5 lg:grid-cols-2"><section className="panel"><h2>Cập nhật từ tab TH</h2><p>Đọc số nguyên gốc, không đọc dấu phân tách hàng nghìn. Bỏ dòng tổng/khởi tạo lỗi, giữ ô trống là chưa có dữ liệu. Không sửa file nguồn.</p>
   <label>Nguồn đã cấu hình<select value={source} disabled={pending} onChange={e=>{setSource(e.target.value);setPreview(undefined);}}>{sources.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
   <button type="button" disabled={pending||!source} onClick={read}>{pending?"Đang đọc…":"Đọc nguồn & xem trước"}</button><p role="alert">{error}</p>
-  {preview && <><p>{preview.count} dòng phương tiện/tháng. Boxes = số chiếc; TEU chưa có giữ trống/giữ giá trị đã nhập riêng.</p>
+  {preview && <><p>{preview.count} dòng phương tiện/tháng. Chỉ ghi nhận số container (chiếc), không quy đổi.</p>
    <pre className="overflow-x-auto text-xs">{JSON.stringify(preview.sample,null,2)}</pre>
    {preview.unknownCodes.length>0?<p className="text-red-800">Chưa khớp danh mục: {preview.unknownCodes.join(", ")}. Cần ánh xạ hoặc bổ sung danh mục trước khi nhập.</p>:
     <AsyncForm key={preview.sourceId+preview.hash} action={saveGoogleSheet} label="Xác nhận cập nhật cả lô"><input type="hidden" name="source" value={source}/><input type="hidden" name="preview_hash" value={preview.hash}/></AsyncForm>}

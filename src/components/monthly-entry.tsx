@@ -6,11 +6,11 @@ import {monthlyCsv} from "@/lib/csv";
 import {monthStart,type MonthlyKind} from "@/lib/domain";
 export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string;kind:MonthlyKind;codes:string[];cargoCodes:string[]}){
  const [csv,setCsv]=useState(""),[error,setError]=useState(""),[preview,setPreview]=useState("");
- const header=kind==="hours"?"equipment_code,month,operating_hours":kind==="container"?"equipment_code,month,boxes,teu":"equipment_code,month,cargo_code,quantity";
+ const header=kind==="hours"?"equipment_code,month,operating_hours":kind==="container"?"equipment_code,month,boxes":"equipment_code,month,cargo_code,quantity";
  function prepare(data:FormData){
   const base={equipment_code:String(data.get("equipment_code")),month:monthStart(String(data.get("month")))};
   const n=(field:string)=>{const s=String(data.get(field)??"");if(!/^\d+(\.\d+)?$/.test(s))throw new Error("Số không hợp lệ");return Number(s);};
-  const row=kind==="hours"?{...base,operating_hours:n("operating_hours")}:kind==="container"?{...base,boxes:n("boxes"),teu:data.get("teu")?n("teu"):null}:
+  const row=kind==="hours"?{...base,operating_hours:n("operating_hours")}:kind==="container"?{...base,boxes:n("boxes")}:
    {...base,cargo_code:String(data.get("cargo_code")),quantity:n("quantity")};
   data.set("rows",JSON.stringify([row]));
  }
@@ -21,7 +21,7 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
     <label>Tháng<input type="month" name="month" required/></label>
     {kind==="hours"?<label>Tổng giờ hoạt động thực tế<input name="operating_hours" type="number" step="0.01" min="0" required/></label>:kind==="container"?<>
      <label>Số container (chiếc / Boxes)<input name="boxes" type="number" step="1" min="0" required/></label>
-     <label>TEU (để trống nếu chưa biết)<input name="teu" type="number" step="0.01" min="0"/></label></>:<>
+</>:<>
      <label>Loại hàng<select name="cargo_code" required>{cargoCodes.map(c=><option key={c}>{c}</option>)}</select></label>
      <label>Số lượng theo đơn vị loại hàng<input name="quantity" type="number" step="0.001" min="0" required/></label></>}
    </AsyncForm>

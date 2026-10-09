@@ -17,7 +17,7 @@ export function parseCsv(text:string):string[][] {
 }
 export function monthlyCsv(text:string,kind:MonthlyKind){
  const rows=parseCsv(text),headers=rows.shift()?.map(x=>x.trim());
- const expected=kind==="hours"?["equipment_code","month","operating_hours"]:kind==="container"?["equipment_code","month","boxes","teu"]:["equipment_code","month","cargo_code","quantity"];
+ const expected=kind==="hours"?["equipment_code","month","operating_hours"]:kind==="container"?["equipment_code","month","boxes"]:["equipment_code","month","cargo_code","quantity"];
  if(!headers || headers.join(",")!==expected.join(","))throw new Error("Header phải là: "+expected.join(","));
  const number=(x:string)=>{if(!/^\d+(\.\d+)?$/.test(x))throw new Error("Số dùng dấu chấm thập phân, không để trống");return Number(x);};
  const values=rows.map(r=>{
@@ -25,7 +25,7 @@ export function monthlyCsv(text:string,kind:MonthlyKind){
   const code=r[0].trim(),month=monthStart(r[1].trim().slice(0,7));
   if(!/^\d{4}-\d{2}(-01)?$/.test(r[1].trim()))throw new Error("Tháng CSV phải là YYYY-MM hoặc YYYY-MM-01");
   if(kind==="hours")return {equipment_code:code,month,operating_hours:number(r[2].trim())};
-  if(kind==="container")return {equipment_code:code,month,boxes:number(r[2].trim()),teu:r[3].trim()?number(r[3].trim()):null};
+  if(kind==="container")return {equipment_code:code,month,boxes:number(r[2].trim())};
   return {equipment_code:code,month,cargo_code:r[2].trim(),quantity:number(r[3].trim())};
  });
  if(kind==="hours")return hoursRows.parse(values);if(kind==="container")return containerRows.parse(values);return otherRows.parse(values);

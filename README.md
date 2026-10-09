@@ -5,11 +5,11 @@ Nguồn công khai, dữ liệu riêng tư. Không đưa hồ sơ thật, spread
 ## Giai đoạn 3 trên nền Giai đoạn 2
 
 Next.js App Router + TypeScript strict + Tailwind + Supabase SSR/Auth/RLS + PWA:
-- Ba bảng độc lập: tổng giờ máy thực chạy tháng, container Boxes/TEU tháng, hàng khác theo loại/đơn vị.
+- Ba bảng độc lập: tổng giờ máy thực chạy tháng, số container (chiếc) tháng, hàng khác theo loại/đơn vị.
 - Giờ lũy kế theo chênh lệch tháng; định mức cáp/búa khung cẩu và bảo dưỡng lấy cùng nguồn giờ, không trộn giờ hư hỏng.
-- Báo cáo MTTR/MTBF/Availability, hai nhóm tồn đọng, chi phí vật tư/1.000 TEU và nguyên nhân.
+- Báo cáo MTTR/MTBF/Availability, hai nhóm tồn đọng, tổng chi phí vật tư và nguyên nhân.
 - QR có workspace, bắt đăng nhập và RLS; kiểm tra/báo hỏng nhanh, chuyển KT sang SC một lần.
-- Adapter Google Sheets tab TH dạng bảng ngang: đọc số nguyên gốc, không dùng chuỗi hiển thị; Boxes là số chiếc, TEU chưa có=NULL.
+- Adapter Google Sheets tab TH dạng bảng ngang: đọc số nguyên gốc, không dùng chuỗi hiển thị; chỉ ghi số container (chiếc), không có trường quy đổi.
 - Đọc nguồn → xem trước → kiểm tra mã → xác nhận cập nhật nguyên tử, snapshot và audit trên PostgreSQL cloud.
 
 **Chưa triển khai production**: hiện chưa có Supabase project trong tài khoản được kết nối. Build/CI fixture không chứng minh đăng nhập, Google service account, upload Storage hay giao diện với dữ liệu thật đã được kiểm thử trên cloud. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện.
@@ -20,7 +20,7 @@ Máy tính/điện thoại chỉ cần trình duyệt HTTPS; app và database ch
 
 ## Thiết lập cloud
 
-1. Chọn Supabase project. Với DB mới áp dụng migration 001→005 theo thứ tự. Với DB đã áp dụng Giai đoạn 2, chỉ áp dụng 004→005. Không chạy foundation đè DB cũ.
+1. Chọn Supabase project. Với DB mới áp dụng migration 001→006 theo thứ tự. Với DB đã áp dụng Giai đoạn 2, chỉ áp dụng 004→006. Không chạy foundation đè DB cũ.
 2. Tạo Auth user qua Supabase; quản trị bootstrap workspace và các membership. Một cá nhân có thể giữ cả bốn vai trò. Không mở endpoint tự cấp quyền.
 3. Đưa mã lên nền tảng Next.js cloud; cấu hình các biến trong .env.example bằng secret/config của môi trường, không commit file .env.
 4. Nhập danh mục thiết bị và loại hàng, baseline giờ đồng hồ. Không nhập các tháng giờ đã nằm trong baseline.
@@ -37,7 +37,7 @@ Tài khoản Google của plugin trong chat không tự trở thành quyền Goo
 - Preview báo mã chưa có trong danh mục. Không tự tạo thiết bị thiếu giờ gốc.
 - Khi xác nhận, app đọc lại nguồn và so hash với preview; nếu đổi dữ liệu yêu cầu xem trước lại.
 - Cập nhật tối đa 10.000 dòng trong một giao dịch; chunk nội bộ 1000 dòng, một dòng sai rollback tất cả.
-- Boxes-only không tự tính TEU, không ghi đè TEU đã được đo và nhập riêng. Ô trống không xóa dòng cũ; nếu cần xóa/hủy phải thực hiện thao tác được kiểm soát.
+- Luồng hiện hành chỉ nhận số container, không nhận trường TEU kể cả NULL; không có chỉ tiêu chi phí/1.000 TEU. Migration 006 giữ trường lịch sử cũ nhưng khóa thay đổi và ngừng API/view cũ. Ô trống không xóa dòng cũ; nếu cần xóa/hủy phải thực hiện thao tác được kiểm soát.
 - Chỉ cập nhật khi người dùng bấm xác nhận, chưa có lịch đồng bộ tự động.
 - accepted_rows trong sheet_sync_runs là snapshot đã chuẩn hóa; audit_logs giữ old/new. Đây không thay thế backup database định kỳ của nhà cung cấp.
 
@@ -63,3 +63,5 @@ docs/work-case-model.md   # Mã SC/BD/VS/KT
 ```
 
 Dev (chỉ dành cho người viết mã, không cần trên máy dùng app): Node>=22, npm ci, npm run dev. package-lock.json khóa cả phụ thuộc gián tiếp; CI quét npm audit ở mức moderate trở lên.
+
+Hợp đồng container hiện tại: CSV `equipment_code,month,boxes`; ví dụ số nguyên `3382` nghĩa là 3382 chiếc, không dùng hệ số quy đổi. Bản cài đã chạy 001–005 cần áp dụng 006 cùng bản web mới; không chạy lại các migration đã áp dụng.
