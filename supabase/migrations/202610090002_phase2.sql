@@ -206,7 +206,7 @@ end; $$;
 create trigger order_case_guard before insert or update on public.repair_orders for each row execute function private.guard_order_case();
 
 create function private.lock_monthly_equipment()
-returns trigger language plpgsql security definer set search_path='' as $
+returns trigger language plpgsql security definer set search_path='' as $$
 begin
  perform 1 from public.equipment where id in (
   case when tg_op<>'DELETE' then new.equipment_id end,
