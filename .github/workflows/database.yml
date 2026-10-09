@@ -2,7 +2,7 @@ name: TV-EAM database checks
 on:
   pull_request:
   push:
-    branches: [codex/tv-eam-phase2]
+    branches: [codex/tv-eam-phase3]
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,12 +31,31 @@ jobs:
       - uses: actions/checkout@v4
       - name: Create disposable Supabase fixture
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/fixture.sql
-      - name: Apply ordered migrations
+      - name: Apply foundation through historical Phase 3 contract
         run: |
           for migration in supabase/migrations/*.sql; do
-            psql -v ON_ERROR_STOP=1 -f "$migration"
+            if [[ "$migration" < "supabase/migrations/202610090006" ]]; then
+              psql -v ON_ERROR_STOP=1 -f "$migration"
+            fi
           done
       - name: Verify RLS and business invariants
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/regression.sql
       - name: Verify simultaneous case creation and retries
         run: python3 tests/concurrency.py
+      - name: Verify Phase 3 analytics, independent hours and component life
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/phase3.sql
+      - name: Verify Sheets snapshots and all-or-nothing multi-chunk import
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/sheet_sources.sql
+
+      - name: Apply ordered counts-only upgrade and later migrations
+        run: |
+          for migration in supabase/migrations/*.sql; do
+            if [[ "$migration" > "supabase/migrations/202610090006" ]]; then
+              psql -v ON_ERROR_STOP=1 -f "$migration"
+            fi
+          done
+      - name: Verify active counts-only contract and preservation of historical data
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/container_counts.sql
+
+      - name: Verify independent hours sources, baseline window, correction deltas and RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/hours_sources.sql
