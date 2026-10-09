@@ -168,7 +168,7 @@ create function private.guard_work_item()
 returns trigger language plpgsql set search_path='' as $$
 declare tech boolean; supply boolean; head boolean; r public.repair_orders;
 begin
- select * into strict r from public.repair_orders where id=new.repair_order_id;
+ select * into strict r from public.repair_orders where id=new.repair_order_id for update;
  head:=private.can_order(r.id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]);
  tech:=private.can_order(r.id,array['KY_THUAT_VIEN']::public.eam_role[]);
  supply:=private.can_order(r.id,array['CAN_BO_VAT_TU']::public.eam_role[]);
@@ -180,6 +180,10 @@ begin
    raise exception using errcode='42501',message='Không được chuyển hạng mục sang hồ sơ khác';
   end if;
   if not head then
+   if old.acceptance_status='accepted' and row(new.symptom,new.root_cause,new.solution_plan,new.execution_result,new.execution_status)
+    is distinct from row(old.symptom,old.root_cause,old.solution_plan,old.execution_result,old.execution_status) then
+    raise exception using errcode='22023',message='Phải mở lại nghiệm thu trước khi sửa nội dung đã nghiệm thu';
+   end if;
    if not tech and row(new.symptom,new.root_cause,new.solution_plan,new.execution_result,new.basis_status,new.execution_status)
        is distinct from row(old.symptom,old.root_cause,old.solution_plan,old.execution_result,old.basis_status,old.execution_status) then
     raise exception using errcode='42501',message='Không có quyền sửa nội dung kỹ thuật';
@@ -220,7 +224,7 @@ returns trigger language plpgsql security definer set search_path='' as $$
 declare item public.repair_work_items; r public.repair_orders; w uuid;
 begin
  select * into strict item from public.repair_work_items where id=new.repair_work_item_id;
- select * into strict r from public.repair_orders where id=item.repair_order_id;
+ select * into strict r from public.repair_orders where id=item.repair_order_id for update;
  select workspace_id into strict w from public.equipment where id=r.equipment_id;
  if not exists(select 1 from public.materials where id=new.material_id and workspace_id=w) then
   raise exception using errcode='22023',message='Vật tư khác workspace';
@@ -235,9 +239,8 @@ begin
   new.installed_at:=coalesce(case when tg_op='UPDATE' then old.installed_at end,now());
  else new.installed_at:=null; end if;
  if new.document_status='documents_complete' and (
-  new.returned_quantity<new.borrowed_quantity or not exists(
-   select 1 from public.voucher_lines l where l.usage_id=new.id
-  )
+  new.returned_quantity<new.borrowed_quantity or
+  coalesce((select -sum(l.quantity_delta) from public.voucher_lines l where l.usage_id=new.id),0)<>new.quantity
  ) then raise exception using errcode='22023',message='Còn khoản vay hoặc chưa có phiếu lĩnh'; end if;
  return new;
 end; $$;

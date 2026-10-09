@@ -404,7 +404,12 @@ create policy events_update on public.maintenance_events for update to authentic
  exists(select 1 from public.maintenance_plans p where p.id=plan_id and private.can_equipment(p.equipment_id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]))) with check(
  exists(select 1 from public.maintenance_plans p where p.id=plan_id and private.can_equipment(p.equipment_id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[])));
 grant insert,update on public.maintenance_events to authenticated;
-create policy documents_read on public.technical_documents for select to authenticated using(private.document_permission(id,false));
+create policy documents_read on public.technical_documents for select to authenticated using(status<>'archived' and (
+ private.can_equipment(equipment_id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]) or
+ (kind<>'material_voucher' and private.can_equipment(equipment_id,array['KY_THUAT_VIEN']::public.eam_role[])) or
+ (kind='material_voucher' and private.can_equipment(equipment_id,array['CAN_BO_VAT_TU']::public.eam_role[])) or
+ (created_by=auth.uid() and kind in ('incident','photo_before','photo_after') and private.can_equipment(equipment_id,array['DOI_SAN_XUAT']::public.eam_role[]))
+));
 create policy documents_insert on public.technical_documents for insert to authenticated with check(
  created_by=auth.uid() and status='pending' and (
  private.can_equipment(equipment_id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]) or
