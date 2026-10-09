@@ -6,6 +6,8 @@ select test.fails($q$update public.sheet_sources set source_kind='container',sta
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
 select public.sync_hours_source('d1000000-0000-0000-0000-000000000001',
  '[{"equipment_code":"QC11","month":"2026-09-01","operating_hours":90.25}]','f1000000-0000-0000-0000-000000000001');
+select test.fails($q$select private.sync_monthly_source('d1000000-0000-0000-0000-000000000001',
+ '[{"equipment_code":"QC11","month":"2026-09-01","operating_hours":1}]','f1000000-0000-0000-0000-000000000010',null)$q$,'22023','NULL source routing kind is rejected');
 select test.ok((select accumulated_hours=1090.25 from public.equipment where code='QC11'),'Sheet hours update cumulative total by correction delta');
 select test.ok((select boxes=3382 from public.monthly_production where equipment_id='20000000-0000-0000-0000-000000000003' and month='2026-09-01'),'hours Sheet never changes container count');
 select test.ok((select used_hours=90.25 and remaining_hours=29.75 from public.vw_component_life where equipment_code='QC11'),'hours Sheet drives life-limit query from same cumulative meter');

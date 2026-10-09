@@ -21,7 +21,7 @@ begin
  select * into strict src from public.sheet_sources where id=p_source for update;
  if not private.has_role(src.workspace_id,array['KY_THUAT_VIEN','TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]) then
   raise exception using errcode='42501',message='Không có quyền cập nhật nguồn'; end if;
- if p_kind not in ('container','hours') or src.source_kind<>p_kind then
+ if p_kind is null or p_kind not in ('container','hours') or src.source_kind<>p_kind then
   raise exception using errcode='22023',message='Nguồn không khớp loại dữ liệu yêu cầu'; end if;
  if p_rows is null or jsonb_typeof(p_rows)<>'array' or jsonb_array_length(p_rows) not between 1 and 10000 or p_key is null then
   raise exception using errcode='22023',message='Nguồn phải có 1–10.000 dòng'; end if;
