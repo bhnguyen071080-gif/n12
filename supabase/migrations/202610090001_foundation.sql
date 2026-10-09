@@ -164,11 +164,23 @@ begin
 end; $$;
 create trigger equipment_guard before insert or update on public.equipment for each row execute function private.guard_equipment();
 
+
+-- Separate parent lock from the invoker column guard. Supply users may read the
+-- order but must not gain UPDATE permission on its acceptance/closure fields.
+create function private.lock_item_parent()
+returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ perform 1 from public.repair_orders where id=new.repair_order_id for update;
+ return new;
+end; $$;
+create trigger aa_item_parent_lock before insert or update on public.repair_work_items
+ for each row execute function private.lock_item_parent();
+
 create function private.guard_work_item()
 returns trigger language plpgsql set search_path='' as $$
 declare tech boolean; supply boolean; head boolean; r public.repair_orders;
 begin
- select * into strict r from public.repair_orders where id=new.repair_order_id for update;
+ select * into strict r from public.repair_orders where id=new.repair_order_id;
  head:=private.can_order(r.id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]);
  tech:=private.can_order(r.id,array['KY_THUAT_VIEN']::public.eam_role[]);
  supply:=private.can_order(r.id,array['CAN_BO_VAT_TU']::public.eam_role[]);
