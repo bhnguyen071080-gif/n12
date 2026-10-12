@@ -12,3 +12,9 @@ test("PWA shell does not cache business records",async({request})=>{
  const manifest=await request.get("/manifest.webmanifest");expect(manifest.status()).toBe(200);
  const sw=await request.get("/sw.js");expect(await sw.text()).toContain("No caching of API calls");
 });
+
+test("personal cases and month filters stay behind cloud configuration gate",async({page})=>{
+ for(const path of ["/cases","/cases/e0000000-0000-0000-0000-000000000001","/monthly?kind=hours","/life"]){
+  await page.goto(path);await expect(page).toHaveURL(/setup/);
+ }
+});

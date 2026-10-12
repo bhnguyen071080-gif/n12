@@ -59,3 +59,8 @@ jobs:
 
       - name: Verify independent hours sources, baseline window, correction deltas and RLS
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/hours_sources.sql
+
+      - name: Verify personal follow-up, common returns and inclusive hour reports
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/personal_followup.sql
+      - name: Verify concurrent material retries and shared return reopening
+        run: python3 tests/followup_concurrency.py

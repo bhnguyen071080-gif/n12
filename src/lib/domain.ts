@@ -41,7 +41,7 @@ export function safeNext(value:string|undefined):string {
  if(!value || !value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) return "/";
  try {
   const url=new URL(value,"https://internal.invalid");
-  if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets)?(\/|\?|$)/.test(value)) return "/";
+  if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets|cases)?(\/|\?|$)/.test(value)) return "/";
   return url.pathname+url.search;
  } catch {return "/";}
 }

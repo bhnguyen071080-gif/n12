@@ -1,10 +1,12 @@
 import Link from "next/link";
 import {context} from "@/lib/supabase";
-import {formatNumber,monthStart} from "@/lib/domain";
+import {formatNumber,monthStart,localInputNow} from "@/lib/domain";
+import {defaultEndMonth,hourRow,inclusiveRange,monthLabel,summarizeHours} from "@/lib/monthly-hours";
+import {z} from "zod";
 import {MonthlyEntry} from "@/components/monthly-entry";
 import {WorkspaceSelect} from "@/components/workspace-select";
 export const dynamic="force-dynamic";
-export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string}>}){
+export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
  const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours";
  const w=c.workspace.id;let month:string|undefined;try{month=p.month?monthStart(p.month):undefined;}catch{return <p>Tháng không hợp lệ.</p>;}
@@ -14,11 +16,31 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
  c.client.from("vw_monthly_activity").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
  c.client.from("vw_other_cargo_monthly").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500)]);
  if(eq.error || cargo.error || metrics.error || other.error)throw new Error("Không đọc được bảng tháng");
+ const selected=eq.data?.find(e=>e.id===p.equipment)??(!p.equipment?eq.data?.[0]:undefined);
+ if(p.equipment&&!selected)return <p>Phương tiện không hợp lệ hoặc chưa có quyền.</p>;
+ let from="",to="",hours:z.infer<typeof hourRow>[]=[];
+ if(kind==="hours"&&selected){
+  const current=await c.client.from("monthly_operating_hours").select("id").eq("equipment_id",selected.id).eq("month",monthStart(localInputNow().slice(0,7))).maybeSingle();
+  if(current.error)throw new Error("Không đọc được giờ tháng hiện tại.");
+  to=p.to??defaultEndMonth(Boolean(current.data));from=p.from??to.slice(0,4)+"-01";
+  let bounds;try{bounds=inclusiveRange(from,to);}catch{return <p>Khoảng tháng không hợp lệ.</p>;}
+  const r=await c.client.rpc("report_operating_hours",{p_equipment:selected.id,p_from:bounds.from,p_to:bounds.to});
+  if(r.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(r.data);
+ }
+ const summary=summarizeHours(hours);
  const rows=(metrics.data??[]).filter(r=>(!month||r.month===month) && (kind==="hours"?r.operating_hours!==null:r.boxes!==null));
  const otherRows=(other.data??[]).filter(r=>!month||r.month===month);
  return <><h1>{kind==="hours"?"Tổng giờ hoạt động thực tế hàng tháng":kind==="container"?"Sản lượng container hàng tháng":"Sản lượng hàng khác hàng tháng"}</h1>
   <WorkspaceSelect workspaces={c.workspaces} selected={w}/><div className="flex flex-wrap gap-4">{(["hours","container","other"] as const).map(k=><Link className="button" key={k} href={"/monthly?workspace="+w+"&kind="+k}>{k==="hours"?"Giờ hoạt động":k==="container"?"Container (chiếc)":"Hàng khác"}</Link>)}</div>
   <p>{kind==="hours"?"Chỉ nhập giờ máy thực chạy. Giờ này làm cơ sở theo dõi định mức cáp, búa khung cẩu và bảo dưỡng; không nhập giờ dừng/hư hỏng vào bảng này.":kind==="container"?"Chỉ ghi nhận số container (chiếc) của phương tiện trong tháng.":"Hàng khác giữ đơn vị từng loại hàng, không cộng tấn với m³/chuyến hoặc số container."}</p>
+  {kind==="hours"&&selected&&<section className="panel"><h2>Lọc tổng giờ theo khoảng tháng</h2>
+   <form method="get" className="grid gap-3 sm:grid-cols-3"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
+   <label>Phương tiện<select name="equipment" defaultValue={selected.id}>{eq.data?.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>
+   <label>Từ tháng–năm<input name="from" type="month" defaultValue={from} required/></label><label>Đến tháng–năm<input name="to" type="month" defaultValue={to} required/></label><button type="submit">Lọc & tính tổng</button></form>
+   <p>Tính cả tháng đầu và cuối. Chọn đến tháng–năm thủ công; mặc định tháng hiện tại nếu phương tiện đã có dữ liệu, nếu chưa có thì tháng liền trước.</p>
+   <p className="text-xl font-bold">{selected.code} · {monthLabel(from)} → {monthLabel(to)}: {formatNumber(summary.total)} h đã ghi nhận</p>
+   {summary.missing.length>0&&<p role="alert" className="text-red-800">Thiếu {summary.missing.length} tháng: {summary.missing.map(monthLabel).join(", ")}. Tổng chưa đầy đủ; không coi tháng thiếu là 0 giờ.</p>}
+   <div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng–năm</th><th>Giờ hoạt động</th></tr></thead><tbody>{hours.map(r=><tr key={r.month}><td>{selected.code}</td><td>{monthLabel(r.month)}</td><td>{r.operating_hours===null?"Thiếu dữ liệu":formatNumber(r.operating_hours)+" h"}</td></tr>)}</tbody></table></div></section>}
   <MonthlyEntry workspace={w} kind={kind} codes={(eq.data??[]).map(e=>e.code)} cargoCodes={(cargo.data??[]).map(r=>r.code)}/>
   {kind!=="other" && <Link className="button" href={"/sheets?workspace="+w}>Cập nhật từ Google Sheets · TH</Link>}
   <section className="panel"><h2>Dữ liệu hiện có (tối đa 500 dòng gần nhất)</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="hours"?<th>Tổng giờ chạy</th>:kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>

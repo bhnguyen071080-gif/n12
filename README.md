@@ -1,3 +1,12 @@
+## Cập nhật nghiệp vụ cá nhân 12/10/2026
+
+Luồng /cases: vật tư theo vụ việc, trả phiếu chung, ngày thực hiện theo từng hạng mục.
+Giờ máy: lọc phương tiện/từ tháng/đến tháng, tính cả hai đầu; định mức vật tư lấy tháng của lượt thay gần nhất trong lý lịch.
+Không yêu cầu giờ đồng hồ khi lắp; không lập phiếu kho trong luồng cá nhân. Dữ liệu/chức năng cũ được giữ để tương thích.
+Migrations bổ sung 008–009, không chạy lại foundation.
+Xem [quy tắc đã chốt](docs/work-case-model.md) và [hướng dẫn](docs/personal-followup.md).
+Phần mô tả Phase 3 cũ bên dưới về đồng hồ/giờ khi lắp là kiến trúc lịch sử, không phải cách tính hiện hành.
+
 # TV-EAM – Tan Vu Equipment & Asset Management
 
 Nguồn công khai, dữ liệu riêng tư. Không đưa hồ sơ thật, spreadsheet ID/URL riêng tư, khóa Google/Supabase hoặc ảnh hiện trường vào repository.

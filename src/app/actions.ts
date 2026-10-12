@@ -86,7 +86,6 @@ export async function saveGoogleSheet(data:FormData):Promise<ActionResult>{
   const preview=await previewSource(source.data);
   if(preview.hash!==value(data,"preview_hash"))return {ok:false,message:"Nguồn đã thay đổi sau khi xem trước. Hãy đọc lại và xác nhận phiên bản mới."};
   if(preview.issues.length)return {ok:false,message:"Nguồn có giờ vượt giới hạn tháng; cần đối chiếu rồi đọc lại. Chưa có dòng nào được ghi."};
-  if(preview.kind==="hours" && data.get("baseline_confirmed")!=="on")return {ok:false,message:"Cần xác nhận số giờ ban đầu chỉ bao gồm thời gian trước tháng bắt đầu nhập."};
   const args={p_source:id,p_key:key,p_rows:preview.rows};
   const result=preview.kind==="hours"?await client.rpc("sync_hours_source",args):await client.rpc("sync_container_source",args);
   if(result.error)return denied();revalidatePath("/monthly");revalidatePath("/sheets");revalidatePath("/reports");revalidatePath("/life");revalidatePath("/");

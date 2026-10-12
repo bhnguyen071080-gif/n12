@@ -32,7 +32,6 @@ export function SheetEntry({workspace,sources}:{workspace:string;sources:Source[
    {preview.issues.length>0 && <div role="alert" className="text-red-800"><p>Chưa thể nhập: {preview.issues.length} dòng giờ cần đối chiếu.</p>{preview.issues.slice(0,20).map(i=><p key={i.equipment_code+i.month}>{i.equipment_code} · {i.month.slice(0,7)}: {i.message}</p>)}</div>}
    {preview.unknownCodes.length===0 && preview.issues.length===0 &&
     <AsyncForm key={preview.sourceId+preview.hash} action={saveGoogleSheet} label="Xác nhận cập nhật cả lô"><input type="hidden" name="source" value={source}/><input type="hidden" name="preview_hash" value={preview.hash}/>
-     {preview.kind==="hours" && <label><input type="checkbox" name="baseline_confirmed" required/> Tôi đã đối chiếu: số giờ đồng hồ ban đầu chỉ bao gồm thời gian trước tháng bắt đầu nhập, không chứa các tháng trong lô này.</label>}
     </AsyncForm>}
   </>}
  </section><section className="panel"><h2>Đăng ký nguồn (trưởng bộ phận)</h2>
@@ -42,7 +41,7 @@ export function SheetEntry({workspace,sources}:{workspace:string;sources:Source[
    <label>Tên nguồn<input name="name" required maxLength={100}/></label>
    <label>Link Google Sheets<input type="url" name="url" required placeholder="https://docs.google.com/spreadsheets/d/.../edit"/></label>
    <label>Vùng TH (hàng tên phương tiện bắt đầu A3)<input key={kind} name="a1_range" defaultValue={kind==="hours"?"A3:AR200":"A3:BH200"} required/></label>
-   {kind==="hours" && <><label>Tháng bắt đầu nhập giờ<input name="start_month" type="month" required/></label><p>Chỉ nhập các tháng từ mốc này. Đối chiếu giờ đồng hồ ban đầu trước khi xác nhận để không cộng lại lịch sử.</p></>}
+   {kind==="hours" && <><label>Tháng bắt đầu nhập giờ<input name="start_month" type="month" required/></label><p>Chỉ nhập các tháng từ mốc này. Không cần giờ đồng hồ ban đầu để tổng hợp theo tháng hoặc từ lượt thay vật tư.</p></>}
   </AsyncForm>
   <p>TH dạng ma trận: hàng 3 tên phương tiện, B năm, C tháng. Vùng mở rộng có giới hạn giúp đọc các tháng mới; bỏ dòng tổng và ô trống. Kết nối cần quyền Viewer, không cần Publish to web.</p>
  </section></div>;
