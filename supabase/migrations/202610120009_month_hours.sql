@@ -14,13 +14,13 @@ begin
  left join public.monthly_operating_hours h on h.equipment_id=p_equipment and h.month=s.month::date order by s.month;
 end; $$;
 create function public.report_material_hours(p_equipment uuid,p_to date)
-returns table(material_id uuid,material_code text,material_name text,unit text,usage_id uuid,case_id uuid,case_code text,order_code text,position text,
+returns table(material_id uuid,material_code text,material_name text,unit text,usage_id uuid,case_id uuid,case_code text,order_code text,"position" text,
  performed_on date,from_month date,to_month date,recorded_hours numeric,missing_months integer,limit_hours numeric,remaining_hours numeric,alert_level text)
 language plpgsql stable security invoker set search_path='' as $$
 begin
  perform private.validate_hour_range(p_equipment,p_to,p_to);
  return query with latest as(
- select distinct on(m.id) m.id,m.code,m.name,m.unit,u.id usage_id,c.id case_id,c.code case_code,r.code order_code,u.installation_position position,
+ select distinct on(m.id) m.id,m.code,m.name,m.unit,u.id usage_id,c.id case_id,c.code case_code,r.code order_code,u.installation_position as "position",
  case when c.tracking_only then i.performed_on else (u.installed_at at time zone 'Asia/Bangkok')::date end performed_on,m.service_limit_hours,m.service_warning_hours
  from public.repair_material_usages u join public.materials m on m.id=u.material_id join public.repair_work_items i on i.id=u.repair_work_item_id
  join public.repair_orders r on r.id=i.repair_order_id left join public.work_cases c on c.id=r.case_id
@@ -35,7 +35,7 @@ begin
  left join public.monthly_operating_hours h on h.equipment_id=p_equipment and h.month=s.month::date
  ) a on true
  )
- select t.id,t.code,t.name,t.unit,t.usage_id,t.case_id,t.case_code,t.order_code,t.position,t.performed_on,t.start_month,p_to,t.hours,t.missing,
+ select t.id,t.code,t.name,t.unit,t.usage_id,t.case_id,t.case_code,t.order_code,t."position",t.performed_on,t.start_month,p_to,t.hours,t.missing,
  t.service_limit_hours,case when t.missing=0 then t.service_limit_hours-t.hours end,
  case when t.missing>0 then 'incomplete' when t.service_limit_hours is null then 'no_limit'
  when t.hours>=t.service_limit_hours then 'overdue' when t.hours>=t.service_limit_hours-t.service_warning_hours then 'due_soon' else 'normal' end from totals t;

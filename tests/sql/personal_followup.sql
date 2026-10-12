@@ -46,7 +46,7 @@ insert into test.results values('personal_case2',public.create_tracking_case('e0
 insert into test.results select 'personal_order2',id from public.repair_orders where case_id=(select id from test.results where name='personal_case2');
 insert into test.results select 'personal_item2',id from public.repair_work_items where repair_order_id=(select id from test.results where name='personal_order2');
 select public.add_tracking_material((select id from test.results where name='personal_item2'),'e1000000-0000-0000-0000-000000000001',1,'issued',true,'Position B','e4000000-0000-0000-0000-000000000003');
-select test.ok((select performed_on='2026-03-20' and position='Position B' and recorded_hours=200 from public.report_material_hours('e0000000-0000-0000-0000-000000000001','2026-03-01') where material_code='TEST_CABLE'),'latest installation is chosen by actual work date with descriptive position');
+select test.ok((select performed_on='2026-03-20' and "position"='Position B' and recorded_hours=200 from public.report_material_hours('e0000000-0000-0000-0000-000000000001','2026-03-01') where material_code='TEST_CABLE'),'latest installation is chosen by actual work date with descriptive position');
 select test.ok((select performed_on='2026-01-15' from public.report_material_hours('e0000000-0000-0000-0000-000000000001','2026-02-01') where material_code='TEST_CABLE'),'historical end month excludes later replacement');
 select public.save_tracking_item((select id from test.results where name='personal_order2'),(select id from test.results where name='personal_item2'),
  (select version_no from public.repair_work_items where id=(select id from test.results where name='personal_item2')),
