@@ -193,7 +193,10 @@ begin
  if tg_op='UPDATE' then
   if new.version_no<>old.version_no then raise exception using errcode='40001',message='Sai phiên bản hạng mục'; end if;
   new.version_no:=old.version_no+1;
-  if new.performed_on is distinct from old.performed_on and
+  if new.performed_on is distinct from old.performed_on and not (
+   current_user='postgres' and old.performed_on is null and exists(
+    select 1 from public.repair_orders r join public.work_cases c on c.id=r.case_id
+    where r.id=new.repair_order_id and c.tracking_only and new.performed_on=(c.actual_started_at at time zone 'Asia/Bangkok')::date)) and
    (not private.can_order(new.repair_order_id,array['KY_THUAT_VIEN','TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]) or
    (old.acceptance_status='accepted' and not private.can_order(new.repair_order_id,array['TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]))) then
    raise exception using errcode='42501',message='Không có quyền sửa ngày thực hiện'; end if;

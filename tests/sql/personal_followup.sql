@@ -66,6 +66,17 @@ select test.ok(not exists(select 1 from public.vw_case_followup_backlog where ca
 select test.ok((select installed_at='2026-01-15 00:00+07' from public.repair_material_usages where id=(select id from test.results where name='personal_usage')),'return completion leaves replacement date unchanged');
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',false);
 select test.fails($q$select public.create_tracking_case('e0000000-0000-0000-0000-000000000001','repair','2026-01-01','Unauthorized',gen_random_uuid())$q$,'42501','operator cannot enter technical workflow');
+insert into test.results values('personal_phone_order',public.report_equipment_fault('e0000000-0000-0000-0000-000000000001','2026-09-01 08:00+07','Synthetic phone report',false,'e6000000-0000-0000-0000-000000000001'));
+reset role;
+select test.ok((select c.tracking_only and i.performed_on='2026-09-01' from public.repair_orders r join public.work_cases c on c.id=r.case_id join public.repair_work_items i on i.repair_order_id=r.id where r.id=(select id from test.results where name='personal_phone_order')),'operator phone fault enters common tracking without technical edit privileges');
+set role authenticated;
+insert into test.results values('personal_check',public.create_work_case('e0000000-0000-0000-0000-000000000001','inspection','2026-09-02 08:00+07',null,'Synthetic check','e6000000-0000-0000-0000-000000000002'));
+insert into public.case_checks(case_id,item_no,label,abnormal,notes) select id,1,'Synthetic abnormal',true,'Synthetic symptom' from test.results where name='personal_check';
+update public.work_cases set submitted_at=now() where id=(select id from test.results where name='personal_check');
+insert into test.results values('personal_converted',public.convert_inspection_to_repair((select id from test.results where name='personal_check')));
+reset role;
+select test.ok((select c.tracking_only and i.performed_on='2026-09-02' from public.repair_orders r join public.work_cases c on c.id=r.case_id join public.repair_work_items i on i.repair_order_id=r.id where r.id=(select id from test.results where name='personal_converted')),'operator conversion keeps real check day and links common material follow-up');
+set role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000005',false);
 select test.ok((select count(*)=0 from public.case_material_followups where case_id=(select id from test.results where name='personal_case')),'follow-up RLS isolates another workspace');
 select test.fails($q$select public.set_material_return((select id from test.results where name='personal_case'),'completed',now(),1,'Other workspace')$q$,'42501','cross-workspace return write denied');
