@@ -393,7 +393,7 @@ select b.*,
 from base b;
 
 create or replace function private.quick_fault(p_equipment uuid,p_when timestamptz,p_symptom text,p_stopped boolean,p_key uuid)
-returns uuid language plpgsql security definer set search_path='' as $
+returns uuid language plpgsql security definer set search_path='' as $$
 declare cid uuid; oid uuid; iid uuid; previous boolean;
 begin
  if p_stopped is null then raise exception using errcode='22023',message='Phải chọn tình trạng dừng máy'; end if;
@@ -418,9 +418,9 @@ begin
   insert into public.equipment_downtimes(equipment_id,repair_order_id,started_at,failure_incident_id,downtime_kind)
   values(p_equipment,oid,p_when,iid,'failure');
  end if; return oid;
-end; $;
+end; $$;
 create or replace function private.convert_case(p_case uuid)
-returns uuid language plpgsql security definer set search_path='' as $
+returns uuid language plpgsql security definer set search_path='' as $$
 declare c public.work_cases; child uuid; oid uuid; symptom_text text;
 begin
  select * into strict c from public.work_cases where id=p_case for update;
@@ -438,7 +438,7 @@ begin
  update public.repair_work_items set performed_on=(c.actual_started_at at time zone 'Asia/Bangkok')::date where repair_order_id=oid;
  insert into public.case_material_followups(case_id) values(child);
  return oid;
-end; $;
+end; $$;
 create or replace view public.vw_procedural_backlog with(security_invoker=true) as
 select e.workspace_id,e.id as equipment_id,e.code as equipment_code,e.status as equipment_status,
  r.code as order_code,i.id as item_id,i.symptom,i.material_status,i.requisition_status,i.dossier_status,
