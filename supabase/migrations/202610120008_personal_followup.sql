@@ -22,6 +22,7 @@ create policy followup_read on public.case_material_followups for select to auth
 create trigger audit_row after insert or update or delete on public.case_material_followups for each row execute function private.audit_change();
 create table private.followup_requests(request_key uuid primary key,actor_id uuid not null references auth.users(id),fingerprint text not null,result_id uuid not null);
 revoke all on private.followup_requests from public,anon,authenticated;
+alter table private.followup_requests enable row level security;
 create or replace function private.create_case(p_equipment uuid,p_kind public.case_kind,p_started timestamptz,
  p_ended timestamptz,p_summary text,p_key uuid,p_parent uuid default null)
 returns uuid language plpgsql security definer set search_path='' as $$
@@ -341,7 +342,7 @@ begin
  perform 1 from public.repair_orders where id=rid for update;
  select * into strict f from public.case_material_followups where case_id=p_case;
  if p_version is null or f.version_no<>p_version then
-  if f.version_no=p_version+1 and f.return_status=p_status and f.notes=coalesce(p_notes,'') and f.completed_at is not distinct from case when p_status='completed' then p_completed end then return; end if;
+  if f.version_no=p_version+1 and f.return_status=p_status and f.notes=coalesce(p_notes,'') and f.completed_at is not distinct from (case when p_status='completed' then p_completed end) then return; end if;
   raise exception using errcode='40001',message='Vật tư/trả phiếu đã thay đổi'; end if;
  if p_status is null or p_status not in ('pending','completed') or (p_status='completed' and (p_completed is null or not exists(
  select 1 from public.repair_material_usages u join public.repair_work_items i on i.id=u.repair_work_item_id where i.repair_order_id=rid))) then raise exception using errcode='22023',message='Thiếu vật tư hoặc thời gian hoàn tất'; end if;
