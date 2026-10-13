@@ -27,7 +27,7 @@ Next.js App Router + TypeScript strict + Tailwind + Supabase SSR/Auth/RLS + PWA:
 - Hai adapter Google Sheets TH: số container nguyên (chiếc) và giờ máy thực chạy (tối đa 2 chữ số thập phân). Không có trường quy đổi; không trộn giờ dừng.
 - Đọc nguồn → xem trước → kiểm tra mã → xác nhận cập nhật nguyên tử, snapshot và audit trên PostgreSQL cloud.
 
-**Chưa triển khai production**: hiện chưa có Supabase project trong tài khoản được kết nối. Build/CI fixture không chứng minh đăng nhập, Google service account, upload Storage hay giao diện với dữ liệu thật đã được kiểm thử trên cloud. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện.
+**Chưa đưa ứng dụng web vào sử dụng chính thức**: cơ sở dữ liệu đám mây đã được khởi tạo và kiểm tra nghiệp vụ bằng dữ liệu tạm trong giao dịch hoàn tác; chưa nhập dữ liệu thật hoặc tạo tài khoản sử dụng app. Kiểm tra cơ sở dữ liệu không chứng minh đăng nhập trên web, kết nối Google hoặc giao diện với dữ liệu thật đã hoạt động. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện. Xem [ghi chú khởi tạo đám mây](docs/cloud-bootstrap.md).
 
 ## Không cài WSL2 trên máy sử dụng
 

@@ -66,3 +66,5 @@ jobs:
         run: python3 tests/followup_concurrency.py
       - name: Verify immutable print snapshots, Drive leases and role boundaries
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/case_documents.sql
+      - name: Verify cloud access hardening and FK indexes
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/cloud_access_hardening.sql
