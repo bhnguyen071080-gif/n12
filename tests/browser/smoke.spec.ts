@@ -14,7 +14,11 @@ test("PWA shell does not cache business records",async({request})=>{
 });
 
 test("personal cases and month filters stay behind cloud configuration gate",async({page})=>{
- for(const path of ["/cases","/cases/e0000000-0000-0000-0000-000000000001","/monthly?kind=hours","/life"]){
+ for(const path of ["/cases","/cases/e0000000-0000-0000-0000-000000000001","/cases/e0000000-0000-0000-0000-000000000001/documents","/monthly?kind=hours","/life"]){
   await page.goto(path);await expect(page).toHaveURL(/setup/);
  }
+});
+test("PDF endpoints do not disclose data without a configured backend",async({request})=>{
+ const r=await request.get("/api/documents/00000000-0000-4000-8000-000000000001/pdf");expect(r.status()).toBe(503);
+ const bad=await request.get("/api/documents/not-a-uuid/pdf");expect(bad.status()).toBe(400);
 });

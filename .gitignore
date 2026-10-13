@@ -4,3 +4,8 @@ node_modules/
 !.env.example
 coverage/
 .cache/
+.private/
+private-templates/
+output/
+tmp/
+assets/fonts/*.ttf

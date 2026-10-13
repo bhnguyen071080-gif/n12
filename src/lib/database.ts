@@ -1,5 +1,6 @@
 import type {Equipment,Reliability,Cost,Cause} from "./domain";
 import type {WorkItem,MaterialHours} from "./followup";
+import type {CaseDocument} from "./documents";
 export type Json=string|number|boolean|null|Json[]|{[key:string]:Json|undefined};
 type Table<Row>={Row:Row;Insert:Partial<Row>;Update:Partial<Row>;Relationships:[]};
 type View<Row>={Row:Row;Relationships:[]};
@@ -13,6 +14,7 @@ type ImportArgs={p_workspace:string;p_rows:Json;p_key:string};
 export interface Database {
  public:{
   Tables:{
+   case_documents:Table<CaseDocument>;
    workspaces:Table<Workspace>;
    work_cases:Table<{id:string;equipment_id:string;kind:"repair"|"maintenance"|"cleaning"|"inspection";code:string;summary:string;created_at:string;tracking_only:boolean;actual_started_at:string}>;
    repair_orders:Table<{id:string;equipment_id:string;case_id:string|null;code:string;title:string;closed_at:string|null;cancelled_at:string|null}>;
@@ -43,6 +45,11 @@ export interface Database {
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
   Functions:{
+   get_case_document_source:{Args:{p_case:string;p_kind:string};Returns:Json};
+   save_case_document:{Args:{p_case:string;p_kind:string;p_payload:Json;p_source_hash:string;p_key:string};Returns:string};
+   claim_document_drive:{Args:{p_document:string;p_file_id:string};Returns:Json};
+   finish_document_drive:{Args:{p_document:string;p_lease:string;p_sha256:string;p_actor:string};Returns:undefined};
+   release_document_drive:{Args:{p_document:string;p_lease:string};Returns:undefined};
    report_operating_hours:{Args:{p_equipment:string;p_from:string;p_to:string};Returns:{month:string;operating_hours:number|null}[]};
    report_material_hours:{Args:{p_equipment:string;p_to:string};Returns:MaterialHours[]};
    create_tracking_case:{Args:{p_equipment:string;p_kind:"repair"|"maintenance"|"cleaning"|"inspection";p_day:string;p_summary:string;p_key:string};Returns:string};

@@ -1,8 +1,14 @@
+## Biểu mẫu và in 13/10/2026
+
+Đã bổ sung soạn biên bản/phiếu lĩnh từ vụ việc, chỉnh trước khi xuất, lưu phiên bản cloud bất biến, PDF A4 và hai bản A5 trên A4, cùng adapter lưu PDF vào Google Drive riêng tư khi có cấu hình OAuth của ứng dụng. Không tự xác nhận lĩnh/thay/trả phiếu. [Hướng dẫn triển khai và giới hạn](docs/document-export.md).
+
+Chưa triển khai production hoặc kết nối Drive thật. Bản này xuất PDF; chưa có tải Word DOCX.
+
 ## Cập nhật nghiệp vụ cá nhân 12/10/2026
 
 Luồng /cases: vật tư theo vụ việc, trả phiếu chung, ngày thực hiện theo từng hạng mục.
 Giờ máy: lọc phương tiện/từ tháng/đến tháng, tính cả hai đầu; định mức vật tư lấy tháng của lượt thay gần nhất trong lý lịch.
-Không yêu cầu giờ đồng hồ khi lắp; không lập phiếu kho trong luồng cá nhân. Dữ liệu/chức năng cũ được giữ để tương thích.
+Không yêu cầu giờ đồng hồ khi lắp; theo dõi trả phiếu riêng với soạn biểu mẫu. Dữ liệu/chức năng cũ được giữ để tương thích.
 Migrations bổ sung 008–009, không chạy lại foundation.
 Xem [quy tắc đã chốt](docs/work-case-model.md) và [hướng dẫn](docs/personal-followup.md).
 Phần mô tả Phase 3 cũ bên dưới về đồng hồ/giờ khi lắp là kiến trúc lịch sử, không phải cách tính hiện hành.

@@ -45,7 +45,7 @@ export function MaterialsEditor({item,materials,usages}:{item:string;materials:M
 export function ReturnEditor({followup}:{followup:Followup}){
  const router=useRouter();
  return <section className="panel"><h2>Trả phiếu kho chung theo vụ việc</h2><p>{followup.return_status==="completed"?"Đã hoàn tất":"Chưa hoàn tất"}{followup.completed_at?" · "+new Date(followup.completed_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"}):""}</p>
- <p>Không lập phiếu tại đây. Bổ sung vật tư tự mở lại trạng thái; lần hoàn tất trước giữ trong nhật ký.</p>
+ <p>Theo dõi trạng thái tại đây; xuất mẫu tại mục Biểu mẫu & In. Bổ sung vật tư tự mở lại trạng thái; lần hoàn tất trước giữ trong nhật ký.</p>
  <AsyncForm action={setMaterialReturn} onSuccess={()=>router.refresh()}><input name="case" type="hidden" value={followup.case_id}/><input name="version" type="hidden" value={followup.version_no}/>
  <label>Trạng thái trả phiếu<select name="return_status" defaultValue={followup.return_status}><option value="pending">Chưa hoàn tất trả phiếu</option><option value="completed">Đã hoàn tất trả phiếu</option></select></label>
  <label>Thời gian hoàn tất trả phiếu<input name="completed_at" type="datetime-local" defaultValue={localInputNow(followup.completed_at?new Date(followup.completed_at):new Date())}/></label>

@@ -23,6 +23,7 @@ export default async function CasePage({params}:{params:Promise<{id:string}>}){
  return <><h1>{c.code}</h1><p>{equipment.data.code} · {kindLabels[c.kind]} · Hồ sơ {order.data.code}</p>
  <p>Nhập lúc {new Date(c.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})} · {c.summary}</p>
  <div className="flex flex-wrap gap-4"><Link href={"/cases?workspace="+equipment.data.workspace_id}>Danh sách vụ việc</Link><Link href={"/equipment/"+equipment.data.code+"?workspace="+equipment.data.workspace_id}>Lý lịch phương tiện</Link></div>
+ <section className="panel my-5"><h2>Biểu mẫu & In</h2><p>Xuất biên bản A4 hoặc phiếu lĩnh hai bản A5 trên A4. Cho chỉnh trước khi xuất; không đổi trạng thái lĩnh/thay/trả phiếu.</p><Link className="button" href={`/cases/${id}/documents`}>Mở biểu mẫu</Link></section>
  <ReturnEditor key={followup.data.version_no} followup={followup.data}/>
  {items.map(i=><section className="panel space-y-5" key={i.id+":"+i.version_no}><h2>Hạng mục {i.item_no} · thực hiện {dayLabel(i.performed_on)}</h2>
  <ItemEditor order={order.data.id} item={i}/><MaterialsEditor item={i.id} materials={materials.data??[]} usages={usages?.data?.filter(u=>u.repair_work_item_id===i.id)??[]}/></section>)}
