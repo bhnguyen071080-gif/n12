@@ -1,3 +1,7 @@
+## Giao diện cảng biển 14/10/2026
+
+Trang đăng nhập có minh họa cảng biển nguyên bản, tông xanh biển–cam. Điều hướng thích ứng điện thoại, thẻ tổng hợp theo dữ liệu được cấp quyền, tìm phương tiện theo mã/tên không dấu và lọc trạng thái. Danh mục trống có hướng dẫn, không tạo số liệu hoặc phương tiện mẫu trong dữ liệu thật. Không đổi đăng nhập, phân quyền, công thức nghiệp vụ hay tiến độ sửa chữa. Minh họa không phải ảnh hiện trường hoặc logo của đơn vị khác.
+
 ## Biểu mẫu và in 13/10/2026
 
 Đã bổ sung soạn biên bản/phiếu lĩnh từ vụ việc, chỉnh trước khi xuất, lưu phiên bản cloud bất biến, PDF A4 và hai bản A5 trên A4, cùng adapter lưu PDF vào Google Drive riêng tư khi có cấu hình OAuth của ứng dụng. Không tự xác nhận lĩnh/thay/trả phiếu. [Hướng dẫn triển khai và giới hạn](docs/document-export.md).
@@ -27,7 +31,7 @@ Next.js App Router + TypeScript strict + Tailwind + Supabase SSR/Auth/RLS + PWA:
 - Hai adapter Google Sheets TH: số container nguyên (chiếc) và giờ máy thực chạy (tối đa 2 chữ số thập phân). Không có trường quy đổi; không trộn giờ dừng.
 - Đọc nguồn → xem trước → kiểm tra mã → xác nhận cập nhật nguyên tử, snapshot và audit trên PostgreSQL cloud.
 
-**Chưa đưa ứng dụng web vào sử dụng chính thức**: cơ sở dữ liệu đám mây đã được khởi tạo và kiểm tra nghiệp vụ bằng dữ liệu tạm trong giao dịch hoàn tác; chưa nhập dữ liệu thật hoặc tạo tài khoản sử dụng app. Kiểm tra cơ sở dữ liệu không chứng minh đăng nhập trên web, kết nối Google hoặc giao diện với dữ liệu thật đã hoạt động. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện. Xem [ghi chú khởi tạo đám mây](docs/cloud-bootstrap.md).
+**Bản web chạy thử đã được triển khai** và chủ tài khoản đã tự đăng nhập vào khu vực cá nhân. Chưa nhập danh mục/số liệu thực tế hoặc kết nối Google của ứng dụng. Kiểm tra cơ sở dữ liệu không chứng minh toàn bộ luồng ghi sửa trên web với dữ liệu thật đã hoạt động. Các module CRUD sửa chữa/vật tư đầy đủ của MVP vẫn chưa có giao diện hoàn chỉnh; nền SQL đã có, không tuyên bố toàn hệ thống EAM đã hoàn thiện. Xem [ghi chú khởi tạo đám mây](docs/cloud-bootstrap.md).
 
 ## Không cài WSL2 trên máy sử dụng
 

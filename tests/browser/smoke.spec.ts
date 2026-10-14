@@ -4,9 +4,20 @@ test("configuration gate works without cloud credentials",async({page})=>{
 });
 test("mobile login labels and no-secret QR gate",async({page,request})=>{
  await page.setViewportSize({width:390,height:844});await page.goto("/login?next=%2Fequipment%2FQC10%3Faction%3Dquick-inspect");
- await expect(page.getByLabel("Email")).toBeVisible();await expect(page.getByLabel("Mật khẩu")).toBeVisible();
+ await expect(page.getByLabel("Thư điện tử")).toBeVisible();await expect(page.getByLabel("Mật khẩu")).toBeVisible();
  await expect(page.getByRole("button",{name:"Đăng nhập",exact:true})).toBeVisible();
  const response=await request.get("/api/equipment/QC10/qr?workspace=00000000-0000-0000-0000-000000000001");expect(response.status()).toBe(503);
+});
+test("Vietnamese maritime login is responsive and preserves safe redirect",async({page})=>{
+ for(const width of [390,1440]){
+  await page.setViewportSize({width,height:900});await page.goto("/login?next=https%3A%2F%2Fexample.com");
+  await expect(page.getByRole("heading",{name:"Đăng nhập TV-EAM"})).toBeVisible();
+  await expect(page.getByLabel("Thư điện tử")).toHaveAttribute("autocomplete","username");
+  await expect(page.getByLabel("Mật khẩu")).toHaveAttribute("type","password");
+  await expect(page.locator("input[name=next]")).toHaveValue("/");
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+  await expect(page.locator("html")).toHaveAttribute("lang","vi");
+ }
 });
 test("PWA shell does not cache business records",async({request})=>{
  const manifest=await request.get("/manifest.webmanifest");expect(manifest.status()).toBe(200);
