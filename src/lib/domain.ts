@@ -5,7 +5,9 @@ export const numeric = z.union([z.number().finite(),z.string().regex(/^-?\d+(\.\
 export const nullableNumeric = numeric.nullable();
 export const equipmentSchema = z.object({
  id:uuid,workspace_id:uuid,code:equipmentCode,name:z.string(),category:z.string(),status:z.string(),
- accumulated_hours:numeric,initial_hours:numeric,team_id:uuid.nullable()
+ accumulated_hours:numeric,initial_hours:numeric,team_id:uuid.nullable(),
+ base_status:z.string().optional(),serial_number:z.string().nullable().optional(),manufacture_year:z.number().int().nullable().optional(),
+ catalog_notes:z.string().optional(),source_codes:z.array(z.string()).optional(),catalog_version:z.number().int().positive().optional()
 });
 export const reliabilitySchema = z.object({
  equipment_id:uuid,equipment_code:equipmentCode,team_id:uuid.nullable(),runtime_hours:nullableNumeric,
@@ -41,7 +43,7 @@ export function safeNext(value:string|undefined):string {
  if(!value || !value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) return "/";
  try {
   const url=new URL(value,"https://internal.invalid");
-  if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets|cases)?(\/|\?|$)/.test(value)) return "/";
+  if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets|cases|catalog)?(\/|\?|$)/.test(value)) return "/";
   return url.pathname+url.search;
  } catch {return "/";}
 }

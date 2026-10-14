@@ -6,6 +6,7 @@ import {Icon,type IconName} from "./icons";
 
 const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/",label:"Phương tiện",icon:"grid"},
+ {href:"/catalog",label:"Danh mục phương tiện",icon:"crane"},
  {href:"/cases",label:"Vụ việc & vật tư",icon:"wrench"},
  {href:"/monthly",label:"Ba bảng tháng",icon:"calendar"},
  {href:"/life",label:"Giờ vật tư & định mức",icon:"clock"},

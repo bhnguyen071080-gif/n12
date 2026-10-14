@@ -1,3 +1,9 @@
+## Bước 1 · Danh mục phương tiện 14/10/2026
+
+Màn hình `/catalog` thêm/sửa mã, tên, loại, trạng thái nền, số chế tạo, năm sản xuất, mã tham chiếu và ghi chú. Có phân loại riêng khung cẩu bán tự động/tự động. Chỉ trưởng bộ phận trong khu vực được ghi; SQL chạy với quyền người dùng và RLS hiện có, kiểm tra trùng mã, gửi lại an toàn và phiên bản sửa để tránh ghi đè. Mã định danh và giờ ban đầu không được sửa trong biểu mẫu chỉnh danh mục; trạng thái sửa chữa/bảo dưỡng vẫn do nghiệp vụ tính.
+
+Khi tạo cần nhập và xác nhận giờ gốc trước tháng bắt đầu nhập, không dùng 0 thay cho chưa biết hoặc cộng trùng số liệu. Số chế tạo/năm chưa rõ để trống. Không tự thêm phương tiện mẫu/thực tế, không có nút xóa. Ảnh thiết bị và lịch lắp/tháo là bước tiếp, chưa triển khai trong bước này. Migration `equipment_catalog` phải áp dụng trước bản web có chức năng mới; không chạy lại foundation. [Hướng dẫn](docs/equipment-catalog.md).
+
 ## Giao diện cảng biển 14/10/2026
 
 Hoàn thiện chiều sâu giao diện: mục điều hướng dạng khuôn nổi có viền sáng/bóng đổ, lựa chọn hiện tại có dấu cam; ô và vùng nhập liệu có bóng lõm phía trong. Giữ viền nhận biết ô, đánh dấu tiêu điểm bàn phím, bố cục điện thoại và chế độ in sạch. Chỉ sửa trình bày, không thay dữ liệu/quyền/nghiệp vụ.
