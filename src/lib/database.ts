@@ -6,7 +6,7 @@ type Table<Row>={Row:Row;Insert:Partial<Row>;Update:Partial<Row>;Relationships:[
 type View<Row>={Row:Row;Relationships:[]};
 export type Workspace={id:string;name:string};
 export type History={equipment_id:string;event_key:string;case_code:string|null;order_code:string|null;order_id:string|null;event_type:string;event_at:string;title:string;downtime_hours:number;work_items:Json};
-export type Life={id:string;workspace_id:string;equipment_id:string;equipment_code:string;slot_code:string;name:string;component_kind:string;installed_at:string;installed_meter_hours:number;limit_hours:number;warning_hours:number;usage_id:string|null;retired_at:string|null;accumulated_hours:number;used_hours:number;remaining_hours:number;alert_level:string};
+export type Life={id:string;workspace_id:string;equipment_id:string;equipment_code:string;slot_code:string;name:string;component_kind:string;installed_at:string;installed_meter_hours:number;limit_hours:number;warning_hours:number;usage_id:string|null;retired_at:string|null;accumulated_hours:number|null;used_hours:number|null;remaining_hours:number|null;alert_level:string};
 export type TechBacklog={workspace_id:string;equipment_id:string;equipment_code:string;equipment_status:string;order_code:string;item_id:string;symptom:string;execution_status:string;material_status:string};
 export type ProceduralBacklog={workspace_id:string;equipment_id:string;equipment_code:string;equipment_status:string;order_code:string;item_id:string;symptom:string;material_status:string;requisition_status:string;dossier_status:string;borrowed_quantity_outstanding:number;unsettled_material_lines:number};
 type PeriodArgs={p_workspace:string;p_from:string;p_to:string};
@@ -40,12 +40,13 @@ export interface Database {
    vw_component_life:View<Life>;
    vw_technical_backlog:View<TechBacklog>;
    vw_procedural_backlog:View<ProceduralBacklog>;
-   vw_monthly_activity:View<{workspace_id:string;equipment_id:string;equipment_code:string;month:string;boxes:number|null;operating_hours:number|null;accumulated_hours:number}>;
+   vw_monthly_activity:View<{workspace_id:string;equipment_id:string;equipment_code:string;month:string;boxes:number|null;operating_hours:number|null;accumulated_hours:number|null}>;
    vw_other_cargo_monthly:View<{workspace_id:string;equipment_code:string;month:string;cargo_code:string;cargo_name:string;unit:string;quantity:number}>;
-   vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number;due_hours:number|null;due_date:string|null;alert_level:string}>;
+   vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number|null;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
   Functions:{
-   save_equipment_catalog:{Args:{p_workspace:string;p_id:string|null;p_version:number|null;p_key:string;p_code:string;p_name:string;p_category:string;p_base_status:string;p_serial:string|null;p_year:number|null;p_notes:string;p_aliases:string[];p_initial_hours:number};Returns:string};
+   save_equipment_catalog:{Args:{p_workspace:string;p_id:string|null;p_version:number|null;p_key:string;p_code:string;p_name:string;p_category:string;p_base_status:string;p_serial:string|null;p_year:number|null;p_notes:string;p_aliases:string[]};Returns:string};
+   confirm_operating_baseline:{Args:{p_equipment:string;p_hours:number;p_start:string;p_key:string};Returns:string};
    get_case_document_source:{Args:{p_case:string;p_kind:string};Returns:Json};
    save_case_document:{Args:{p_case:string;p_kind:string;p_payload:Json;p_source_hash:string;p_key:string};Returns:string};
    claim_document_drive:{Args:{p_document:string;p_file_id:string};Returns:Json};

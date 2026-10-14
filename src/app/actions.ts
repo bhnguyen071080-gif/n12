@@ -24,7 +24,10 @@ export async function saveMonthly(data:FormData):Promise<ActionResult>{
   const result=kind==="hours"?await client.rpc("import_operating_months",{p_workspace:workspace,p_key:key,p_rows:hoursRows.parse(input)}):
    kind==="container"?await client.rpc("import_container_months",{p_workspace:workspace,p_key:key,p_rows:containerRows.parse(input)}):
    await client.rpc("import_other_cargo_months",{p_workspace:workspace,p_key:key,p_rows:otherRows.parse(input)});
-  if(result.error)return denied();
+  if(result.error){
+   if(kind==="hours" && result.error.code==="22023")return {ok:false,message:"Chưa lưu giờ tháng. Kiểm tra số giờ, mã phương tiện và mốc giờ gốc; không nhập tháng đã nằm trong giờ gốc. Cả lô chưa được cập nhật."};
+   return denied();
+  }
   revalidatePath("/monthly");revalidatePath("/life");revalidatePath("/reports");revalidatePath("/");
   return {ok:true,message:"Đã lưu "+result.data+" dòng vào đúng bảng độc lập."};
  }catch{return denied();}

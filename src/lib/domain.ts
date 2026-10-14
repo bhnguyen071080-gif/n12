@@ -5,7 +5,8 @@ export const numeric = z.union([z.number().finite(),z.string().regex(/^-?\d+(\.\
 export const nullableNumeric = numeric.nullable();
 export const equipmentSchema = z.object({
  id:uuid,workspace_id:uuid,code:equipmentCode,name:z.string(),category:z.string(),status:z.string(),
- accumulated_hours:numeric,initial_hours:numeric,team_id:uuid.nullable(),
+ accumulated_hours:nullableNumeric,initial_hours:nullableNumeric,team_id:uuid.nullable(),
+ hours_start_month:z.string().nullable().optional(),
  base_status:z.string().optional(),serial_number:z.string().nullable().optional(),manufacture_year:z.number().int().nullable().optional(),
  catalog_notes:z.string().optional(),source_codes:z.array(z.string()).optional(),catalog_version:z.number().int().positive().optional()
 });

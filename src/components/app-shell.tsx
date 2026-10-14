@@ -8,7 +8,7 @@ const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/",label:"Phương tiện",icon:"grid"},
  {href:"/catalog",label:"Danh mục phương tiện",icon:"crane"},
  {href:"/cases",label:"Vụ việc & vật tư",icon:"wrench"},
- {href:"/monthly",label:"Ba bảng tháng",icon:"calendar"},
+ {href:"/monthly",label:"Giám sát giờ & sản lượng",icon:"calendar"},
  {href:"/life",label:"Giờ vật tư & định mức",icon:"clock"},
  {href:"/reports",label:"Báo cáo kỹ thuật",icon:"chart"},
  {href:"/login",label:"Tài khoản",icon:"user"},

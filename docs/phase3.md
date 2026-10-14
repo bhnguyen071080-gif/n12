@@ -10,7 +10,7 @@
 
 Bảng giờ hoạt động không có cột giờ hư hỏng. Không điền giờ chạy giả khi chỉ nhập số container. Import độc lập, retry idempotent, upsert theo khóa nghiệp vụ, một lô sai rollback toàn bộ. Migration 006 ngừng API import_monthly_metrics cũ; giao diện chỉ dùng ba luồng import độc lập.
 
-initial_hours là số đồng hồ lúc bắt đầu quản lý. accumulated_hours = initial_hours + tổng các tháng đã nhập. Chỉ nhập các tháng sau mốc baseline, không nhập lại những giờ đã nằm trong baseline. Hiệu chỉnh tháng tính chênh lệch, không cộng toàn bộ lần nữa.
+initial_hours là giờ gốc trước tháng đầu theo dõi, được xác nhận cùng hours_start_month trong Giám sát giờ hoạt động, không trong danh mục phương tiện. Chưa đối chiếu thì initial_hours và accumulated_hours là NULL, không phải 0; vẫn ghi nhận giờ thực chạy theo tháng. Sau khi xác nhận, accumulated_hours = initial_hours + tổng các tháng đã nhập, kể cả tháng bắt đầu. Không nhập lại những tháng đã nằm trong giờ gốc. Hiệu chỉnh tháng tính chênh lệch, không cộng toàn bộ lần nữa. Giờ gốc cũ không bị migration đổi hoặc suy đoán mốc tháng.
 
 ## Định mức và bảo dưỡng
 

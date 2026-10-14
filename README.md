@@ -2,7 +2,7 @@
 
 Màn hình `/catalog` thêm/sửa mã, tên, loại, trạng thái nền, số chế tạo, năm sản xuất, mã tham chiếu và ghi chú. Có phân loại riêng khung cẩu bán tự động/tự động. Chỉ trưởng bộ phận trong khu vực được ghi; SQL chạy với quyền người dùng và RLS hiện có, kiểm tra trùng mã, gửi lại an toàn và phiên bản sửa để tránh ghi đè. Mã định danh và giờ ban đầu không được sửa trong biểu mẫu chỉnh danh mục; trạng thái sửa chữa/bảo dưỡng vẫn do nghiệp vụ tính.
 
-Khi tạo cần nhập và xác nhận giờ gốc trước tháng bắt đầu nhập, không dùng 0 thay cho chưa biết hoặc cộng trùng số liệu. Số chế tạo/năm chưa rõ để trống. Không tự thêm phương tiện mẫu/thực tế, không có nút xóa. Ảnh thiết bị và lịch lắp/tháo là bước tiếp, chưa triển khai trong bước này. Migration `equipment_catalog` phải áp dụng trước bản web có chức năng mới; không chạy lại foundation. [Hướng dẫn](docs/equipment-catalog.md).
+Danh mục không yêu cầu nhập giờ máy. Giờ gốc cùng tháng bắt đầu được xác nhận riêng trong **Giám sát giờ hoạt động**; chưa biết giữ NULL, không tự điền 0. Có thể ghi nhận giờ chạy tháng trước khi có giờ gốc, nhưng chưa có lũy kế đồng hồ. Mốc xác nhận cộng giờ tháng hiện có đúng một lần và chặn nhập các tháng trước mốc. Số chế tạo/năm chưa rõ để trống. Không tự thêm phương tiện mẫu/thực tế, không có nút xóa. Ảnh thiết bị và lịch lắp/tháo là bước tiếp, chưa triển khai trong bước này. Các migration `equipment_catalog`, `separate_operating_baseline` phải áp dụng đúng thứ tự trước bản web tương ứng; không chạy lại foundation. [Hướng dẫn](docs/equipment-catalog.md).
 
 ## Giao diện cảng biển 14/10/2026
 
@@ -61,7 +61,7 @@ Tài khoản Google của plugin trong chat không tự trở thành quyền Goo
 - GOOGLE_SHEETS_ALLOWED_SOURCES là JSON ánh xạ workspace UUID → các spreadsheet ID được quản trị triển khai cho phép. Thiếu cấu hình thì từ chối đọc.
 - Trưởng bộ phận đăng ký link nguồn trong màn hình /sheets; link lưu trong database RLS, không nằm trong mã nguồn.
 - Nguồn có loại cố định container/hours. TH: hàng 3 mã thiết bị, B năm, C tháng; đăng ký nguồn cho phép nhập vùng đọc tối đa 50.000 ô, mặc định A3:BH200 (container) / A3:AR200 (giờ). Vùng rộng có giới hạn đọc thêm tháng mới mà bỏ ô trống/dòng tổng. Alias quản trị tại sheet_sources.
-- Preview báo mã chưa có trong danh mục. Không tự tạo thiết bị thiếu giờ gốc.
+- Preview báo mã chưa có trong danh mục. Không tự tạo thiết bị từ bảng tính; khai báo thông tin phương tiện riêng, giờ gốc chưa biết được giữ chưa đối chiếu.
 - Khi xác nhận, app đọc lại nguồn và so hash với preview; nếu đổi dữ liệu yêu cầu xem trước lại.
 - Cập nhật tối đa 10.000 dòng trong một giao dịch; chunk nội bộ 1000 dòng, một dòng sai rollback tất cả.
 - Luồng hiện hành chỉ nhận số container, không nhận trường TEU kể cả NULL; không có chỉ tiêu chi phí/1.000 TEU. Migration 006 giữ trường lịch sử cũ nhưng khóa thay đổi và ngừng API/view cũ. Ô trống không xóa dòng cũ; nếu cần xóa/hủy phải thực hiện thao tác được kiểm soát.

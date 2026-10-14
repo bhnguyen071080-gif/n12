@@ -3,13 +3,12 @@ import assert from "node:assert/strict";
 import {parseCatalogForm} from "../../src/lib/equipment-catalog";
 import {safeNext} from "../../src/lib/domain";
 function data(changes:Record<string,string>={}){
- const d=new FormData();for(const [k,v] of Object.entries({workspace:"00000000-0000-0000-0000-000000000001",request_key:"70000000-0000-0000-0000-000000000001",code:" test_auto ",name:" Khung thử ",category:"SPREADER_AUTO",base_status:"stopped",serial:"",year:"",notes:"",aliases:"Old_1; Old_2",initial_hours:"125.50",baseline_confirmed:"on",...changes}))d.set(k,v);return d;
+ const d=new FormData();for(const [k,v] of Object.entries({workspace:"00000000-0000-0000-0000-000000000001",request_key:"70000000-0000-0000-0000-000000000001",code:" test_auto ",name:" Khung thử ",category:"SPREADER_AUTO",base_status:"stopped",serial:"",year:"",notes:"",aliases:"Old_1; Old_2",...changes}))d.set(k,v);return d;
 }
-test("catalog preserves unknown metadata and requires an explicit baseline",()=>{
- const r=parseCatalogForm(data());assert.equal(r.code,"TEST_AUTO");assert.equal(r.year,null);assert.equal(r.serial,null);assert.equal(r.initial_hours,125.5);assert.deepEqual(r.aliases,["Old_1","Old_2"]);
- for(const value of ["","-1","1.234","1e3","NaN"])assert.throws(()=>parseCatalogForm(data({initial_hours:value})));
- assert.throws(()=>parseCatalogForm(data({baseline_confirmed:""})));
- assert.equal(parseCatalogForm(data({initial_hours:"0"})).initial_hours,0);
+test("catalog preserves unknown metadata and has no hours payload",()=>{
+ const r=parseCatalogForm(data());assert.equal(r.code,"TEST_AUTO");assert.equal(r.year,null);assert.equal(r.serial,null);assert.deepEqual(r.aliases,["Old_1","Old_2"]);
+ assert.equal("initial_hours" in r,false);assert.equal("confirmed" in r,false);
+ assert.equal("initial_hours" in parseCatalogForm(data({initial_hours:"9999",baseline_confirmed:"on"})),false);
 });
 test("catalog rejects malformed codes, duplicate aliases and future years",()=>{
  assert.throws(()=>parseCatalogForm(data({code:"MÃ SAI"})));
