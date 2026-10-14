@@ -72,3 +72,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/equipment_catalog.sql
       - name: Verify separate operating baseline, unknown meters, month windows and RLS
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/operating_baseline.sql
+      - name: Verify bulk previews, atomic imports, replacement guards, retries and RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/bulk_table_import.sql
