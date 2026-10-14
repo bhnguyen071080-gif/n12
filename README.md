@@ -1,3 +1,7 @@
+## Nhập bảng Excel / CSV 14/10/2026
+
+Mục `/imports` nhận bộ mẫu Excel có cột tiếng Việt cho danh mục phương tiện, vật tư, loại hàng và ba bảng tháng. Có tải mẫu, chọn tệp/dán bảng, lỗi từng dòng/cột, đối chiếu dòng mới/thay đổi/không đổi trước xác nhận. Chỉ thêm mới là mặc định; thay dòng đã có cần lựa chọn và xác nhận riêng. Không xóa dòng ngoài tệp, không ép trống thành 0, không nhập giờ gốc trong danh mục, không tạo tồn kho từ vật tư. Tối đa 500 dòng/lô; cả lô nguyên tử, thử lại an toàn và chặn bản xem trước lỗi thời. Có `/materials` để xem danh mục vật tư/loại hàng. Áp dụng migration `bulk_table_import` trước bản web. [Hướng dẫn](docs/table-import.md).
+
 ## Bước 1 · Danh mục phương tiện 14/10/2026
 
 Màn hình `/catalog` thêm/sửa mã, tên, loại, trạng thái nền, số chế tạo, năm sản xuất, mã tham chiếu và ghi chú. Có phân loại riêng khung cẩu bán tự động/tự động. Chỉ trưởng bộ phận trong khu vực được ghi; SQL chạy với quyền người dùng và RLS hiện có, kiểm tra trùng mã, gửi lại an toàn và phiên bản sửa để tránh ghi đè. Mã định danh và giờ ban đầu không được sửa trong biểu mẫu chỉnh danh mục; trạng thái sửa chữa/bảo dưỡng vẫn do nghiệp vụ tính.

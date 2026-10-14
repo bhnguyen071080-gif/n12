@@ -1,5 +1,5 @@
 import {containerRows,hoursRows,otherRows,monthStart,type MonthlyKind} from "./domain";
-export function parseCsv(text:string):string[][] {
+export function parseCsv(text:string,separator=","):string[][] {
  if(text.length>262144) throw new Error("CSV tối đa 256 KiB");
  const rows:string[][]=[];let row:string[]=[];let cell="";let quoted=false;let afterQuote=false;
  text=text.replace(/^\uFEFF/,"");
@@ -8,7 +8,7 @@ export function parseCsv(text:string):string[][] {
   if(quoted){if(c==='"' && text[i+1]==='"'){cell+='"';i++;}
    else if(c==='"'){quoted=false;afterQuote=true;}else cell+=c;continue;}
   if(c==='"'){if(cell || afterQuote)throw new Error("Dấu nháy CSV không hợp lệ");quoted=true;}
-  else if(c===","){row.push(cell);cell="";afterQuote=false;}
+  else if(c===separator){row.push(cell);cell="";afterQuote=false;}
   else if(c==="\n" || c==="\r"){if(c==="\r" && text[i+1]==="\n")i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell="";afterQuote=false;}
   else {if(afterQuote)throw new Error("Ký tự sau dấu nháy CSV");cell+=c;}
  }

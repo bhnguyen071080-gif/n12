@@ -6,6 +6,7 @@ import {z} from "zod";
 import {MonthlyEntry} from "@/components/monthly-entry";
 import {WorkspaceSelect} from "@/components/workspace-select";
 import {OperatingBaseline} from "@/components/operating-baseline";
+import {cargoUnitLabels} from "@/lib/table-import";
 export const dynamic="force-dynamic";
 export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
@@ -36,6 +37,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
  return <><h1>{kind==="hours"?"Giám sát giờ hoạt động":kind==="container"?"Sản lượng container hàng tháng":"Sản lượng hàng khác hàng tháng"}</h1>
   <WorkspaceSelect workspaces={c.workspaces} selected={w}/><div className="flex flex-wrap gap-4">{(["hours","container","other"] as const).map(k=><Link className="button" key={k} href={"/monthly?workspace="+w+"&kind="+k}>{k==="hours"?"Giờ hoạt động":k==="container"?"Container (chiếc)":"Hàng khác"}</Link>)}</div>
   <p>{kind==="hours"?"Chỉ nhập giờ máy thực chạy. Giờ này làm cơ sở theo dõi định mức cáp, búa khung cẩu và bảo dưỡng; không nhập giờ dừng/hư hỏng vào bảng này.":kind==="container"?"Chỉ ghi nhận số container (chiếc) của phương tiện trong tháng.":"Hàng khác giữ đơn vị từng loại hàng, không cộng tấn với m³/chuyến hoặc số container."}</p>
+  <div className="flex flex-wrap gap-3"><Link className="button" href={"/imports?workspace="+w+"&kind="+kind}>Nhập số liệu tháng từ tệp</Link><a className="button button-secondary" href="/api/import-template">Tải bộ mẫu Excel</a>{kind==="other"&&<Link className="button button-secondary" href={"/materials?workspace="+w}>Danh mục loại hàng và đơn vị</Link>}</div>
   {kind==="hours"&&selected&&<section className="panel"><h2>Lọc tổng giờ theo khoảng tháng</h2>
    <form method="get" className="grid gap-3 sm:grid-cols-3"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
    <label>Phương tiện<select name="equipment" defaultValue={selected.id}>{eq.data?.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>
@@ -49,7 +51,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
   {eq.data?.length?<MonthlyEntry workspace={w} kind={kind} codes={eq.data.map(e=>e.code)} cargoCodes={(cargo.data??[]).map(r=>r.code)}/>:<section className="panel"><h2>Chưa có phương tiện</h2><p>Khai báo phương tiện trước, sau đó đối chiếu giờ gốc và ghi nhận giờ chạy tại đây.</p><Link className="button" href={"/catalog?workspace="+w}>Mở danh mục phương tiện</Link></section>}
   {kind!=="other" && <Link className="button" href={"/sheets?workspace="+w}>Cập nhật từ Google Sheets · TH</Link>}
   <section className="panel"><h2>Dữ liệu hiện có (tối đa 500 dòng gần nhất)</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="hours"?<th>Tổng giờ chạy</th>:kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>
-   {kind==="other"?otherRows.map((r,i)=><tr key={i}><td>{r.equipment_code}</td><td>{r.month.slice(0,7)}</td><td>{r.cargo_name}</td><td>{formatNumber(r.quantity,3)}</td><td>{r.unit}</td></tr>):
+   {kind==="other"?otherRows.map((r,i)=><tr key={i}><td>{r.equipment_code}</td><td>{r.month.slice(0,7)}</td><td>{r.cargo_name}</td><td>{formatNumber(r.quantity,3)}</td><td>{cargoUnitLabels[r.unit]??r.unit}</td></tr>):
     rows.map(r=><tr key={r.equipment_id+r.month}><td>{r.equipment_code}</td><td>{r.month.slice(0,7)}</td>{kind==="hours"?<td>{formatNumber(r.operating_hours)} h</td>:<td>{formatNumber(r.boxes,0)}</td>}</tr>)}
   </tbody></table></div></section>
  </>;

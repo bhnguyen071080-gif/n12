@@ -45,6 +45,8 @@ export interface Database {
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number|null;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
   Functions:{
+   preview_import_table:{Args:{p_workspace:string;p_kind:string;p_rows:Json};Returns:Json};
+   import_table_batch:{Args:{p_workspace:string;p_kind:string;p_mode:string;p_plan:Json;p_key:string};Returns:number};
    save_equipment_catalog:{Args:{p_workspace:string;p_id:string|null;p_version:number|null;p_key:string;p_code:string;p_name:string;p_category:string;p_base_status:string;p_serial:string|null;p_year:number|null;p_notes:string;p_aliases:string[]};Returns:string};
    confirm_operating_baseline:{Args:{p_equipment:string;p_hours:number;p_start:string;p_key:string};Returns:string};
    get_case_document_source:{Args:{p_case:string;p_kind:string};Returns:Json};

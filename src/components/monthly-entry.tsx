@@ -26,7 +26,7 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
      <label>Số lượng theo đơn vị loại hàng<input name="quantity" type="number" step="0.001" min="0" required/></label></>}
    </AsyncForm>
   </section>
-  <section className="panel"><h2>Import CSV không nhập lại từng dòng</h2><p>Dấu chấm thập phân, không phân tách hàng nghìn. Header: <code>{header}</code>. Tối đa 1000 dòng/lô.</p>
+  <section className="panel"><h2>Nhập CSV theo cấu trúc cũ</h2><p>Mẫu Excel tiếng Việt và bước đối chiếu dữ liệu có tại nút Nhập số liệu tháng từ tệp phía trên. Biểu mẫu cũ này thay giá trị tháng đã có.</p><p>Dấu chấm thập phân, không phân tách hàng nghìn. Tiêu đề cột: <code>{header}</code>. Tối đa 1000 dòng/lô.</p>
    <label>Chọn CSV<input type="file" accept=".csv,text/csv" onChange={async e=>{
     const file=e.target.files?.[0];if(!file)return;if(file.size>262144){setError("File tối đa 256 KiB");return;}setCsv(await file.text());setPreview("");setError("");
    }}/></label>
