@@ -68,3 +68,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/case_documents.sql
       - name: Verify cloud access hardening and FK indexes
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/cloud_access_hardening.sql
+      - name: Verify equipment catalog validation, retries, concurrent-edit guards and RLS
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/equipment_catalog.sql
