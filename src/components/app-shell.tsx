@@ -25,7 +25,7 @@ export function AppShell({children}:{children:ReactNode}){
    <details className="mobile-nav" key={path}><summary>Điều hướng</summary><nav aria-label="Điều hướng trên điện thoại">{navigation.map(n=><Link key={n.href} href={n.href} aria-current={active?.href===n.href?"page":undefined}><Icon name={n.icon}/>{n.label}</Link>)}</nav></details>
    <div className="sidebar-note"><Icon name="shield"/><p>Dữ liệu riêng theo quyền truy cập.<small>Mỗi phương tiện, một lịch sử rõ ràng.</small></p></div>
   </aside>
-  <div className="app-body"><header className="topbar"><span>Quản lý kỹ thuật <span className="topbar-divider">/</span> <strong>{active?.label??"Hồ sơ"}</strong></span><Link className="account-link" href="/login"><Icon name="user"/><span>Tài khoản</span></Link></header>
+  <div className="app-body"><header className="topbar"><span>Quản lý kỹ thuật <span className="topbar-divider">/</span> <strong>{active?.label??"Hồ sơ"}</strong></span><Link className="account-link" href="/login" aria-label="Tài khoản"><Icon name="user"/><span>Tài khoản</span></Link></header>
    <main id="noi-dung" className="app-main space-y-6">{children}</main>
    <footer className="app-footer">TV-EAM · Đồng hành cùng công tác kỹ thuật</footer>
   </div>
