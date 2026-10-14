@@ -14,6 +14,11 @@ test("Vietnamese maritime login is responsive and preserves safe redirect",async
   await expect(page.getByRole("heading",{name:"Đăng nhập TV-EAM"})).toBeVisible();
   await expect(page.getByLabel("Thư điện tử")).toHaveAttribute("autocomplete","username");
   await expect(page.getByLabel("Mật khẩu")).toHaveAttribute("type","password");
+  const email=page.getByLabel("Thư điện tử");
+  expect(await email.evaluate(el=>getComputedStyle(el).boxShadow)).toContain("inset");
+  await email.focus();await expect(email).toBeFocused();
+  expect(await email.evaluate(el=>getComputedStyle(el).outlineStyle)).not.toBe("none");
+  await email.fill("kiemtra@example.invalid");await expect(email).toHaveValue("kiemtra@example.invalid");
   await expect(page.locator("input[name=next]")).toHaveValue("/");
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await expect(page.locator("html")).toHaveAttribute("lang","vi");

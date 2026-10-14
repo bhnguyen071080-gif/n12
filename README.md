@@ -1,5 +1,7 @@
 ## Giao diện cảng biển 14/10/2026
 
+Hoàn thiện chiều sâu giao diện: mục điều hướng dạng khuôn nổi có viền sáng/bóng đổ, lựa chọn hiện tại có dấu cam; ô và vùng nhập liệu có bóng lõm phía trong. Giữ viền nhận biết ô, đánh dấu tiêu điểm bàn phím, bố cục điện thoại và chế độ in sạch. Chỉ sửa trình bày, không thay dữ liệu/quyền/nghiệp vụ.
+
 Trang đăng nhập có minh họa cảng biển nguyên bản, tông xanh biển–cam. Điều hướng thích ứng điện thoại, thẻ tổng hợp theo dữ liệu được cấp quyền, tìm phương tiện theo mã/tên không dấu và lọc trạng thái. Danh mục trống có hướng dẫn, không tạo số liệu hoặc phương tiện mẫu trong dữ liệu thật. Không đổi đăng nhập, phân quyền, công thức nghiệp vụ hay tiến độ sửa chữa. Minh họa không phải ảnh hiện trường hoặc logo của đơn vị khác.
 
 ## Biểu mẫu và in 13/10/2026
