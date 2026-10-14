@@ -7,8 +7,10 @@ import {MonthlyEntry} from "@/components/monthly-entry";
 import {WorkspaceSelect} from "@/components/workspace-select";
 import {OperatingBaseline} from "@/components/operating-baseline";
 import {cargoUnitLabels} from "@/lib/table-import";
+import {canImportTable} from "@/lib/import-placement";
+import {TableImportPanel} from "@/components/table-import-panel";
 export const dynamic="force-dynamic";
-export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string}>}){
+export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string;import?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
  const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours";
  const w=c.workspace.id;let month:string|undefined;try{month=p.month?monthStart(p.month):undefined;}catch{return <p>Tháng không hợp lệ.</p>;}
@@ -37,7 +39,8 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
  return <><h1>{kind==="hours"?"Giám sát giờ hoạt động":kind==="container"?"Sản lượng container hàng tháng":"Sản lượng hàng khác hàng tháng"}</h1>
   <WorkspaceSelect workspaces={c.workspaces} selected={w}/><div className="flex flex-wrap gap-4">{(["hours","container","other"] as const).map(k=><Link className="button" key={k} href={"/monthly?workspace="+w+"&kind="+k}>{k==="hours"?"Giờ hoạt động":k==="container"?"Container (chiếc)":"Hàng khác"}</Link>)}</div>
   <p>{kind==="hours"?"Chỉ nhập giờ máy thực chạy. Giờ này làm cơ sở theo dõi định mức cáp, búa khung cẩu và bảo dưỡng; không nhập giờ dừng/hư hỏng vào bảng này.":kind==="container"?"Chỉ ghi nhận số container (chiếc) của phương tiện trong tháng.":"Hàng khác giữ đơn vị từng loại hàng, không cộng tấn với m³/chuyến hoặc số container."}</p>
-  <div className="flex flex-wrap gap-3"><Link className="button" href={"/imports?workspace="+w+"&kind="+kind}>Nhập số liệu tháng từ tệp</Link><a className="button button-secondary" href="/api/import-template">Tải bộ mẫu Excel</a>{kind==="other"&&<Link className="button button-secondary" href={"/materials?workspace="+w}>Danh mục loại hàng và đơn vị</Link>}</div>
+  <TableImportPanel key={w+kind} workspace={w} kind={kind} canImport={canImportTable(memberships.data.map(m=>m.role),kind)} defaultOpen={p.import===kind}/>
+  {kind==="other"&&<Link className="button button-secondary" href={"/materials?workspace="+w}>Danh mục loại hàng và đơn vị</Link>}
   {kind==="hours"&&selected&&<section className="panel"><h2>Lọc tổng giờ theo khoảng tháng</h2>
    <form method="get" className="grid gap-3 sm:grid-cols-3"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
    <label>Phương tiện<select name="equipment" defaultValue={selected.id}>{eq.data?.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>

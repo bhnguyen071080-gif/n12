@@ -5,7 +5,7 @@ import {importSpecs,parseImportGrid,rowCells,type ImportKind,type ImportRow,type
 import {parseCsv,csvOutput} from "@/lib/csv";
 import {previewTable,commitTable} from "@/app/imports/actions";
 import {AsyncForm} from "./async-form";
-export function TableImporter({workspace,kind,canImport}:{workspace:string;kind:ImportKind;canImport:boolean}){
+export function TableImporter({workspace,kind,canImport,embedded=false}:{workspace:string;kind:ImportKind;canImport:boolean;embedded?:boolean}){
  const spec=importSpecs[kind],router=useRouter(),generation=useRef(0),fileInput=useRef<HTMLInputElement>(null);
  const [previewVersion,setPreviewVersion]=useState(0);
  const [rows,setRows]=useState<ImportRow[]>([]),[issues,setIssues]=useState<ImportIssue[]>([]),[plan,setPlan]=useState<ImportPlan[]>();
@@ -28,7 +28,7 @@ export function TableImporter({workspace,kind,canImport}:{workspace:string;kind:
   try{const data=new FormData();data.set("workspace",workspace);data.set("kind",kind);data.set("rows",JSON.stringify(rows));const r=await previewTable(data);setMessage(r.message);if(r.ok&&r.plan){setPlan(r.plan);setPreviewVersion(v=>v+1);}}catch{setMessage("Chưa kết nối được để xem trước. Chưa lưu dữ liệu.");}finally{setBusy(false);}
  }
  const changes=plan?.filter(p=>p.action==="update").length??0,existing=plan?.filter(p=>p.action!=="add").length??0;
- return <section className="panel" id="nhap-tu-tep"><h2>Nhập từ bảng dữ liệu · {spec.title}</h2><p>{spec.hint}</p>
+ return <section className={embedded?"table-import-content":"panel"} aria-label={"Nhập từ bảng dữ liệu · "+spec.title}><h2>Nhập từ bảng dữ liệu · {spec.title}</h2><p>{spec.hint}</p>
   <div className="flex flex-wrap gap-3"><a className="button" href="/api/import-template">Tải bộ mẫu Excel</a><button type="button" className="button-secondary" onClick={downloadCsv}>Tải mẫu CSV</button></div>
   <p className="muted">Mở trang <strong>{spec.sheet}</strong> trong bộ mẫu Excel, điền từ dòng 2 và giữ nguyên tiêu đề cột. Tối đa 500 dòng mỗi lô. Tệp không có dòng ví dụ để tránh nhập nhầm số liệu mẫu.</p>
   {!canImport?<p>Bạn được tải mẫu; chưa có quyền nhập nhóm dữ liệu này trong khu vực đang chọn.</p>:<>

@@ -2,7 +2,9 @@
 
 ## Quy trình
 
-Mở **Nhập dữ liệu từ bảng**, chọn đúng khu vực và nhóm dữ liệu. Tải bộ mẫu Excel, điền trang tương ứng từ dòng 2 và giữ tiêu đề cột. Chọn `.xlsx` hoặc CSV UTF-8, hoặc dán bảng có tiêu đề sao chép từ Excel. Kiểm tra lỗi tại dòng/cột, bấm **Kiểm tra và xem trước**, đối chiếu các dòng mới/thay đổi/không đổi rồi xác nhận nhập.
+Mở trang nghiệp vụ và chọn đúng khu vực: **Danh mục phương tiện**, **Danh mục vật tư & loại hàng**, hoặc **Giám sát giờ & sản lượng** với đúng nhóm tháng. Mở khung **Nhập … từ tệp** ngay tại trang đó. Tải bộ mẫu Excel, điền trang tương ứng từ dòng 2 và giữ tiêu đề cột. Chọn `.xlsx` hoặc CSV UTF-8, hoặc dán bảng có tiêu đề sao chép từ Excel. Kiểm tra lỗi tại dòng/cột, bấm **Kiểm tra và xem trước**, đối chiếu các dòng mới/thay đổi/không đổi rồi xác nhận nhập. Danh sách cập nhật ngay trên cùng trang, không cần mở mục nhập riêng.
+
+Khung nhập mặc định thu gọn; đóng/mở khung không làm mất dữ liệu đang xem trước trên trang. Đổi khu vực hoặc nhóm dữ liệu cần chọn tệp lại. Liên kết `/imports` cũ được giữ để chuyển về đúng trang và mở khung tương ứng; không còn mục nhập riêng trên điều hướng.
 
 Mặc định **Chỉ thêm dòng mới**. Nếu tệp có mã hoặc khóa tháng đã tồn tại, phải bỏ các dòng đó khỏi tệp hoặc chọn **Thêm mới và cập nhật dòng đã có**, xác nhận đồng ý thay dữ liệu. Khi thay danh mục phương tiện, các trường tùy chọn trống sẽ xóa nội dung tương ứng của dòng đó. Các dòng không có trong tệp không bị xóa.
 

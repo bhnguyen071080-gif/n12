@@ -52,6 +52,13 @@ p { margin-bottom:.65rem; }
 .catalog-warning { padding:.8rem 1rem; border-left:3px solid #d58236; background:#fff3e7; color:#71451c; border-radius:.4rem; font-size:.8rem; line-height:1.7; }
 .catalog-confirm { padding:.6rem 0; line-height:1.7; }
 #them-phuong-tien { scroll-margin-top:1.5rem; }
+.table-import-panel { scroll-margin-top:1.5rem; }
+.table-import-panel>summary { cursor:pointer; min-height:44px; font-weight:700; padding:.4rem 0; }
+.table-import-panel>summary .muted { display:block; margin:.4rem 0 0 1.1rem; font-weight:400; font-size:.75rem; }
+.table-import-content { margin-top:1.2rem; padding-top:1.2rem; border-top:1px solid var(--line); }
+.table-import-content fieldset { border-radius:.8rem; padding:1rem; background:#eef4f8; box-shadow:inset 2px 2px 5px #183d5515,inset -2px -2px 5px #ffffff; }
+.table-import-content input[type=file] { min-width:0; max-width:100%; }
+@media print { .table-import-panel { display:none!important; } }
 .app-body { flex:1; min-width:0; }
 .topbar { min-height:76px; display:flex; align-items:center; justify-content:space-between; padding:1rem 2rem; background:linear-gradient(#fff,#f5f9fc); border-bottom:1px solid #cfdee7; box-shadow:0 3px 9px #183d5508; font-size:.8rem; color:var(--muted); }
 .topbar strong { color:var(--navy); }

@@ -30,7 +30,7 @@ test("PWA shell does not cache business records",async({request})=>{
 });
 
 test("personal cases and month filters stay behind cloud configuration gate",async({page})=>{
- for(const path of ["/imports","/materials","/catalog","/catalog?edit=not-a-uuid","/cases","/cases/e0000000-0000-0000-0000-000000000001","/cases/e0000000-0000-0000-0000-000000000001/documents","/monthly?kind=hours","/life"]){
+ for(const path of ["/imports","/imports?kind=materials","/imports?kind=cargo","/imports?kind=hours","/imports?kind=container","/imports?kind=other","/materials","/materials?import=materials","/materials?import=cargo","/catalog","/catalog?import=equipment","/catalog?edit=not-a-uuid","/cases","/cases/e0000000-0000-0000-0000-000000000001","/cases/e0000000-0000-0000-0000-000000000001/documents","/monthly?kind=hours&import=hours","/monthly?kind=container&import=container","/monthly?kind=other&import=other","/life"]){
   await page.goto(path);await expect(page).toHaveURL(/setup/);
  }
 });
