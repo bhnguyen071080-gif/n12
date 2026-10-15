@@ -74,3 +74,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/operating_baseline.sql
       - name: Verify bulk previews, atomic imports, replacement guards, retries and RLS
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/bulk_table_import.sql
+      - name: Verify material vehicle categories, manual-style retries and legacy files
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/material_equipment_category.sql
