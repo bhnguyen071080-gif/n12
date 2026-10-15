@@ -5,7 +5,7 @@ import {importSpecs,parseImportGrid,rowCells,type ImportKind,type ImportRow,type
 import {parseCsv,csvOutput} from "@/lib/csv";
 import {previewTable,commitTable} from "@/app/imports/actions";
 import {AsyncForm} from "./async-form";
-export function TableImporter({workspace,kind,canImport,embedded=false}:{workspace:string;kind:ImportKind;canImport:boolean;embedded?:boolean}){
+export function TableImporter({workspace,kind,canImport,embedded=false,templateHref="/api/import-template"}:{workspace:string;kind:ImportKind;canImport:boolean;embedded?:boolean;templateHref?:string}){
  const spec=importSpecs[kind],router=useRouter(),generation=useRef(0),fileInput=useRef<HTMLInputElement>(null);
  const [previewVersion,setPreviewVersion]=useState(0);
  const [rows,setRows]=useState<ImportRow[]>([]),[issues,setIssues]=useState<ImportIssue[]>([]),[plan,setPlan]=useState<ImportPlan[]>();
@@ -29,10 +29,10 @@ export function TableImporter({workspace,kind,canImport,embedded=false}:{workspa
  }
  const changes=plan?.filter(p=>p.action==="update").length??0,existing=plan?.filter(p=>p.action!=="add").length??0;
  return <section className={embedded?"table-import-content":"panel"} aria-label={"Nhập từ bảng dữ liệu · "+spec.title}><h2>Nhập từ bảng dữ liệu · {spec.title}</h2><p>{spec.hint}</p>
-  <div className="flex flex-wrap gap-3"><a className="button" href="/api/import-template">Tải bộ mẫu Excel</a><button type="button" className="button-secondary" onClick={downloadCsv}>Tải mẫu CSV</button></div>
+  <div className="flex flex-wrap gap-3"><a className="button" href={templateHref}>{kind==="materials"?"Tải mẫu Excel vật tư":"Tải bộ mẫu Excel"}</a><button type="button" className="button-secondary" onClick={downloadCsv}>Tải mẫu CSV</button></div>
   <p className="muted">Mở trang <strong>{spec.sheet}</strong> trong bộ mẫu Excel, điền từ dòng 2 và giữ nguyên tiêu đề cột. Tối đa 500 dòng mỗi lô. Tệp không có dòng ví dụ để tránh nhập nhầm số liệu mẫu.</p>
   {!canImport?<p>Bạn được tải mẫu; chưa có quyền nhập nhóm dữ liệu này trong khu vực đang chọn.</p>:<>
-   <fieldset disabled={busy} className="space-y-3"><label>Chọn tệp Excel hoặc CSV<input ref={fileInput} type="file" accept=".xlsx,.csv" onChange={e=>void choose(e.target.files?.[0])}/></label>
+   <fieldset disabled={busy} className="space-y-3"><div className="import-file-picker"><input ref={fileInput} hidden aria-label="Tệp Excel hoặc CSV" type="file" accept=".xlsx,.csv" onChange={e=>{const file=e.target.files?.[0];e.target.value="";void choose(file);}}/><button type="button" className="button-secondary" onClick={()=>fileInput.current?.click()}>Chọn tệp Excel hoặc CSV</button><span>{filename||"Chưa chọn tệp"}</span></div>
     <details><summary>Hoặc dán bảng đã sao chép từ Excel</summary><label>Bảng dữ liệu có tiêu đề cột<textarea rows={5} value={paste} onChange={e=>{++generation.current;setPaste(e.target.value);setPlan(undefined);setRows([]);setIssues([]);setFilename("");}}/></label><button type="button" onClick={()=>{try{parse(parseCsv(paste,paste.split(/\r?\n/)[0].includes("\t")?"\t":paste.split(/\r?\n/)[0].includes(";")?";":","));}catch(error){setMessage(error instanceof Error?error.message:"Bảng không hợp lệ.");}}}>Đọc bảng đã dán</button></details>
     <p>{filename}{rows.length?" · "+rows.length+" dòng đã đọc":""}</p>
     {issues.length>0&&<div role="alert"><p>Có {issues.length} lỗi. Sửa lại tệp rồi chọn lại; chưa lưu dữ liệu.</p><div className="overflow-x-auto"><table><thead><tr><th>Dòng Excel</th><th>Cột</th><th>Lỗi</th></tr></thead><tbody>{issues.slice(0,100).map((r,i)=><tr key={i}><td>{r.line}</td><td>{r.column}</td><td>{r.message}</td></tr>)}</tbody></table></div>{issues.length>100&&<p>Đang hiển thị 100 lỗi đầu tiên.</p>}</div>}
@@ -40,7 +40,7 @@ export function TableImporter({workspace,kind,canImport,embedded=false}:{workspa
    </fieldset>
    <p role="status" aria-live="polite">{message}</p>
    {plan&&<><p><strong>{plan.filter(p=>p.action==="add").length} dòng mới · {changes} dòng thay đổi · {plan.filter(p=>p.action==="same").length} dòng không đổi</strong></p>
-    <div className="overflow-x-auto"><table><thead><tr><th>Xử lý</th>{spec.headers.map(h=><th key={h}>{h}</th>)}<th>Dữ liệu đang có</th></tr></thead><tbody>{plan.map((p,i)=><tr key={i}><td>{p.action==="add"?"Thêm mới":p.action==="same"?"Không đổi":"Cập nhật"}</td>{rowCells(p.row,kind).map((v,j)=><td key={j}>{v===null?"Để trống":String(v)}</td>)}<td>{p.previous?rowCells(p.previous,kind).map((v,j)=><p key={j}>{spec.headers[j]}: {v===null?"Để trống":String(v)}</p>):"Chưa có"}</td></tr>)}</tbody></table></div>
+    <div className="overflow-x-auto"><table><thead><tr><th>Xử lý</th>{spec.headers.map(h=><th key={h}>{h}</th>)}<th>Dữ liệu đang có</th></tr></thead><tbody>{plan.map((p,i)=><tr key={i}><td>{p.action==="add"?"Thêm mới":p.action==="same"?"Không đổi":"Cập nhật"}</td>{rowCells(p.row,kind).map((v,j)=><td key={j}>{kind==="materials"&&j===3&&!Object.hasOwn(p.row,"equipment_category")?"Giữ nguyên":v===null?"Để trống":String(v)}</td>)}<td>{p.previous?rowCells(p.previous,kind).map((v,j)=><p key={j}>{spec.headers[j]}: {v===null?"Để trống":String(v)}</p>):"Chưa có"}</td></tr>)}</tbody></table></div>
     <label>Cách nhập<select disabled={busy} value={mode} onChange={e=>setMode(e.target.value)}><option value="add">Chỉ thêm dòng mới</option><option value="replace">Thêm mới và cập nhật dòng đã có</option></select></label>
     {mode==="add"&&existing>0?<p role="alert">Có {existing} dòng đã tồn tại. Chọn chế độ cập nhật và đối chiếu bản xem trước, hoặc bỏ các dòng đó khỏi tệp.</p>:<AsyncForm key={kind+mode+previewVersion} action={commitTable} onPendingChange={setBusy} label={"Xác nhận nhập "+plan.length+" dòng"} resetLabel="Nhập tệp khác" onSuccess={()=>router.refresh()} onReset={()=>{setPlan(undefined);setRows([]);setFilename("");setPaste("");if(fileInput.current)fileInput.current.value="";}}>
      <input name="workspace" type="hidden" value={workspace}/><input name="kind" type="hidden" value={kind}/><input name="mode" type="hidden" value={mode}/><input name="plan" type="hidden" value={JSON.stringify(plan.map(p=>({row:p.row,expected:p.expected})))}/>

@@ -2,6 +2,16 @@ import {test,expect} from "@playwright/test";
 import {parseImportXml,extractImportXml} from "../../src/lib/xlsx-import";
 import {parseImportGrid,importSpecs,importKinds} from "../../src/lib/table-import";
 import {importTemplateBase64} from "../../src/lib/import-template.generated";
+import {materialTemplateBase64} from "../../src/lib/material-template.generated";
+test("dedicated materials template contains four columns and no cargo sheet",async({page,request})=>{
+ const response=await request.get('/api/import-template?kind=materials');expect(response.status()).toBe(200);
+ expect(response.headers()['content-disposition']).toContain('tv-eam-mau-vat-tu.xlsx');
+ expect(await response.body()).toEqual(Buffer.from(materialTemplateBase64,'base64'));
+ const files=extractImportXml(await response.body());expect(files['xl/workbook.xml']).not.toContain('name="Loại hàng"');
+ await page.goto('/login');
+ const grid=await page.evaluate(({files,fn})=>(0,eval)('('+fn+')')(files,'Vật tư'),{files,fn:parseImportXml.toString()});
+ expect(grid[0]).toEqual(importSpecs.materials.headers);expect(parseImportGrid(grid,'materials').issues[0].message).toContain('chưa có');
+});
 test("Excel download round-trips every blank template through browser XML parser",async({page,request})=>{
  const response=await request.get('/api/import-template');expect(response.status()).toBe(200);expect(response.headers()['content-disposition']).toContain('.xlsx');
  expect(await response.body()).toEqual(Buffer.from(importTemplateBase64,'base64'));

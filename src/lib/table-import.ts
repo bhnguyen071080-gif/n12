@@ -1,12 +1,13 @@
 import {z} from "zod";
 import {parseCatalogForm,categoryLabels,baseStatusLabels} from "./equipment-catalog";
 import {hoursRows,containerRows,otherRows,monthStart,equipmentCode} from "./domain";
+import {parseMaterialCategory,materialCategoryLabels} from "./material-catalog";
 export const importKinds=["equipment","materials","cargo","container","hours","other"] as const;
 export type ImportKind=typeof importKinds[number];
 export const cargoUnitLabels:Record<string,string>={TONNE:"tấn",M3:"m³",ITEM:"chiếc",TRIP:"chuyến"};
 export const importSpecs:Record<ImportKind,{title:string;sheet:string;headers:string[];hint:string}>={
  equipment:{title:"Danh mục phương tiện",sheet:"Phương tiện",headers:["Mã phương tiện","Tên phương tiện","Loại thiết bị","Trạng thái nền","Số chế tạo","Năm sản xuất","Mã tham chiếu","Ghi chú"],hint:"Chưa rõ số chế tạo hoặc năm thì để trống. Không nhập giờ gốc tại đây. Cập nhật sẽ thay các trường danh mục của dòng đã chọn, không đổi giờ máy."},
- materials:{title:"Danh mục vật tư",sheet:"Vật tư",headers:["Mã vật tư","Tên vật tư","Đơn vị tính"],hint:"Chỉ khai báo mã, tên và đơn vị. Không tạo tồn kho hoặc đổi định mức. Đơn vị của mã đã có phải giữ nguyên."},
+ materials:{title:"Danh mục vật tư",sheet:"Vật tư",headers:["Mã vật tư","Tên vật tư","Đơn vị tính","Loại phương tiện"],hint:"Khai báo mã, tên, đơn vị và loại phương tiện. Chưa rõ loại có thể để trống; Dùng chung là lựa chọn riêng. Không tạo tồn kho hoặc đổi định mức. Tệp cũ 3 cột giữ nguyên loại đã có."},
  cargo:{title:"Danh mục loại hàng",sheet:"Loại hàng",headers:["Mã loại hàng","Tên loại hàng","Đơn vị tính"],hint:"Khai báo loại hàng trước khi nhập sản lượng hàng khác. Không cộng các đơn vị khác nhau. Đơn vị của mã đã có phải giữ nguyên."},
  container:{title:"Số container hàng tháng",sheet:"Container tháng",headers:["Mã phương tiện","Tháng","Số container (chiếc)"],hint:"Mỗi phương tiện, mỗi tháng một dòng. Chỉ ghi số chiếc, không quy đổi hoặc cộng vào giờ máy."},
  hours:{title:"Giờ hoạt động hàng tháng",sheet:"Giờ hoạt động",headers:["Mã phương tiện","Tháng","Giờ hoạt động"],hint:"Nhập tổng giờ thực chạy trong tháng, không nhập giờ dừng hoặc đồng hồ lũy kế. Không nhập tháng đã nằm trong giờ gốc."},
@@ -21,7 +22,8 @@ const number=(v:string,scale:number)=>{if(!new RegExp("^\\d+(?:[.,]\\d{1,"+scale
 const month=(v:string)=>{if(!/^\d{4}-(0[1-9]|1[0-2])(-01)?$/.test(v))throw Error("Tháng cần dạng năm-tháng, ví dụ 2026-09, hoặc ngày đầu tháng.");return monthStart(v.slice(0,7));};
 export function parseImportGrid(grid:(string|number|null)[][],kind:ImportKind):{rows:ImportRow[];issues:ImportIssue[]}{
  const spec=importSpecs[kind],headers=(grid[0]??[]).map(v=>String(v??"").trim());
- if(headers.join("\u001f")!==spec.headers.join("\u001f"))return {rows:[],issues:[{line:1,column:"Tiêu đề cột",message:"Giữ đúng các cột của mẫu: "+spec.headers.join("; ")}]};
+ const legacyMaterials=kind==="materials"&&headers.join("\u001f")===spec.headers.slice(0,3).join("\u001f");
+ if(!legacyMaterials&&headers.join("\u001f")!==spec.headers.join("\u001f"))return {rows:[],issues:[{line:1,column:"Tiêu đề cột",message:"Giữ đúng các cột của mẫu: "+spec.headers.join("; ")}]};
  const rows:ImportRow[]=[],issues:ImportIssue[]=[],seen=new Set<string>();
  const data=grid.slice(1).map((row,i)=>({row,i})).filter(({row})=>row.some(v=>v!==null&&String(v).trim()!==""));
  if(!data.length)return {rows:[],issues:[{line:2,column:"Dữ liệu",message:"Tệp chưa có dòng dữ liệu."}]};
@@ -39,7 +41,7 @@ export function parseImportGrid(grid:(string|number|null)[][],kind:ImportKind):{
    }else if(kind==="materials"||kind==="cargo"){
     const c=code(cell(0)),name=text(cell(1));let unit=text(cell(2),40);
     if(kind==="cargo"){unit=Object.entries(cargoUnitLabels).find(([k,v])=>k===unit||v===unit.toLowerCase())?.[0]??unit;unit=z.enum(["TONNE","M3","ITEM","TRIP"]).parse(unit);}
-    r={code:c,name,unit};
+    r={code:c,name,unit};if(kind==="materials"&&!legacyMaterials)r.equipment_category=parseMaterialCategory(cell(3));
    }
    else{
     const equipment_code=code(cell(0)),m=month(cell(1));
@@ -57,6 +59,6 @@ export function parseImportGrid(grid:(string|number|null)[][],kind:ImportKind):{
  return {rows,issues};
 }
 export function rowCells(row:ImportRow,kind:ImportKind):(string|number|null)[]{
- const fields=kind==="equipment"?["code","name","category","base_status","serial","year","aliases","notes"]:kind==="materials"||kind==="cargo"?["code","name","unit"]:kind==="hours"?["equipment_code","month","operating_hours"]:kind==="container"?["equipment_code","month","boxes"]:["equipment_code","month","cargo_code","quantity"];
- return fields.map(k=>{const v=row[k];if(k==="category")return categoryLabels[String(v) as keyof typeof categoryLabels]??String(v);if(k==="base_status")return baseStatusLabels[String(v) as keyof typeof baseStatusLabels]??String(v);if(k==="unit"&&kind==="cargo")return cargoUnitLabels[String(v)]??String(v);return Array.isArray(v)?v.join("; "):v??null;});
+ const fields=kind==="equipment"?["code","name","category","base_status","serial","year","aliases","notes"]:kind==="materials"?["code","name","unit","equipment_category"]:kind==="cargo"?["code","name","unit"]:kind==="hours"?["equipment_code","month","operating_hours"]:kind==="container"?["equipment_code","month","boxes"]:["equipment_code","month","cargo_code","quantity"];
+ return fields.map(k=>{const v=row[k];if(k==="equipment_category")return v===null||v===undefined?null:materialCategoryLabels[String(v)]??String(v);if(k==="category")return categoryLabels[String(v) as keyof typeof categoryLabels]??String(v);if(k==="base_status")return baseStatusLabels[String(v) as keyof typeof baseStatusLabels]??String(v);if(k==="unit"&&kind==="cargo")return cargoUnitLabels[String(v)]??String(v);return Array.isArray(v)?v.join("; "):v??null;});
 }

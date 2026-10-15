@@ -17,6 +17,7 @@ function validateRows(kind:typeof importKinds[number],raw:unknown):ImportRow[]{
  const parsed=parseImportGrid([importSpecs[kind].headers,...a.map(r=>rowCells(r,kind))],kind);
  if(parsed.issues.length)throw Error("validation");
  if(JSON.stringify(parsed.rows).length>250000)throw Error("size");
+ if(kind==="materials")parsed.rows.forEach((r,i)=>{if(!Object.hasOwn(a[i],"equipment_category"))delete r.equipment_category;});
  return parsed.rows;
 }
 export async function previewTable(data:FormData):Promise<ActionResult & {plan?:ImportPlan[]}>{

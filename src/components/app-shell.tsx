@@ -7,7 +7,7 @@ import {Icon,type IconName} from "./icons";
 const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/",label:"Phương tiện",icon:"grid"},
  {href:"/catalog",label:"Danh mục phương tiện",icon:"crane"},
- {href:"/materials",label:"Danh mục vật tư & hàng",icon:"layers"},
+ {href:"/materials",label:"Danh mục vật tư",icon:"layers"},
  {href:"/cases",label:"Vụ việc & vật tư",icon:"wrench"},
  {href:"/monthly",label:"Giám sát giờ & sản lượng",icon:"calendar"},
  {href:"/life",label:"Giờ vật tư & định mức",icon:"clock"},

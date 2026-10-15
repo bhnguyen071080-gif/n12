@@ -6,10 +6,10 @@ test("old import links map to the owning page and exact panel without losing wor
  const workspace="00000000-0000-4000-8000-000000000001";
  for(const kind of importKinds){
   const u=new URL(importDestination(kind,workspace),"https://example.invalid");
-  assert.equal(u.pathname,kind==="equipment"?"/catalog":kind==="materials"||kind==="cargo"?"/materials":"/monthly");
+  assert.equal(u.pathname,kind==="equipment"?"/catalog":kind==="materials"?"/materials":"/monthly");
   assert.equal(u.searchParams.get("workspace"),workspace);assert.equal(u.searchParams.get("import"),kind);
   assert.equal(u.hash,"#nhap-tu-tep-"+kind);
-  if(u.pathname==="/monthly")assert.equal(u.searchParams.get("kind"),kind);
+  if(u.pathname==="/monthly")assert.equal(u.searchParams.get("kind"),kind==="cargo"?"other":kind);
  }
  assert.equal(new URL(importDestination("equipment"),"https://example.invalid").searchParams.has("workspace"),false);
 });

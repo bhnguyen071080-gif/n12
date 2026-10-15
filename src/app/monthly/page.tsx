@@ -40,7 +40,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
   <WorkspaceSelect workspaces={c.workspaces} selected={w}/><div className="flex flex-wrap gap-4">{(["hours","container","other"] as const).map(k=><Link className="button" key={k} href={"/monthly?workspace="+w+"&kind="+k}>{k==="hours"?"Giờ hoạt động":k==="container"?"Container (chiếc)":"Hàng khác"}</Link>)}</div>
   <p>{kind==="hours"?"Chỉ nhập giờ máy thực chạy. Giờ này làm cơ sở theo dõi định mức cáp, búa khung cẩu và bảo dưỡng; không nhập giờ dừng/hư hỏng vào bảng này.":kind==="container"?"Chỉ ghi nhận số container (chiếc) của phương tiện trong tháng.":"Hàng khác giữ đơn vị từng loại hàng, không cộng tấn với m³/chuyến hoặc số container."}</p>
   <TableImportPanel key={w+kind} workspace={w} kind={kind} canImport={canImportTable(memberships.data.map(m=>m.role),kind)} defaultOpen={p.import===kind}/>
-  {kind==="other"&&<Link className="button button-secondary" href={"/materials?workspace="+w}>Danh mục loại hàng và đơn vị</Link>}
+  {kind==="other"&&<TableImportPanel workspace={w} kind="cargo" canImport={canImportTable(memberships.data.map(m=>m.role),"cargo")} defaultOpen={p.import==="cargo"}/>}
   {kind==="hours"&&selected&&<section className="panel"><h2>Lọc tổng giờ theo khoảng tháng</h2>
    <form method="get" className="grid gap-3 sm:grid-cols-3"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
    <label>Phương tiện<select name="equipment" defaultValue={selected.id}>{eq.data?.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>

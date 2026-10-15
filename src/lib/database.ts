@@ -20,7 +20,7 @@ export interface Database {
    repair_orders:Table<{id:string;equipment_id:string;case_id:string|null;code:string;title:string;closed_at:string|null;cancelled_at:string|null}>;
    repair_work_items:Table<WorkItem>;
    repair_material_usages:Table<{id:string;repair_work_item_id:string;material_id:string;quantity:number;supply_state:"planned"|"borrowed"|"issued";is_installed:boolean;installation_position:string;installed_at:string|null}>;
-   materials:Table<{id:string;workspace_id:string;code:string;name:string;unit:string;service_limit_hours:number|null;service_warning_hours:number}>;
+   materials:Table<{id:string;workspace_id:string;code:string;name:string;unit:string;equipment_category:string|null;service_limit_hours:number|null;service_warning_hours:number}>;
    case_material_followups:Table<{case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number}>;
    sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;source_kind:"container"|"hours";start_month:string|null;created_by:string;created_at:string}>;
    sheet_sync_runs:Table<{id:string;source_id:string;workspace_id:string;request_key:string;actor_id:string;fingerprint:string;accepted_rows:Json;row_count:number;created_at:string}>;

@@ -5,8 +5,8 @@ export const importPanelLabels:Record<ImportKind,string>={
 };
 export function importDestination(kind:ImportKind,workspace?:string){
  const params=new URLSearchParams();if(workspace)params.set("workspace",workspace);
- const path=kind==="equipment"?"/catalog":kind==="materials"||kind==="cargo"?"/materials":"/monthly";
- if(path==="/monthly")params.set("kind",kind);
+ const path=kind==="equipment"?"/catalog":kind==="materials"?"/materials":"/monthly";
+ if(path==="/monthly")params.set("kind",kind==="cargo"?"other":kind);
  params.set("import",kind);
  return path+"?"+params.toString()+"#nhap-tu-tep-"+kind;
 }
