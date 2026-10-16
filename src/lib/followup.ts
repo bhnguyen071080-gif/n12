@@ -20,7 +20,8 @@ export const itemPayload=z.object({
  requisition_status:z.enum(["requisition_created","temporary_issue_debt","approval_pending","not_applicable"]),execution_status:z.enum(["completed","in_progress","waiting_shutdown"]),
  acceptance_status:z.enum(["accepted","pending","rework_required"]),dossier_status:z.enum(["closed","missing_reimbursement_documents","collecting"])
 }).strict();
-export const itemSchema=itemPayload.extend({id:uuid,repair_order_id:uuid,item_no:z.number().int(),version_no:z.number().int()});
+// Database reads may include system columns; keep the separate write payload strict.
+export const itemSchema=itemPayload.extend({id:uuid,repair_order_id:uuid,item_no:z.number().int(),version_no:z.number().int()}).strip();
 export type WorkItem=z.infer<typeof itemSchema>;
 export const lifeReportSchema=z.object({
  material_id:uuid,material_code:z.string(),material_name:z.string(),unit:z.string(),usage_id:uuid,case_id:uuid.nullable(),
