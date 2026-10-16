@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {mkdir,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {PDFDocument} from "pdf-lib";
-import {documentPayloadSchema,decodeDocumentPayload,documentFilename,knownTotal} from "../../src/lib/documents";
-import {prefillDocument,sourceEnvelopeSchema} from "../../src/lib/document-source";
+import {documentPayloadSchema,decodeDocumentPayload,documentFilename,knownTotal,inspectionLine} from "../../src/lib/documents";
+import {prefillDocument,sourceEnvelopeSchema,editorDocument} from "../../src/lib/document-source";
 import {renderDocumentPdf} from "../../src/lib/document-pdf";
 import {documentFixture} from "../fixtures/document";
 const created="2026-10-13T02:30:00Z";
@@ -33,6 +33,27 @@ test("prefill uses source case and technical content, never sample names, issue 
 test("PDF names are case-linked and cannot inject paths or headers",()=>{
  const s=documentFixture().source;assert.equal(documentFilename(s,"material_requisition",2),"PL-SC-TEST01-13102026-0900-001-v2.pdf");
  assert.ok(!/[\r\n/\\]/.test(documentFilename({...s,case_code:"../../evil\r\n"},"condition_minutes",1)));
+});
+test("minutes expose limit and actual values even without material usage; vouchers stay linked-only",()=>{
+ const s=documentFixture();
+ const env=sourceEnvelopeSchema.parse({workspace_id:s.source.case_id,source_hash:s.source_hash,data:{source:s.source,summary:"Synthetic fault",items:[],lines:[]}});
+ const d=prefillDocument(env,"condition_minutes");
+ assert.equal(d.lines.length,1);assert.equal(d.lines[0].usage_id,null);
+ assert.equal(d.lines[0].name,s.source.equipment_name);assert.equal(d.lines[0].limit_text,"");assert.equal(d.lines[0].used_text,"");assert.equal(d.lines[0].unit,"");
+ assert.equal(prefillDocument(env,"material_requisition").lines.length,0);
+ const manual={...inspectionLine("Cable","Wear"),unit:"Piece",limit_text:"1000 hours",used_text:"660 hours"};
+ const payload={...s.payload,lines:[manual,{...manual,used_text:"Unknown"}]};
+ assert.equal(documentPayloadSchema.safeParse(payload).success,true);
+ assert.equal(documentPayloadSchema.safeParse({...payload,kind:"material_requisition"}).success,false);
+ const snapshot={...s,payload};
+ assert.deepEqual(editorDocument(env,"condition_minutes",snapshot).payload.lines,payload.lines);
+ assert.equal(editorDocument({...env,source_hash:"b".repeat(64)},"condition_minutes",snapshot).sourceChanged,true);
+ assert.equal(editorDocument(env,"condition_minutes",{...snapshot,source:{...s.source,case_id:"00000000-0000-4000-8000-000000000099"}}).payload.lines[0].used_text,"");
+});
+test("manual minutes rows render in the existing A4 table without material usage IDs",async()=>{
+ const s=documentFixture();s.payload.lines=[{...inspectionLine("Cable","Wear"),unit:"Piece",limit_text:"1000 hours",used_text:"660 hours"}];
+ const bytes=await renderDocumentPdf(s,1,created);const pdf=await PDFDocument.load(bytes);assert.equal(pdf.getPageCount(),1);
+ if(process.env.DOCUMENT_QA_DIR){await mkdir(process.env.DOCUMENT_QA_DIR,{recursive:true});await writeFile(join(process.env.DOCUMENT_QA_DIR,"manual-minutes-a4.pdf"),bytes);}
 });
 test("minutes PDF is A4, deterministic, Vietnamese-capable and paginates long content",async()=>{
  const fixture=documentFixture(),a=await renderDocumentPdf(fixture,1,created),b=await renderDocumentPdf(fixture,1,created);

@@ -8,7 +8,7 @@ export const documentKinds=["condition_minutes","material_requisition"] as const
 export const documentKindLabels={condition_minutes:"Biên bản xác định tình trạng",material_requisition:"Phiếu lĩnh vật tư"};
 export const participantSchema=z.object({unit:text(200),members:text(1000)}).strict();
 export const documentLineSchema=z.object({
- usage_id:uuid,name:required(500),specification:text(500),catalogue_code:text(100),unit:required(40),
+ usage_id:uuid.nullable(),name:required(500),specification:text(500),catalogue_code:text(100),unit:required(40),
  requested:quantity.refine(n=>n>0,"Số xin lĩnh phải lớn hơn 0"),issued:quantity.nullable(),
  unit_price:z.number().finite().nonnegative().int().max(1e12).nullable(),
  limit_text:text(200),used_text:text(200),condition:text(4000),notes:text(1000)
@@ -23,12 +23,17 @@ export const documentPayloadSchema=z.object({
  lines:z.array(documentLineSchema).max(150)
 }).strict().superRefine((d,c)=>{
  if(d.kind==="material_requisition"&&!d.lines.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Chọn ít nhất một dòng vật tư",path:["lines"]});
- if(new Set(d.lines.map(l=>l.usage_id)).size!==d.lines.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Dòng vật tư trùng",path:["lines"]});
+ const linked=d.lines.filter(l=>l.usage_id!==null);
+ if(d.kind==="material_requisition"&&linked.length!==d.lines.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Phiếu lĩnh chỉ được chọn vật tư đã gắn với vụ việc",path:["lines"]});
+ if(new Set(linked.map(l=>l.usage_id)).size!==linked.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Dòng vật tư trùng",path:["lines"]});
  const total=d.lines.reduce((sum,l)=>sum+(l.unit_price===null||l.issued===null?0:Math.round(l.unit_price*l.issued)),0);
  if(!Number.isSafeInteger(total))c.addIssue({code:z.ZodIssueCode.custom,message:"Tổng tiền vượt phạm vi an toàn",path:["lines"]});
 });
 export type DocumentPayload=z.infer<typeof documentPayloadSchema>;
 export type DocumentLine=z.infer<typeof documentLineSchema>;
+export function inspectionLine(name="",condition=""):DocumentLine{
+ return {usage_id:null,name,specification:"",catalogue_code:"",unit:"",requested:1,issued:null,unit_price:null,limit_text:"",used_text:"",condition,notes:""};
+}
 export const documentSourceSchema=z.object({case_id:uuid,case_code:z.string(),order_code:z.string(),equipment_id:uuid,equipment_code:z.string(),equipment_name:z.string()}).strict();
 export type DocumentSource=z.infer<typeof documentSourceSchema>;
 export const snapshotSchema=z.object({payload:documentPayloadSchema,source:documentSourceSchema,source_hash:z.string().regex(/^[a-f0-9]{64}$/),layout_version:z.literal("tv-eam-print-1")}).strict();
