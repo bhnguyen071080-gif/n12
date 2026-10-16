@@ -86,3 +86,46 @@ set role anon;
 select test.fails($q$select * from public.case_documents$q$,'42501','anonymous snapshots denied');
 select test.fails($q$select private.case_document_source((select id from test.results where name='personal_case'),'condition_minutes')$q$,'42501','anonymous definer invocation denied');
 reset role;
+
+-- Document-only inspection rows must work before any material usage is entered.
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+set role authenticated;
+insert into test.document_state values('manual_line',
+ (select data->'lines'->0 from test.document_state where label='payload')
+ ||jsonb_build_object('usage_id',null,'limit_text','1000 hours','used_text','660 hours'));
+insert into test.document_state values('manual_payload',jsonb_set(
+ (select data from test.document_state where label='payload'),'{lines}',
+ jsonb_build_array((select data from test.document_state where label='manual_line'),(select data from test.document_state where label='manual_line'))));
+insert into test.results values('manual_minutes',public.save_case_document((select id from test.results where name='personal_case'),'condition_minutes',
+ (select data from test.document_state where label='manual_payload'),public.get_case_document_source((select id from test.results where name='personal_case'),'condition_minutes')->>'source_hash',
+ 'f0000000-0000-0000-0000-000000000010'));
+select test.ok((select snapshot->'payload'->'lines'->0->'usage_id'='null'::jsonb
+ and snapshot->'payload'->'lines'->0->>'limit_text'='1000 hours'
+ and snapshot->'payload'->'lines'->1->>'used_text'='660 hours' from public.case_documents where id=(select id from test.results where name='manual_minutes')),
+ 'multiple manual rows preserve limit and actual values without fabricated usage IDs');
+select test.ok(public.save_case_document((select id from test.results where name='personal_case'),'condition_minutes',
+ (select data from test.document_state where label='manual_payload'),public.get_case_document_source((select id from test.results where name='personal_case'),'condition_minutes')->>'source_hash',
+ 'f0000000-0000-0000-0000-000000000010')=(select id from test.results where name='manual_minutes'),'manual minutes retries do not create duplicate snapshots');
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
+ (select data from test.document_state where label='manual_payload')||'{"kind":"material_requisition"}',
+ public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','manual inspection row cannot become a stock requisition');
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'condition_minutes',
+ jsonb_set((select data from test.document_state where label='manual_payload'),'{lines,0,used_text}',to_jsonb(repeat('x',201))),
+ public.get_case_document_source((select id from test.results where name='personal_case'),'condition_minutes')->>'source_hash',gen_random_uuid())$q$,'22023','manual actual value length remains bounded');
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'condition_minutes',
+ jsonb_set((select data from test.document_state where label='manual_payload'),'{lines,0,usage_id}','123'),
+ public.get_case_document_source((select id from test.results where name='personal_case'),'condition_minutes')->>'source_hash',gen_random_uuid())$q$,'22023','only explicit null or linked string usage IDs are accepted');
+select test.ok((select data from test.document_state where label='business_before')=jsonb_build_object(
+ 'followup',(select to_jsonb(f) from public.case_material_followups f where case_id=(select id from test.results where name='personal_case')),
+ 'items',(select jsonb_agg(to_jsonb(i) order by i.id) from public.repair_work_items i where repair_order_id=(select id from test.results where name='personal_order')),
+ 'usages',(select jsonb_agg(to_jsonb(u) order by u.id) from public.repair_material_usages u where repair_work_item_id=(select id from test.results where name='personal_item'))),
+ 'manual minutes do not change technical progress, material usage, installation or return state');
+insert into test.results values('empty_material_case',public.create_tracking_case(
+ (select equipment_id from public.work_cases where id=(select id from test.results where name='personal_case')),'inspection','2026-10-16','Synthetic inspection without materials','f0000000-0000-0000-0000-000000000011'));
+insert into test.results values('empty_material_minutes',public.save_case_document((select id from test.results where name='empty_material_case'),'condition_minutes',
+ jsonb_set(test.document_payload((select id from test.results where name='empty_material_case'),'condition_minutes'),'{lines}',jsonb_build_array((select data from test.document_state where label='manual_line'))),
+ public.get_case_document_source((select id from test.results where name='empty_material_case'),'condition_minutes')->>'source_hash','f0000000-0000-0000-0000-000000000012'));
+select test.ok((select snapshot->'payload'->'lines'->0->>'used_text'='660 hours' from public.case_documents where id=(select id from test.results where name='empty_material_minutes'))
+ and not exists(select 1 from public.repair_material_usages u join public.repair_work_items i on i.id=u.repair_work_item_id join public.repair_orders r on r.id=i.repair_order_id where r.case_id=(select id from test.results where name='empty_material_case')),
+ 'minutes save limits and actual values when case has no material usage, without creating any usage');
+reset role;
