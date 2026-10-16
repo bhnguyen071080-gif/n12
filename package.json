@@ -1,0 +1,46 @@
+{
+  "name": "tv-eam",
+  "version": "0.3.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "prebuild": "node scripts/prepare-print-fonts.mjs",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/prepare-print-fonts.mjs",
+    "test": "tsx --test tests/unit/*.test.ts",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "1.1.1",
+    "@supabase/ssr": "0.12.6",
+    "@supabase/supabase-js": "2.117.3",
+    "fflate": "0.8.3",
+    "google-auth-library": "10.9.0",
+    "next": "16.4.0",
+    "pdf-lib": "1.17.1",
+    "qrcode": "1.5.4",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "server-only": "0.0.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@tailwindcss/postcss": "4.1.14",
+    "@types/node": "22.18.6",
+    "@types/pngjs": "6.0.5",
+    "@types/qrcode": "1.5.5",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "jsqr": "1.4.0",
+    "pngjs": "7.0.0",
+    "tailwindcss": "4.1.14",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}

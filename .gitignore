@@ -3,3 +3,9 @@ node_modules/
 .env*
 !.env.example
 coverage/
+.cache/
+.private/
+private-templates/
+output/
+tmp/
+assets/fonts/*.ttf
