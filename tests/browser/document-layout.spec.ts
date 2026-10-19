@@ -1,7 +1,5 @@
 import {test,expect} from "@playwright/test";
-import {createElement} from "react";
-import {renderToStaticMarkup} from "react-dom/server";
-import {ConditionMinutesPaper} from "../../src/components/condition-minutes-paper";
+import {execFileSync} from "node:child_process";
 import {documentFixture} from "../fixtures/document";
 
 test("wide inspection tables never stretch the document fields outside the viewport",async({page})=>{
@@ -37,7 +35,9 @@ test("A4 minutes keep a compact title, borderless people and aligned name-only s
  const payload=documentFixture("condition_minutes",1).payload;
  payload.company="CÔNG TY CỔ PHẦN DOANH NGHIỆP MẪU";
  payload.participants=payload.participants.slice(0,2);
- const html=renderToStaticMarkup(createElement(ConditionMinutesPaper,{payload}));
+ // Playwright transforms JSX into its own locator objects. Render in the same
+ // tsx runtime as the unit suite, then test the real component's HTML and CSS.
+ const html=execFileSync(process.execPath,["--import","tsx","--eval",`const {createElement}=require("react");const {renderToStaticMarkup}=require("react-dom/server");const {ConditionMinutesPaper}=require("./src/components/condition-minutes-paper.tsx");process.stdout.write(renderToStaticMarkup(createElement(ConditionMinutesPaper,{payload:${JSON.stringify(payload)}})));`],{encoding:"utf8"});
  await page.setContent(`<!doctype html><html lang="vi"><head>${styles.map(href=>`<link rel="stylesheet" href="${href}">`).join("")}</head><body><main class="document-page">${html}</main></body></html>`,{waitUntil:"networkidle"});
  await page.emulateMedia({media:"print"});
  expect(await page.locator('.paper-people thead').count()).toBe(0);
