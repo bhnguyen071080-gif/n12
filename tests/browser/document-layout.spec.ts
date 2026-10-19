@@ -1,4 +1,8 @@
 import {test,expect} from "@playwright/test";
+import {createElement} from "react";
+import {renderToStaticMarkup} from "react-dom/server";
+import {ConditionMinutesPaper} from "../../src/components/condition-minutes-paper";
+import {documentFixture} from "../fixtures/document";
 
 test("wide inspection tables never stretch the document fields outside the viewport",async({page})=>{
  await page.goto("/login");
@@ -25,4 +29,27 @@ test("wide inspection tables never stretch the document fields outside the viewp
   expect(metrics.fieldsetMinimum).toBe("0px");
   expect(metrics.tableScrolls).toBe(true);
  }
+});
+
+test("A4 minutes keep a compact title, borderless people and aligned name-only signature blocks",async({page})=>{
+ await page.goto("/login");
+ const styles=await page.locator('link[rel="stylesheet"]').evaluateAll(links=>links.map(link=>(link as HTMLLinkElement).href));
+ const payload=documentFixture("condition_minutes",1).payload;
+ payload.company="CÔNG TY CỔ PHẦN DOANH NGHIỆP MẪU";
+ payload.participants=payload.participants.slice(0,2);
+ const html=renderToStaticMarkup(createElement(ConditionMinutesPaper,{payload}));
+ await page.setContent(`<!doctype html><html lang="vi"><head>${styles.map(href=>`<link rel="stylesheet" href="${href}">`).join("")}</head><body><main class="document-page">${html}</main></body></html>`,{waitUntil:"networkidle"});
+ await page.emulateMedia({media:"print"});
+ expect(await page.locator('.paper-people thead').count()).toBe(0);
+ expect(await page.locator('.paper-inspection-intro').innerText()).toContain(payload.equipment_label);
+ expect(await page.locator('.paper-inspection-intro').innerText()).not.toContain(payload.inspection_subject);
+ expect(await page.locator('.paper-signatures').innerText()).not.toContain("Chức danh thử nghiệm");
+ const metrics=await page.evaluate(()=>{
+  const title=[...document.querySelectorAll('.paper-title > *')].map(el=>({margin:getComputedStyle(el).margin,line:getComputedStyle(el).lineHeight,size:getComputedStyle(el).fontSize}));
+  const signatureHeadings=[...document.querySelectorAll('.paper-signature-heading')].map(el=>el.getBoundingClientRect().top);
+  return {title,signatureHeadings,underline:getComputedStyle(document.querySelector('.paper-underlined')!,"::after").borderBottomStyle};
+ });
+ for(const line of metrics.title){expect(line.margin).toBe("0px");expect(parseFloat(line.line)).toBeCloseTo(parseFloat(line.size),1);}
+ expect(metrics.signatureHeadings[0]).toBeCloseTo(metrics.signatureHeadings[1],1);
+ expect(metrics.underline).toBe("solid");
 });

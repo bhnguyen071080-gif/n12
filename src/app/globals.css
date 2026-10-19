@@ -232,21 +232,23 @@ p { margin-bottom:.65rem; }
 .document-print-controls { margin:1rem 0; }
 .document-print-controls p { color:var(--muted); margin:.7rem 0; font-size:.85rem; }
 .document-print-area { overflow-x:auto; margin:1.5rem 0; padding:1rem; background:#dfe7ee; border-radius:.6rem; }
-.condition-paper { box-sizing:border-box; width:210mm; min-height:297mm; margin:0 auto; padding:20mm 15mm 20mm 25mm; background:white; color:#000; box-shadow:0 3px 14px #102a4330; font-family:TVEAMLocalTimes,"Times New Roman",serif; font-size:13pt; line-height:1.35; }
+.condition-paper { box-sizing:border-box; width:210mm; min-height:297mm; margin:0 auto; padding:20mm 10mm; background:white; color:#000; box-shadow:0 3px 14px #102a4330; font-family:TVEAMLocalTimes,"Times New Roman",serif; font-size:13pt; line-height:1.35; }
 .condition-paper h2,.condition-paper h3,.condition-paper p,.condition-paper table { font-family:inherit; font-size:13pt; line-height:1.35; color:#000; }
 .condition-paper h2,.condition-paper h3 { font-weight:700; letter-spacing:normal; }
 .condition-paper p { margin:0 0 3mm; white-space:pre-wrap; overflow-wrap:anywhere; }
 .paper-code { text-align:right; margin-bottom:3mm; }
-.paper-letterhead { display:grid; grid-template-columns:1fr 1.15fr; gap:5mm; text-align:center; margin-bottom:6mm; }
+.paper-letterhead { display:grid; grid-template-columns:.94fr 1.06fr; gap:4mm; text-align:center; margin-bottom:5mm; }
+.paper-letterhead > div { min-width:0; }
+.paper-organization,.paper-national-heading { white-space:nowrap; }
+.paper-underlined { display:inline-block; position:relative; padding-bottom:2mm; }
+.paper-underlined::after { content:""; position:absolute; bottom:0; left:15%; width:70%; border-bottom:.25mm solid #000; }
 .paper-letterhead p { margin-top:3mm; }
 .paper-title { text-align:center; margin-bottom:6mm; }
-.paper-title h2,.paper-title h3 { margin:0 0 2mm; }
-.paper-title p { margin-top:3mm; }
+.condition-paper .paper-title h2,.condition-paper .paper-title h3,.condition-paper .paper-title p { margin:0; line-height:1; }
 .paper-party { margin:4mm 0; }
 .paper-party h3 { margin:0 0 2mm; }
 .paper-people { width:100%; table-layout:fixed; border-collapse:collapse; }
 .paper-people th,.paper-people td { text-align:left; border:0; padding:1.5mm 1mm; vertical-align:top; white-space:pre-wrap; overflow-wrap:anywhere; }
-.paper-people thead th { border-bottom:.25mm solid #888; font-weight:400; background:white; }
 .paper-people th:first-child,.paper-people td:first-child { padding-left:0; }
 .paper-inspection { width:100%; border-collapse:collapse; table-layout:fixed; margin:3mm 0 5mm; }
 .paper-inspection th,.paper-inspection td { border:.25mm solid #000; padding:1.8mm 1mm; vertical-align:top; white-space:pre-wrap; overflow-wrap:anywhere; }
@@ -254,11 +256,15 @@ p { margin-bottom:.65rem; }
 .paper-inspection td:nth-child(1),.paper-inspection td:nth-child(3),.paper-inspection td:nth-child(4) { text-align:center; }
 .paper-conclusion { margin-top:5mm; }
 .paper-conclusion h3 { margin:0 0 2mm; }
-.paper-signatures { display:flex; justify-content:space-around; gap:6mm; margin-top:8mm; text-align:center; break-inside:avoid; }
-.paper-signatures section { flex:1; min-width:0; }
+.paper-signatures { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:0 4mm; margin-top:8mm; text-align:center; break-inside:avoid; }
+.paper-signatures-1 { grid-template-columns:1fr; }
+.paper-signatures-2 { grid-template-columns:.85fr 1.15fr; }
+.paper-signatures section { display:grid; grid-template-rows:subgrid; grid-row:span 4; min-width:0; }
+.paper-signature-heading { align-self:start; }
+.paper-signatures-2 .paper-signature-heading { white-space:nowrap; }
 .paper-signatures p { margin:2mm 0; }
 .paper-signature-space { height:22mm; }
-@page conditionMinutes { size:A4; margin:20mm 15mm 20mm 25mm; }
+@page conditionMinutes { size:A4; margin:20mm 10mm; }
 @media print {
  .document-page > :not(.document-print-area) { display:none!important; }
  .document-print-area { padding:0; margin:0; border:0; border-radius:0; background:white; overflow:visible; }
