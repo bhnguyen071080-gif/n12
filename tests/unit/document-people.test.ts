@@ -50,4 +50,5 @@ test("print stylesheet uses the requested Times New Roman 13 and aligned A4 tabl
  assert.match(css,/\.paper-underlined::after[^}]*border-bottom/);
  assert.match(css,/\.condition-paper \.paper-title h2[^}]*margin:0; line-height:1/);
  assert.match(css,/\.paper-signatures section[^}]*grid-template-rows:subgrid/);
+ assert.match(css,/\.paper-signature-block \{[^}]*display:inline-block;[^}]*page-break-inside:avoid; break-inside:avoid-page/);
 });

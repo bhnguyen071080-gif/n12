@@ -269,6 +269,9 @@ p { margin-bottom:.65rem; }
  .document-page > :not(.document-print-area) { display:none!important; }
  .document-print-area { padding:0; margin:0; border:0; border-radius:0; background:white; overflow:visible; }
  .condition-paper { page:conditionMinutes; width:auto; min-height:0; margin:0; padding:0; box-shadow:none; }
+ /* An inline-block is an atomic print box: the whole signing row moves to
+    the next page rather than fragmenting the nested grid between its rows. */
+ .paper-signature-block { display:inline-block; width:100%; vertical-align:top; page-break-inside:avoid; break-inside:avoid-page; }
  .condition-paper thead { display:table-header-group; }
  .paper-inspection tr,.paper-people tr { break-inside:avoid; }
  .paper-party h3,.paper-conclusion h3 { break-after:avoid; }
