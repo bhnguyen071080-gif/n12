@@ -18,7 +18,7 @@ export default async function DocumentsPage({params,searchParams}:{params:Promis
  const env=sourceEnvelopeSchema.parse(source.data),draft=editorDocument(env,kind,latest.data?.snapshot);
  return <><h1>Biểu mẫu & In — {env.data.source.case_code}</h1><p>{env.data.source.equipment_code} · Hồ sơ {env.data.source.order_code}</p>
  <div className="mb-5 flex flex-wrap gap-4"><Link href={`/cases/${id}`}>Về vụ việc</Link>{documentKinds.map(k=><Link key={k} href={`/cases/${id}/documents?kind=${k}`}>{documentKindLabels[k]}</Link>)}</div>
- {draft.sourceChanged?<p role="status">Nguồn vụ việc đã thay đổi từ lần lưu trước. Kiểm tra lại số liệu nguồn mới; bản đã lưu vẫn được giữ nguyên trong danh sách bên dưới.</p>:null}
- <DocumentEditor key={kind+env.source_hash+(latest.data?.id??"")} caseId={id} sourceHash={env.source_hash} initial={draft.payload}/>
+ {draft.sourceChanged?<p role="status">{kind==="condition_minutes"?"Vụ việc đã thay đổi. Ngày giờ và nội dung biên bản đã lưu vẫn được giữ riêng để anh chỉnh sửa.":"Nguồn vụ việc đã thay đổi từ lần lưu trước. Kiểm tra lại số liệu nguồn mới; bản đã lưu vẫn được giữ nguyên trong danh sách bên dưới."}</p>:null}
+ <DocumentEditor key={kind+(kind==="condition_minutes"?"":env.source_hash)+(latest.data?.id??"")} caseId={id} sourceHash={env.source_hash} initial={draft.payload}/>
  <section className="panel mt-5"><h2>Các phiên bản đã lưu</h2>{records.data?.length?records.data.map(d=><p key={d.id}><Link href={`/cases/${id}/documents/${d.id}`}>{documentKindLabels[d.kind]} · v{d.revision}</Link> · {new Date(d.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})} · {d.drive_state==="saved"?"Đã lưu Drive":"Chưa xác nhận lưu Drive"}</p>):<p>Chưa có phiên bản.</p>}</section></>;
 }

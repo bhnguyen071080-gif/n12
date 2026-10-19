@@ -4,7 +4,7 @@ import {mkdir,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {PDFDocument} from "pdf-lib";
 import {documentPayloadSchema,decodeDocumentPayload,documentFilename,knownTotal,inspectionLine} from "../../src/lib/documents";
-import {prefillDocument,sourceEnvelopeSchema,editorDocument} from "../../src/lib/document-source";
+import {prefillDocument,sourceEnvelopeSchema,editorDocument,independentMinutes} from "../../src/lib/document-source";
 import {renderDocumentPdf} from "../../src/lib/document-pdf";
 import {documentFixture} from "../fixtures/document";
 const created="2026-10-13T02:30:00Z";
@@ -33,6 +33,27 @@ test("prefill uses source case and technical content, never sample names, issue 
 test("PDF names are case-linked and cannot inject paths or headers",()=>{
  const s=documentFixture().source;assert.equal(documentFilename(s,"material_requisition",2),"PL-SC-TEST01-13102026-0900-001-v2.pdf");
  assert.ok(!/[\r\n/\\]/.test(documentFilename({...s,case_code:"../../evil\r\n"},"condition_minutes",1)));
+});
+test("new minutes use their own inspection date and content, never case creation or technical-item facts",()=>{
+ const s=documentFixture();
+ const env=sourceEnvelopeSchema.parse({workspace_id:s.source.case_id,source_hash:s.source_hash,data:{source:s.source,summary:"Case summary, not inspection findings",items:[{id:s.source.case_id,item_no:1,version:2,performed_on:"2026-10-19",symptom:"Case symptom",root_cause:"Case cause",solution_plan:"Case plan",execution_result:"Case completion"}],lines:[{usage_id:s.payload.lines[0].usage_id,item_id:s.source.case_id,item_no:1,name:"Linked material",code:"VT-1",unit:"Chiếc",quantity:3,condition:"Source condition",service_limit_hours:1000}]}});
+ const payload=prefillDocument(env,"condition_minutes");
+ assert.equal(payload.document_at,"");assert.equal(payload.document_number,"");assert.equal(payload.form_code,"BM.12.06");
+ assert.equal(payload.inspection_subject,"");assert.equal(payload.cause,"");assert.equal(payload.solution,"");
+ assert.equal(payload.lines.length,1);assert.equal(payload.lines[0].usage_id,null);assert.equal(payload.lines[0].condition,"");assert.equal(payload.lines[0].limit_text,"");
+ assert.equal(payload.participants.length,2);assert.ok(payload.participants.every(p=>!p.members));
+ assert.equal(payload.equipment_label,`${s.source.equipment_name} (${s.source.equipment_code})`);
+});
+test("saved minutes retain every entered value after source changes, and detach only usage links",()=>{
+ const s=documentFixture(),env=sourceEnvelopeSchema.parse({workspace_id:s.source.case_id,source_hash:"b".repeat(64),data:{source:s.source,summary:"Changed case",items:[],lines:[]}});
+ const before=structuredClone(s);
+ const draft=editorDocument(env,"condition_minutes",s);
+ assert.equal(draft.sourceChanged,true);assert.equal(draft.payload.document_at,"2026-10-13T09:30");
+ assert.deepEqual(draft.payload,{...s.payload,lines:s.payload.lines.map(line=>({...line,usage_id:null}))});
+ assert.deepEqual(s,before);assert.equal(documentPayloadSchema.safeParse(draft.payload).success,true);
+ const voucher=documentFixture("material_requisition");
+ assert.deepEqual(independentMinutes(voucher.payload),voucher.payload);
+ assert.equal(editorDocument(env,"material_requisition",voucher).payload.lines.length,0);
 });
 test("minutes expose limit and actual values even without material usage; vouchers stay linked-only",()=>{
  const s=documentFixture();

@@ -192,4 +192,25 @@ p { margin-bottom:.65rem; }
  .login-scene { min-height:280px; } .login-brand { font-size:1.1rem; } .login-intro h2 { font-size:1.6rem; } .desktop-only { display:none; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; } }
+.document-actions { display:flex; gap:.8rem; flex-wrap:wrap; margin:1rem 0; }
+.document-editor { min-width:0; margin-top:1.2rem; }
+.document-section-title { padding:.8rem 1rem; margin:1.3rem 0 .8rem; border:1px solid var(--line); border-radius:.6rem; background:linear-gradient(145deg,#fff,#edf4f8); box-shadow:var(--raised-shadow); font-size:1rem; }
+.document-participant { padding:1rem; border:1px solid var(--line); border-radius:.7rem; background:#f3f7fa; }
+.inspection-table-scroll { max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:.7rem; }
+.inspection-table { width:100%; min-width:1250px; table-layout:fixed; border-collapse:collapse; }
+.inspection-table caption { padding:.8rem; text-align:left; color:var(--muted); font-size:.8rem; }
+.inspection-table th,.inspection-table td { padding:.55rem; border:1px solid var(--line); vertical-align:top; }
+.inspection-table thead th { background:#e6eff5; color:var(--navy); text-align:center; font-size:.8rem; vertical-align:middle; }
+.inspection-table thead tr:first-child th:first-child { width:62px; }
+.inspection-table thead tr:first-child th:nth-child(2) { width:250px; }
+.inspection-table thead tr:first-child th:nth-child(3),.inspection-table thead tr:first-child th:nth-child(4) { width:95px; }
+.inspection-table thead tr:first-child th:nth-child(5) { width:260px; }
+.inspection-table thead tr:first-child th:nth-child(6) { width:280px; }
+.inspection-table tbody th { text-align:center; font-weight:600; }
+.inspection-table tbody th button { padding:.4rem; margin-top:.8rem; font-size:.7rem; }
+.inspection-table input,.inspection-table textarea { width:100%; min-width:0; font-size:.82rem; padding:.6rem; }
+.inspection-table textarea { min-height:105px; resize:vertical; }
+.inspection-table td>input+input,.inspection-table td>textarea+input { margin-top:.5rem; }
+.document-history { margin:1.2rem 0; padding:1rem; border:1px solid var(--line); border-radius:.7rem; }
+.document-history li { margin:.6rem 0; }
 @media print { .sidebar,.topbar,.app-footer,.skip-link,.quick-links,.hero-art,nav,button,form { display:none!important; } body { background:white; } .app-shell { display:block; } .app-main { padding:0; } .panel { break-inside:avoid; box-shadow:none; background:white; } .dashboard-hero { background:white; color:var(--navy); } .dashboard-hero p:not(.eyebrow) { color:var(--navy); } }

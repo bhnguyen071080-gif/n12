@@ -16,6 +16,19 @@ function LineEditor({line,kind,update}:{line:DocumentLine;kind:DocumentPayload["
  <label>Số lượng thực phát (để trống nếu chưa xác nhận)<input type="number" min="0" max="10000000" step="0.001" value={line.issued??""} onChange={e=>update({...line,issued:e.target.value===""?null:Number(e.target.value)})}/></label>
  <label>Đơn giá VND (để trống nếu chưa biết)<input type="number" min="0" max="1000000000000" step="1" value={line.unit_price??""} onChange={e=>update({...line,unit_price:e.target.value===""?null:Number(e.target.value)})}/></label></>:null}</div>;
 }
+type InspectionRow={key:string;value:DocumentLine};
+function InspectionTable({rows,update,remove}:{rows:InspectionRow[];update:(key:string,value:DocumentLine)=>void;remove:(key:string)=>void}){
+ return <div className="inspection-table-scroll" role="region" aria-label="Bảng nhập tình trạng kỹ thuật" tabIndex={0}><table className="inspection-table">
+ <caption>Bảng kiểm tra theo BM.12.06 — mỗi thiết bị, bộ phận hoặc vật tư một dòng</caption>
+ <thead><tr><th rowSpan={2} scope="col">STT</th><th rowSpan={2} scope="col">Tên phương tiện thiết bị, vật tư</th><th rowSpan={2} scope="col">Đơn vị tính</th><th rowSpan={2} scope="col">Số lượng</th><th colSpan={2} scope="colgroup">Định mức sử dụng</th><th rowSpan={2} scope="col">Tình trạng kỹ thuật</th><th rowSpan={2} scope="col">Ghi chú</th></tr><tr><th scope="col">Định mức</th><th scope="col">Thực hiện</th></tr></thead>
+ <tbody>{rows.map(({key,value:line},index)=>{
+ const text=(field:LineField,label:string,max:number,required=false)=><textarea aria-label={`${label} dòng ${index+1}`} rows={3} maxLength={max} required={required} value={line[field]} onChange={e=>update(key,{...line,[field]:e.target.value})}/>;
+ return <tr key={key}><th scope="row"><span>{index+1}</span><button type="button" className="button-secondary" aria-label={`Bỏ dòng kiểm tra ${index+1}`} onClick={()=>remove(key)}>Bỏ</button></th>
+ <td>{text("name","Tên phương tiện thiết bị, vật tư",500,true)}<input aria-label={`Quy cách dòng ${index+1}`} placeholder="Quy cách / nhãn hiệu (nếu có)" maxLength={500} value={line.specification} onChange={e=>update(key,{...line,specification:e.target.value})}/></td>
+ <td>{text("unit","Đơn vị tính",40,true)}</td><td><input aria-label={`Số lượng dòng ${index+1}`} type="number" required min="0.001" max="10000000" step="0.001" value={line.requested||""} onChange={e=>update(key,{...line,requested:Number(e.target.value)})}/></td>
+ <td>{text("limit_text","Định mức",200)}</td><td>{text("used_text","Thực hiện",200)}</td><td>{text("condition","Tình trạng kỹ thuật",4000)}</td><td>{text("notes","Ghi chú",1000)}</td></tr>;
+ })}</tbody></table></div>;
+}
 export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;sourceHash:string;initial:DocumentPayload}){
  const [draft,setDraft]=useState(initial),[excluded,setExcluded]=useState<string[]>([]),router=useRouter();
  const [rows,setRows]=useState(()=>initial.lines.map((value,i)=>({key:`saved-${i}`,value}))),nextRow=useRef(0);
@@ -23,30 +36,32 @@ export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;source
  const strings:readonly ["company"|"department"|"unit"|"location"|"equipment_label"|"form_code"|"document_number"|"warehouse",string][]=[
  ["company","Cơ quan / công ty"],["department","Phòng / bộ phận lập"],["unit","Đơn vị xin lĩnh"],["location","Địa điểm lập / kiểm tra"],
  ["equipment_label","Tên phương tiện trên bản in"],["form_code","Mã biểu mẫu"],["document_number","Số biên bản / phiếu (khác mã vụ việc)"],["warehouse","Lĩnh tại kho"]];
- return <section className="panel space-y-4"><h2>{documentKindLabels[draft.kind]} — chỉnh trước khi xuất</h2>
- <p>Thông tin lấy từ vụ việc và phiên bản đã lưu của chính vụ việc này. Kiểm tra lại nội dung trước khi lưu hoặc in.</p>
+ const minutes=draft.kind==="condition_minutes";
+ function updateRow(key:string,value:DocumentLine){setRows(prev=>prev.map(row=>row.key===key?{...row,value}:row));}
+ return <section className="panel space-y-4 document-editor"><h2>{documentKindLabels[draft.kind]}</h2>
+ <p>{minutes?"Biên bản nhập độc lập theo mẫu BM.12.06. Mã vụ việc chỉ để liên kết hồ sơ; ngày giờ kiểm tra, thành phần, bảng kiểm tra và kết luận do anh nhập, điều chỉnh tại đây.":"Thông tin lấy từ vụ việc và phiên bản đã lưu của chính vụ việc này. Kiểm tra lại nội dung trước khi lưu hoặc in."}</p>
  {draft.kind==="condition_minutes"?<p><a href="#bang-kiem-tra">Đến bảng kiểm tra · Định mức / Thực hiện ↓</a></p>:null}
  <AsyncForm action={saveCaseDocument} label={draft.kind==="condition_minutes"?"Lưu biên bản & mở bản in":"Lưu phiếu lĩnh & mở bản in"} prepare={form=>form.set("payload",JSON.stringify({...draft,lines:rows.filter(row=>!excluded.includes(row.key)).map(row=>row.value)}))}
  onSuccess={r=>{if(r.id)router.push(`/cases/${caseId}/documents/${r.id}`);}}>
  <input type="hidden" name="case" value={caseId}/><input type="hidden" name="source_hash" value={sourceHash}/>
- <div className="grid gap-3 md:grid-cols-2">{strings.filter(([key])=>draft.kind!=="condition_minutes"||key!=="warehouse").map(([key,label])=><label key={key}>{key==="unit"&&draft.kind==="condition_minutes"?"Đơn vị lập biên bản":label}<input value={draft[key]} maxLength={key==="equipment_label"?300:key==="form_code"?50:key==="document_number"?100:200} required={["company","department","unit","location","equipment_label"].includes(key)} onChange={e=>set(key,e.target.value)}/></label>)}
+ <h3 className="document-section-title">1. Thông tin biểu mẫu</h3>
+ <div className="grid gap-3 md:grid-cols-2">{strings.filter(([key])=>!minutes||key!=="warehouse").map(([key,label])=><label key={key}>{key==="unit"&&minutes?"Đơn vị lập biên bản":key==="equipment_label"&&minutes?"Phương tiện thiết bị / công cụ xếp dỡ":label}<input value={draft[key]} maxLength={key==="equipment_label"?300:key==="form_code"?50:key==="document_number"?100:200} required={["company","department","unit","location","equipment_label"].includes(key)} onChange={e=>set(key,e.target.value)}/></label>)}
  <label>Ngày giờ lập / kiểm tra<input type="datetime-local" required value={draft.document_at} onChange={e=>set("document_at",e.target.value)}/></label></div>
  <p>Ngày giờ này chỉ dùng cho biểu mẫu, không đổi thời điểm nhập mã vụ việc hoặc ngày thực hiện trong lý lịch.</p>
  {draft.kind==="condition_minutes"?<>
- <label>Đối tượng / nội dung kiểm tra<textarea rows={3} value={draft.inspection_subject} onChange={e=>set("inspection_subject",e.target.value)}/></label>
- <h3 className="font-bold">Thành phần tham gia và phần ký</h3>{draft.participants.map((p,i)=><div className="grid gap-3 md:grid-cols-2" key={i}>
+ <label>Đối tượng / nội dung kiểm tra<textarea rows={3} maxLength={1500} value={draft.inspection_subject} onChange={e=>set("inspection_subject",e.target.value)}/></label>
+ <h3 className="document-section-title">2. Thành phần tham gia và phần ký</h3>{draft.participants.map((p,i)=><div className="document-participant" key={i}><div className="grid gap-3 md:grid-cols-2">
  <label>Đơn vị đại diện {i+1}<input value={p.unit} maxLength={200} onChange={e=>set("participants",draft.participants.map((v,j)=>j===i?{...v,unit:e.target.value}:v))}/></label>
- <label>Người tham gia & chức danh {i+1}<textarea rows={2} placeholder="Mỗi người một dòng: Họ tên — Chức danh" value={p.members} onChange={e=>set("participants",draft.participants.map((v,j)=>j===i?{...v,members:e.target.value}:v))}/></label></div>)}
- <label>Nguyên nhân<textarea rows={3} value={draft.cause} onChange={e=>set("cause",e.target.value)}/></label>
- <label>Biện pháp khắc phục / đề xuất<textarea rows={4} value={draft.solution} onChange={e=>set("solution",e.target.value)}/></label>
+ <label>Người tham gia & chức danh {i+1}<textarea rows={4} maxLength={1000} placeholder="Mỗi người một dòng: Họ tên — Chức danh" value={p.members} onChange={e=>set("participants",draft.participants.map((v,j)=>j===i?{...v,members:e.target.value}:v))}/></label></div><button type="button" className="button-secondary mt-3" onClick={()=>set("participants",draft.participants.filter((_,j)=>j!==i))}>Bỏ đơn vị đại diện {i+1}</button></div>)}
+ <button type="button" className="button-secondary" disabled={draft.participants.length>=3} onClick={()=>set("participants",[...draft.participants,{unit:"",members:""}])}>Thêm đơn vị đại diện</button>
  </>:<>
  <label>Lý do xuất kho<textarea rows={2} value={draft.reason} onChange={e=>set("reason",e.target.value)}/></label>
  <label>Tổng tiền bằng chữ (nếu đã có số thực phát và đơn giá)<textarea rows={2} value={draft.amount_words} onChange={e=>set("amount_words",e.target.value)}/></label>
  <div className="grid gap-3 sm:grid-cols-2">{["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"].map((label,i)=><label key={label}>{label} — họ tên (nếu có)<input value={draft.signer_names[i]} maxLength={100} onChange={e=>set("signer_names",draft.signer_names.map((v,j)=>j===i?e.target.value:v))}/></label>)}</div>
  </>}
- <h3 id="bang-kiem-tra" className="font-bold scroll-mt-5">{draft.kind==="condition_minutes"?"Bảng kiểm tra tình trạng · Định mức / Thực hiện":"Chọn các dòng vật tư của vụ việc"}</h3>
+ <h3 id="bang-kiem-tra" className="document-section-title scroll-mt-5">{minutes?"3. Bảng kiểm tra tình trạng · Định mức / Thực hiện":"Chọn các dòng vật tư của vụ việc"}</h3>
  <p>{draft.kind==="condition_minutes"?"Nhập định mức và giá trị thực hiện tương ứng cho từng thiết bị/vật tư. Ghi kèm đơn vị; chưa rõ thì để trống, không tự coi là 0. Dòng thêm tại đây chỉ thuộc biên bản, không tạo giao dịch vật tư.":"Sửa số lượng tại đây chỉ sửa bản xuất. Không đổi số đã vay/lĩnh/thay trong dữ liệu theo dõi."}</p>
- {rows.length===0?<p>{draft.kind==="condition_minutes"?"Bấm Thêm dòng kiểm tra để nhập thiết bị/vật tư, định mức và thực hiện.":"Vụ việc chưa có vật tư. Hãy bổ sung dòng vật tư vào vụ việc trước khi lập phiếu lĩnh."}</p>:rows.map((row,index)=>{
+ {minutes?<InspectionTable rows={rows} update={updateRow} remove={key=>setRows(prev=>prev.filter(row=>row.key!==key))}/>:rows.length===0?<p>Vụ việc chưa có vật tư. Hãy bổ sung dòng vật tư vào vụ việc trước khi lập phiếu lĩnh.</p>:rows.map((row,index)=>{
  const line=row.value,selected=!excluded.includes(row.key);return <details className="border-t py-4" key={row.key} open={selected}>
  <summary className="cursor-pointer font-bold">Dòng {index+1}: {line.name||"Thiết bị / vật tư cần kiểm tra"}</summary>
  <label className="my-3"><input type="checkbox" checked={selected} onChange={e=>setExcluded(prev=>e.target.checked?prev.filter(id=>id!==row.key):[...prev,row.key])}/> Đưa dòng này vào bản xuất</label>
@@ -54,6 +69,10 @@ export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;source
  {line.usage_id===null?<button type="button" className="button-secondary mt-3" onClick={()=>setRows(prev=>prev.filter(r=>r.key!==row.key))}>Bỏ dòng kiểm tra {index+1}</button>:null}</details>;
  })}
  {draft.kind==="condition_minutes"?<button type="button" className="button-secondary" disabled={rows.length>=150} onClick={()=>{const key=`new-${nextRow.current++}`;setRows(prev=>[...prev,{key,value:inspectionLine()}]);}}>Thêm dòng kiểm tra</button>:null}
+ {minutes?<><h3 className="document-section-title">4. Kết luận</h3>
+ <label>Nguyên nhân<textarea rows={3} maxLength={8000} value={draft.cause} onChange={e=>set("cause",e.target.value)}/></label>
+ <label>Đề xuất biện pháp khắc phục<textarea rows={4} maxLength={8000} value={draft.solution} onChange={e=>set("solution",e.target.value)}/></label>
+ <p>Lưu tạo một phiên bản biên bản. Anh có thể mở lại để điều chỉnh và lưu phiên bản tiếp theo; bản cũ vẫn được giữ. Không lấy ngày tạo mã vụ việc làm ngày kiểm tra.</p></>:null}
  <label><input name="reviewed" type="checkbox" required/> Tôi đã kiểm tra ngày giờ, phương tiện, tên người tham gia, số lượng và nội dung trước khi xuất.</label>
  <p>Biên bản: A4. Phiếu lĩnh: 2 bản A5 giống nhau trên A4; nhiều vật tư sẽ chia thêm tờ, không cắt mất dòng. Không tạo chữ ký hoặc tự đánh dấu nghiệm thu/trả phiếu.</p>
  </AsyncForm></section>;

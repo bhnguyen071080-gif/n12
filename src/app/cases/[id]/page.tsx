@@ -5,9 +5,11 @@ import {uuid} from "@/lib/domain";
 import {itemSchema,kindLabels} from "@/lib/followup";
 import {dayLabel} from "@/lib/monthly-hours";
 import {ItemEditor,MaterialsEditor,ReturnEditor} from "@/components/case-editor";
+import {CaseDocuments} from "@/components/case-documents";
 export const dynamic="force-dynamic";
-export default async function CasePage({params}:{params:Promise<{id:string}>}){
- const {id}=await params;if(!uuid.safeParse(id).success)notFound();const {client}=await session("/cases/"+id);
+export default async function CasePage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{document?:string}>}){
+ const [{id},query]=await Promise.all([params,searchParams]);if(!uuid.safeParse(id).success)notFound();const {client}=await session("/cases/"+id);
+ const selected=query.document==="condition_minutes"||query.document==="material_requisition"?query.document:undefined;
  const result=await client.from("work_cases").select("*").eq("id",id).eq("tracking_only",true).maybeSingle();
  if(result.error)throw new Error("Không đọc được vụ việc.");if(!result.data)notFound();const c=result.data;
  const [equipment,order,followup]=await Promise.all([
@@ -23,7 +25,7 @@ export default async function CasePage({params}:{params:Promise<{id:string}>}){
  return <><h1>{c.code}</h1><p>{equipment.data.code} · {kindLabels[c.kind]} · Hồ sơ {order.data.code}</p>
  <p>Nhập lúc {new Date(c.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})} · {c.summary}</p>
  <div className="flex flex-wrap gap-4"><Link href={"/cases?workspace="+equipment.data.workspace_id}>Danh sách vụ việc</Link><Link href={"/equipment/"+equipment.data.code+"?workspace="+equipment.data.workspace_id}>Lý lịch phương tiện</Link></div>
- <section className="panel my-5"><h2>Biểu mẫu & In</h2><p>Xuất biên bản A4 hoặc phiếu lĩnh hai bản A5 trên A4. Cho chỉnh trước khi xuất; không đổi trạng thái lĩnh/thay/trả phiếu.</p><Link className="button" href={`/cases/${id}/documents`}>Mở biểu mẫu</Link></section>
+ <CaseDocuments caseId={id} client={client} selected={selected}/>
  <ReturnEditor key={followup.data.version_no} followup={followup.data}/>
  {items.map(i=><section className="panel space-y-5" key={i.id+":"+i.version_no}><h2>Hạng mục {i.item_no} · thực hiện {dayLabel(i.performed_on)}</h2>
  <ItemEditor order={order.data.id} item={i}/><MaterialsEditor item={i.id} materials={materials.data??[]} usages={usages?.data?.filter(u=>u.repair_work_item_id===i.id)??[]}/></section>)}

@@ -11,9 +11,9 @@ export default async function DocumentPage({params}:{params:Promise<{id:string;d
  const {client}=await session(`/cases/${id}/documents/${documentId}`),r=await client.from("case_documents").select("*").eq("id",documentId).eq("case_id",id).maybeSingle();
  if(r.error)throw new Error("Không đọc được bản xuất.");if(!r.data)notFound();const d=r.data,s=snapshotSchema.parse(d.snapshot);
  return <><h1>{documentKindLabels[d.kind]} · v{d.revision}</h1><p>{s.source.case_code} · {s.source.equipment_code}</p>
- <p>Đây là phiên bản cố định. Sửa nguồn vụ việc không làm đổi nội dung phiên bản đã lưu; muốn thay đổi, lập phiên bản mới.</p>
+ <p>Đây là phiên bản đã lưu. Muốn điều chỉnh nội dung, mở biểu mẫu để sửa và lưu phiên bản tiếp theo; bản này vẫn được giữ nguyên.</p>
  <div className="my-4 flex flex-wrap gap-4"><a className="button" href={`/api/documents/${d.id}/pdf`} target="_blank" rel="noopener noreferrer">Xem / In PDF</a>
- <a href={`/api/documents/${d.id}/pdf?download=1`}>Tải PDF</a><Link href={`/cases/${id}/documents?kind=${d.kind}`}>Lập phiên bản mới</Link></div>
+ <a href={`/api/documents/${d.id}/pdf?download=1`}>Tải PDF</a><Link href={`/cases/${id}?document=${d.kind}#ho-so-bieu-mau`}>{d.kind==="condition_minutes"?"Điều chỉnh biên bản (từ phiên bản mới nhất)":"Lập phiên bản mới"}</Link><Link href={`/cases/${id}`}>Về vụ việc</Link></div>
  <p>In A4, tỷ lệ 100% / kích thước thực. Phiếu đã ghép hai bản A5: không chọn thêm “2 trang trên một tờ”.</p>
  <section className="panel"><h2>Lưu trữ đám mây</h2><p>Lưu phiên bản lúc {new Date(d.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}.</p>
  {d.drive_state==="saved"&&d.drive_file_id?<p>Đã lưu PDF trên Drive. <a href={`https://drive.google.com/file/d/${encodeURIComponent(d.drive_file_id)}/view`} target="_blank" rel="noopener noreferrer">Mở tệp Drive</a></p>:<DriveArchiveButton documentId={d.id} configured={driveConfigured(d.workspace_id)}/>}
