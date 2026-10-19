@@ -1,12 +1,19 @@
 import {z} from "zod";
 import {actualTimestamp,uuid} from "./domain";
+import {parseRepresentatives,structuredRepresentatives} from "./document-people";
 
 const text=(max:number)=>z.string().trim().max(max).refine(s=>!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(s),"Ký tự điều khiển không hợp lệ");
 const required=(max:number)=>text(max).refine(s=>s.length>0,"Không được để trống");
 const quantity=z.number().finite().nonnegative().max(1e7).refine(n=>Math.abs(n*1000-Math.round(n*1000))<1e-5,"Tối đa 3 số lẻ");
 export const documentKinds=["condition_minutes","material_requisition"] as const;
 export const documentKindLabels={condition_minutes:"Biên bản xác định tình trạng",material_requisition:"Phiếu lĩnh vật tư"};
-export const participantSchema=z.object({unit:text(200),members:text(1000)}).strict();
+export const participantSchema=z.object({unit:text(200),members:text(1000)}).strict().superRefine((group,context)=>{
+ if(!structuredRepresentatives(group.members))return;
+ const people=parseRepresentatives(group.members);
+ if(people.length>10)context.addIssue({code:z.ZodIssueCode.custom,message:"Mỗi đơn vị tối đa 10 người",path:["members"]});
+ if(people.some(person=>!person.name.trim()))context.addIssue({code:z.ZodIssueCode.custom,message:"Nhập họ tên người tham gia, không chỉ ghi chức danh",path:["members"]});
+ if(people.filter(person=>person.signs).length>1)context.addIssue({code:z.ZodIssueCode.custom,message:"Mỗi đơn vị chỉ chọn một người đại diện ký",path:["members"]});
+});
 export const documentLineSchema=z.object({
  usage_id:uuid.nullable(),name:required(500),specification:text(500),catalogue_code:text(100),unit:required(40),
  requested:quantity.refine(n=>n>0,"Số xin lĩnh phải lớn hơn 0"),issued:quantity.nullable(),

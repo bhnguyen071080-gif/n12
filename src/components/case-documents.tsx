@@ -4,6 +4,7 @@ import type {Database} from "@/lib/database";
 import {documentKinds,documentKindLabels,type DocumentPayload} from "@/lib/documents";
 import {sourceEnvelopeSchema,editorDocument} from "@/lib/document-source";
 import {DocumentEditor} from "./document-editor";
+import {minutesDefaults} from "@/lib/document-defaults";
 
 export async function CaseDocuments({caseId,client,selected}:{caseId:string;client:SupabaseClient<Database>;selected?:DocumentPayload["kind"]}){
  const [records,source,latest]=await Promise.all([
@@ -14,6 +15,7 @@ export async function CaseDocuments({caseId,client,selected}:{caseId:string;clie
  const parsed=source&&!source.error?sourceEnvelopeSchema.safeParse(source.data):null;
  const env=parsed?.success?parsed.data:undefined;
  const draft=env&&selected&&!latest?.error?editorDocument(env,selected,latest?.data?.snapshot):undefined;
+ const defaults=env&&selected==="condition_minutes"?await minutesDefaults(client,env.workspace_id):undefined;
  return <section id="ho-so-bieu-mau" className="panel my-5 case-documents">
  <div className="section-heading"><div><p className="eyebrow">Hồ sơ theo mã vụ việc</p><h2>Biên bản & phiếu lĩnh vật tư</h2></div><span className="count-chip">{records.data?.length??0} phiên bản đã lưu</span></div>
  <p>Biên bản tình trạng có ngày giờ và nội dung riêng, liên kết với mã vụ việc. Phiếu lĩnh lấy các dòng vật tư đã gắn với vụ việc.</p>
@@ -21,7 +23,7 @@ export async function CaseDocuments({caseId,client,selected}:{caseId:string;clie
  {selected&&(!env||latest?.error)?<p role="alert">Chưa mở được biểu mẫu này. Kiểm tra quyền lập hồ sơ hoặc tải lại trang; chưa có dữ liệu nào được lưu.</p>:null}
  {draft&&env?<>
  {draft.sourceChanged?<p role="status">{selected==="condition_minutes"?"Vụ việc đã thay đổi. Ngày giờ và nội dung biên bản đã lưu vẫn được giữ riêng để anh chỉnh sửa.":"Nguồn vụ việc đã thay đổi. Kiểm tra lại các dòng vật tư trước khi lưu phiếu."}</p>:null}
- <DocumentEditor key={selected+(selected==="condition_minutes"?"":env.source_hash)+(latest?.data?.id??"")} caseId={caseId} sourceHash={env.source_hash} initial={draft.payload}/>
+ <DocumentEditor key={selected+(selected==="condition_minutes"?"":env.source_hash)+(latest?.data?.id??"")} caseId={caseId} sourceHash={env.source_hash} initial={draft.payload} defaults={defaults}/>
  </>:null}
  {records.data?.length?<details className="document-history"><summary>Các phiên bản đã lưu ({records.data.length})</summary><ul>{records.data.map(d=><li key={d.id}><Link href={`/cases/${caseId}/documents/${d.id}`}>{documentKindLabels[d.kind as DocumentPayload["kind"]]} · v{d.revision}</Link> · {new Date(d.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</li>)}</ul></details>:<p className="muted mt-4">Chưa có biểu mẫu được lưu cho vụ việc này.</p>}
  <p className="muted mt-3">Lưu biểu mẫu không tự xác nhận xuất kho, thay/lắp hoặc trả phiếu. Bản đã lưu có thể xem, in và tải PDF.</p>

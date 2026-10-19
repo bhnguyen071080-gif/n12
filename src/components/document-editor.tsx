@@ -4,6 +4,9 @@ import {useRouter} from "next/navigation";
 import {saveCaseDocument,saveDocumentToDrive} from "@/app/document-actions";
 import {documentKindLabels,inspectionLine,type DocumentPayload,type DocumentLine} from "@/lib/documents";
 import {AsyncForm} from "./async-form";
+import {RepresentativeEditor} from "./representative-editor";
+import {parseRepresentatives,serializeRepresentatives} from "../lib/document-people";
+import type {MinutesDefaults} from "../lib/document-defaults";
 
 type LineField="name"|"specification"|"catalogue_code"|"unit"|"limit_text"|"used_text"|"condition"|"notes";
 const lineFields:readonly [LineField,string][]=[["name","Tên vật tư"],["specification","Nhãn hiệu / quy cách"],["catalogue_code","Danh điểm"],["unit","Đơn vị tính"],["limit_text","Định mức sử dụng"],["used_text","Thực hiện định mức (giờ đã dùng)"],["condition","Tình trạng kỹ thuật"],["notes","Ghi chú"]];
@@ -29,9 +32,10 @@ function InspectionTable({rows,update,remove}:{rows:InspectionRow[];update:(key:
  <td>{text("limit_text","Định mức",200)}</td><td>{text("used_text","Thực hiện",200)}</td><td>{text("condition","Tình trạng kỹ thuật",4000)}</td><td>{text("notes","Ghi chú",1000)}</td></tr>;
  })}</tbody></table></div>;
 }
-export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;sourceHash:string;initial:DocumentPayload}){
+export function DocumentEditor({caseId,sourceHash,initial,defaults}:{caseId:string;sourceHash:string;initial:DocumentPayload;defaults?:MinutesDefaults}){
  const [draft,setDraft]=useState(initial),[excluded,setExcluded]=useState<string[]>([]),router=useRouter();
  const [rows,setRows]=useState(()=>initial.lines.map((value,i)=>({key:`saved-${i}`,value}))),nextRow=useRef(0);
+ const [peopleVersion,setPeopleVersion]=useState(0);
  function set<K extends keyof DocumentPayload>(key:K,value:DocumentPayload[K]){setDraft(prev=>({...prev,[key]:value}));}
  const strings:readonly ["company"|"department"|"unit"|"location"|"equipment_label"|"form_code"|"document_number"|"warehouse",string][]=[
  ["company","Cơ quan / công ty"],["department","Phòng / bộ phận lập"],["unit","Đơn vị xin lĩnh"],["location","Địa điểm lập / kiểm tra"],
@@ -41,7 +45,7 @@ export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;source
  return <section className="panel space-y-4 document-editor"><h2>{documentKindLabels[draft.kind]}</h2>
  <p>{minutes?"Biên bản nhập độc lập theo mẫu BM.12.06. Mã vụ việc chỉ để liên kết hồ sơ; ngày giờ kiểm tra, thành phần, bảng kiểm tra và kết luận do anh nhập, điều chỉnh tại đây.":"Thông tin lấy từ vụ việc và phiên bản đã lưu của chính vụ việc này. Kiểm tra lại nội dung trước khi lưu hoặc in."}</p>
  {draft.kind==="condition_minutes"?<p><a href="#bang-kiem-tra">Đến bảng kiểm tra · Định mức / Thực hiện ↓</a></p>:null}
- <AsyncForm action={saveCaseDocument} label={draft.kind==="condition_minutes"?"Lưu biên bản & mở bản in":"Lưu phiếu lĩnh & mở bản in"} prepare={form=>form.set("payload",JSON.stringify({...draft,lines:rows.filter(row=>!excluded.includes(row.key)).map(row=>row.value)}))}
+ <AsyncForm action={saveCaseDocument} label={draft.kind==="condition_minutes"?"Lưu biên bản & mở bản in":"Lưu phiếu lĩnh & mở bản in"} prepare={form=>form.set("payload",JSON.stringify({...draft,participants:minutes?draft.participants.map(p=>({...p,members:serializeRepresentatives(parseRepresentatives(p.members))})):draft.participants,lines:rows.filter(row=>!excluded.includes(row.key)).map(row=>row.value)}))}
  onSuccess={r=>{if(r.id)router.push(`/cases/${caseId}/documents/${r.id}`);}}>
  <input type="hidden" name="case" value={caseId}/><input type="hidden" name="source_hash" value={sourceHash}/>
  <h3 className="document-section-title">1. Thông tin biểu mẫu</h3>
@@ -50,10 +54,9 @@ export function DocumentEditor({caseId,sourceHash,initial}:{caseId:string;source
  <p>Ngày giờ này chỉ dùng cho biểu mẫu, không đổi thời điểm nhập mã vụ việc hoặc ngày thực hiện trong lý lịch.</p>
  {draft.kind==="condition_minutes"?<>
  <label>Đối tượng / nội dung kiểm tra<textarea rows={3} maxLength={1500} value={draft.inspection_subject} onChange={e=>set("inspection_subject",e.target.value)}/></label>
- <h3 className="document-section-title">2. Thành phần tham gia và phần ký</h3>{draft.participants.map((p,i)=><div className="document-participant" key={i}><div className="grid gap-3 md:grid-cols-2">
- <label>Đơn vị đại diện {i+1}<input value={p.unit} maxLength={200} onChange={e=>set("participants",draft.participants.map((v,j)=>j===i?{...v,unit:e.target.value}:v))}/></label>
- <label>Người tham gia & chức danh {i+1}<textarea rows={4} maxLength={1000} placeholder="Mỗi người một dòng: Họ tên — Chức danh" value={p.members} onChange={e=>set("participants",draft.participants.map((v,j)=>j===i?{...v,members:e.target.value}:v))}/></label></div><button type="button" className="button-secondary mt-3" onClick={()=>set("participants",draft.participants.filter((_,j)=>j!==i))}>Bỏ đơn vị đại diện {i+1}</button></div>)}
- <button type="button" className="button-secondary" disabled={draft.participants.length>=3} onClick={()=>set("participants",[...draft.participants,{unit:"",members:""}])}>Thêm đơn vị đại diện</button>
+ <h3 className="document-section-title">2. Thành phần tham gia và phần ký</h3>
+ {defaults?<details className="reuse-minutes"><summary>Dùng lại thông tin đã lưu trong cùng khu vực dữ liệu</summary><p>Chỉ dùng lại cơ quan, phòng, đơn vị và thành phần tham gia; không chép ngày giờ, phương tiện, địa điểm, nguyên nhân hoặc kết luận.</p><p>{defaults.participants.map(p=>`${p.unit}: ${parseRepresentatives(p.members).map(person=>person.name).join(", ")}`).join(" · ")}</p><button type="button" className="button-secondary" onClick={()=>{setDraft(prev=>({...prev,...defaults}));setPeopleVersion(v=>v+1);}}>Dùng lại thành phần và thông tin đơn vị</button></details>:null}
+ <RepresentativeEditor key={peopleVersion} initial={draft.participants} onChange={participants=>set("participants",participants)}/>
  </>:<>
  <label>Lý do xuất kho<textarea rows={2} value={draft.reason} onChange={e=>set("reason",e.target.value)}/></label>
  <label>Tổng tiền bằng chữ (nếu đã có số thực phát và đơn giá)<textarea rows={2} value={draft.amount_words} onChange={e=>set("amount_words",e.target.value)}/></label>

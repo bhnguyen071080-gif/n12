@@ -3,6 +3,7 @@ import {join} from "node:path";
 import {PDFDocument,PDFPage,PDFFont,rgb} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {snapshotSchema,issuedAmount,knownTotal,type DocumentSnapshot,type DocumentLine} from "./documents";
+import {parseRepresentatives,representativeLabel,structuredRepresentatives} from "./document-people";
 
 const MM=72/25.4,W=210*MM,H=297*MM,A5=H/2,BLACK=rgb(0,0,0);
 type Fonts={regular:PDFFont;bold:PDFFont};
@@ -97,7 +98,13 @@ function minutes(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number){
  right.forEach((text,i)=>{const lines=wrapPdfText(text,f.bold,i===0?9:10,half-8);lines.forEach((line,j)=>drawText(flow.page,line,flow.x+half+(half-f.bold.widthOfTextAtSize(line,i===0?9:10))/2,flow.y-rh-10-j*13,i===0?9:10,f.bold));rh+=lines.length*13;});
  flow.y-=Math.max(lh,rh)+15;flow.center("BIÊN BẢN KIỂM TRA",14);flow.center("XÁC ĐỊNH TÌNH TRẠNG KỸ THUẬT CỦA PHƯƠNG TIỆN",11);flow.center(d.equipment_label,11);
  flow.paragraph(`Hôm nay, vào hồi ${d.document_at.slice(11,13)}h${d.document_at.slice(14,16)} ${day(d.document_at)}. Tại ${d.location}, chúng tôi gồm:`);
- d.participants.filter(p=>p.unit.trim()).forEach((p,i)=>{flow.paragraph(`${["I","II","III"][i]}. Đại diện ${p.unit}`,true);if(p.members)flow.paragraph(p.members);});
+ d.participants.filter(p=>p.unit.trim()).forEach((p,i)=>{flow.paragraph(`${["I","II","III"][i]}. Đại diện ${p.unit}`,true);
+  if(structuredRepresentatives(p.members))parseRepresentatives(p.members).forEach((person,j)=>{
+   const widths=[flow.width*.55,flow.width*.45],names=wrapPdfText(`${j+1}. ${representativeLabel(person)}`,f.regular,11,widths[0]-8),titles=wrapPdfText(person.title,f.regular,11,widths[1]-8);
+   const height=Math.max(names.length,titles.length)*15+4;flow.ensure(height);
+   names.forEach((line,k)=>drawText(flow.page,line,flow.x,flow.y-11-k*15,11,f.regular));titles.forEach((line,k)=>drawText(flow.page,line,flow.x+widths[0],flow.y-11-k*15,11,f.regular));flow.y-=height;
+  });else if(p.members)flow.paragraph(p.members);
+ });
  flow.paragraph(`Cùng nhau kiểm tra, xác định tình trạng kỹ thuật ${d.inspection_subject||d.equipment_label} như sau:`);
  const widths=[.05,.21,.085,.08,.095,.095,.295,.09].map(v=>v*flow.width);
  const headings=["Stt","Tên vật tư, quy cách","Đơn vị tính","Số lượng","Định mức","Thực hiện","Tình trạng kỹ thuật","Ghi chú"];
@@ -120,7 +127,9 @@ function minutes(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number){
  flow.paragraph("Biện pháp khắc phục: "+(d.solution||"................................"));
  const groups=d.participants.filter(p=>p.unit.trim());if(groups.length){const col=flow.width/groups.length;
   const labels=groups.map(p=>wrapPdfText("ĐẠI DIỆN\n"+p.unit.toUpperCase(),f.bold,9,col-8)),height=Math.max(...labels.map(l=>l.length))*12+60;
-  flow.ensure(height);labels.forEach((lines,i)=>lines.forEach((line,j)=>drawText(flow.page,line,flow.x+i*col+(col-f.bold.widthOfTextAtSize(line,9))/2,flow.y-9-j*12,9,f.bold)));
+  flow.ensure(height);labels.forEach((lines,i)=>{lines.forEach((line,j)=>drawText(flow.page,line,flow.x+i*col+(col-f.bold.widthOfTextAtSize(line,9))/2,flow.y-9-j*12,9,f.bold));
+   if(structuredRepresentatives(groups[i].members)){const signer=parseRepresentatives(groups[i].members).find(person=>person.signs);if(signer)centered(flow.page,signer.name,flow.y-lines.length*12-40,10,f.bold,flow.x+i*col,col);}
+  });
  }
 }
 type VoucherChunk={rows:{line:DocumentLine;index:number;cells:Cell[];height:number}[]};

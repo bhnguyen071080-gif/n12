@@ -7,6 +7,7 @@ import {documentPayloadSchema,decodeDocumentPayload,documentFilename,knownTotal,
 import {prefillDocument,sourceEnvelopeSchema,editorDocument,independentMinutes} from "../../src/lib/document-source";
 import {renderDocumentPdf} from "../../src/lib/document-pdf";
 import {documentFixture} from "../fixtures/document";
+import {serializeRepresentatives} from "../../src/lib/document-people";
 const created="2026-10-13T02:30:00Z";
 test("document payload rejects invalid dates, duplicate lines and hidden status fields",()=>{
  const d=documentFixture().payload;
@@ -75,6 +76,10 @@ test("manual minutes rows render in the existing A4 table without material usage
  const s=documentFixture();s.payload.lines=[{...inspectionLine("Cable","Wear"),unit:"Piece",limit_text:"1000 hours",used_text:"660 hours"}];
  const bytes=await renderDocumentPdf(s,1,created);const pdf=await PDFDocument.load(bytes);assert.equal(pdf.getPageCount(),1);
  if(process.env.DOCUMENT_QA_DIR){await mkdir(process.env.DOCUMENT_QA_DIR,{recursive:true});await writeFile(join(process.env.DOCUMENT_QA_DIR,"manual-minutes-a4.pdf"),bytes);}
+});
+test("compatibility PDF can render structured people without printing the storage marker",async()=>{
+ const s=documentFixture();s.payload.participants=[{unit:"Đơn vị thử nghiệm",members:serializeRepresentatives([{salutation:"Ông",name:"Đại diện thử nghiệm",title:"Chức danh thử nghiệm",signs:true}])}];
+ const pdf=await PDFDocument.load(await renderDocumentPdf(s,2,created));assert.ok(pdf.getPageCount()>=1);
 });
 test("minutes PDF is A4, deterministic, Vietnamese-capable and paginates long content",async()=>{
  const fixture=documentFixture(),a=await renderDocumentPdf(fixture,1,created),b=await renderDocumentPdf(fixture,1,created);
