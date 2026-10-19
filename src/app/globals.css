@@ -194,6 +194,10 @@ p { margin-bottom:.65rem; }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none!important; scroll-behavior:auto!important; } }
 .document-actions { display:flex; gap:.8rem; flex-wrap:wrap; margin:1rem 0; }
 .document-editor { min-width:0; margin-top:1.2rem; }
+/* A fieldset's native min-content width must not inherit the wide inspection table. */
+.document-editor form,.document-editor fieldset,.document-editor label,.document-editor .grid { min-width:0; max-width:100%; }
+.document-editor fieldset { min-inline-size:0; width:100%; }
+.document-editor .inspection-table-scroll,.document-editor .representative-table-scroll { min-width:0; width:100%; max-width:100%; }
 .document-section-title { padding:.8rem 1rem; margin:1.3rem 0 .8rem; border:1px solid var(--line); border-radius:.6rem; background:linear-gradient(145deg,#fff,#edf4f8); box-shadow:var(--raised-shadow); font-size:1rem; }
 .document-participant { padding:1rem; border:1px solid var(--line); border-radius:.7rem; background:#f3f7fa; }
 .inspection-table-scroll { max-width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:.7rem; }
