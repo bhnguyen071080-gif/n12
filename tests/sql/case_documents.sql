@@ -143,4 +143,9 @@ select test.fails($q$select public.save_case_document((select id from test.resul
  (select data from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='empty_material_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','inherited minutes must belong to the same case');
 select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
  (select data-'basis_document_id' from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','manual voucher rows still require an authorized minutes reference');
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
+ jsonb_set((select data from test.document_state where label='inherited_voucher'),'{basis_document_id}',to_jsonb((select id::text from test.results where name='print_voucher'))),public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','a voucher cannot masquerade as the source minutes');
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
+ (select data from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'42501','supply-only roles cannot inherit minutes they are not authorized to read');
 reset role;
