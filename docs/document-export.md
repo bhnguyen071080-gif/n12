@@ -2,6 +2,12 @@
 
 ## Luồng hiện hành
 
+### Phiếu lĩnh BM.08.06 từ 20/10/2026
+
+Phiếu mới có đúng thông tin mẫu: cơ quan, phòng, họ tên người nhận hàng, lý do xuất kho, lĩnh tại kho; bảng STT/tên và quy cách/danh điểm/ĐVT/xin lĩnh/thực phát/đơn giá/thành tiền, cộng tiền bằng chữ. Bốn ô ký theo thứ tự Phòng TCKT, Thủ kho, Người nhận, Lãnh đạo Phòng. Người nhận chỉ nhập một lần, dùng ở đầu phiếu và ô ký. Không sao chép người, số lượng hay lý do đã điền trong tệp mẫu.
+
+Lần mở phiếu mới kế thừa tên vật tư, quy cách, danh điểm, ĐVT, số lượng gợi ý và thông tin cơ quan từ biên bản tình trạng mới nhất mà người dùng có quyền đọc trong chính vụ việc. Snapshot lưu basis_document_id để truy về bản biên bản bất biến; không lấy biên bản vụ việc khác. Số thực phát, đơn giá, kho và người nhận không được suy diễn. Các dòng kế thừa có usage_id=null, chỉ là nội dung giấy đề nghị, không tạo danh mục vật tư, giao dịch kho, tiến độ hay trả phiếu. Phiếu đã lưu luôn giữ các chỉnh sửa của mình, không tự thay bởi biên bản mới hơn. Bản cũ không có voucher_template vẫn in theo cấu trúc năm chữ ký cũ; khi chỉnh sửa sẽ tạo phiên bản mới theo mẫu bốn chữ ký.
+
 Vụ việc → Biểu mẫu & In → chọn biên bản/phiếu lĩnh → chỉnh nội dung, chọn dòng vật tư → xác nhận đã kiểm tra → lưu phiên bản → xem/in PDF → lưu PDF lên Drive riêng tư.
 
 Mỗi bản xuất là snapshot append-only trong PostgreSQL cloud. Sửa nguồn không đổi bản đã lưu; sửa bản xuất phải tạo phiên bản mới. Mã vụ việc/mã hồ sơ liên kết do database lấy, không nhận từ browser. Ngày lập, số biên bản/phiếu và nội dung in được chỉnh riêng, không đổi ngày thực hiện kỹ thuật.

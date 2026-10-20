@@ -22,16 +22,20 @@ export const documentLineSchema=z.object({
 }).strict().refine(l=>l.unit_price===null||l.issued===null||Number.isSafeInteger(Math.round(l.issued*l.unit_price)),"Thành tiền vượt phạm vi an toàn");
 export const documentPayloadSchema=z.object({
  schema_version:z.literal(1),kind:z.enum(documentKinds),company:required(200),department:required(200),
- unit:required(200),location:required(200),form_code:text(50),document_number:text(100),
+ unit:text(200),location:text(200),form_code:text(50),document_number:text(100),
  document_at:text(16).refine(s=>{try{actualTimestamp(s);return true;}catch{return false;}},"Ngày giờ lập không hợp lệ"),
  equipment_label:required(300),inspection_subject:text(1500),reason:text(1500),warehouse:text(200),
  participants:z.array(participantSchema).max(3),cause:text(8000),solution:text(8000),
  signer_names:z.array(text(100)).length(5),amount_words:text(1000),
- lines:z.array(documentLineSchema).max(150)
+ lines:z.array(documentLineSchema).max(150),
+ voucher_template:z.literal("bm0806").optional(),basis_document_id:uuid.optional()
 }).strict().superRefine((d,c)=>{
+ const modern=d.kind==="material_requisition"&&d.voucher_template==="bm0806";
+ if(!modern&&(!d.unit||!d.location))c.addIssue({code:z.ZodIssueCode.custom,message:"Nhập đơn vị và địa điểm",path:["unit"]});
+ if((d.voucher_template||d.basis_document_id)&&!modern)c.addIssue({code:z.ZodIssueCode.custom,message:"Sai loại biểu mẫu",path:["kind"]});
  if(d.kind==="material_requisition"&&!d.lines.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Chọn ít nhất một dòng vật tư",path:["lines"]});
  const linked=d.lines.filter(l=>l.usage_id!==null);
- if(d.kind==="material_requisition"&&linked.length!==d.lines.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Phiếu lĩnh chỉ được chọn vật tư đã gắn với vụ việc",path:["lines"]});
+ if(d.kind==="material_requisition"&&linked.length!==d.lines.length&&!(modern&&d.basis_document_id))c.addIssue({code:z.ZodIssueCode.custom,message:"Dòng nhập riêng cần biên bản tình trạng cùng vụ việc",path:["lines"]});
  if(new Set(linked.map(l=>l.usage_id)).size!==linked.length)c.addIssue({code:z.ZodIssueCode.custom,message:"Dòng vật tư trùng",path:["lines"]});
  const total=d.lines.reduce((sum,l)=>sum+(l.unit_price===null||l.issued===null?0:Math.round(l.unit_price*l.issued)),0);
  if(!Number.isSafeInteger(total))c.addIssue({code:z.ZodIssueCode.custom,message:"Tổng tiền vượt phạm vi an toàn",path:["lines"]});

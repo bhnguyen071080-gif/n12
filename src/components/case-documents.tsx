@@ -5,6 +5,7 @@ import {documentKinds,documentKindLabels,type DocumentPayload} from "@/lib/docum
 import {sourceEnvelopeSchema,editorDocument} from "@/lib/document-source";
 import {DocumentEditor} from "./document-editor";
 import {minutesDefaults} from "@/lib/document-defaults";
+import {prepareRequisition,requisitionBasis} from "@/lib/requisition";
 
 export async function CaseDocuments({caseId,client,selected}:{caseId:string;client:SupabaseClient<Database>;selected?:DocumentPayload["kind"]}){
  const [records,source,latest]=await Promise.all([
@@ -14,11 +15,12 @@ export async function CaseDocuments({caseId,client,selected}:{caseId:string;clie
  if(records.error)return <section id="ho-so-bieu-mau" className="panel my-5"><h2>Biên bản & phiếu lĩnh vật tư</h2><p role="alert">Chưa đọc được hồ sơ biểu mẫu. Hãy tải lại trang hoặc kiểm tra quyền truy cập.</p></section>;
  const parsed=source&&!source.error?sourceEnvelopeSchema.safeParse(source.data):null;
  const env=parsed?.success?parsed.data:undefined;
- const draft=env&&selected&&!latest?.error?editorDocument(env,selected,latest?.data?.snapshot):undefined;
+ const basis=selected==="material_requisition"?await requisitionBasis(client,caseId):undefined;
+ const draft=env&&selected&&!latest?.error?(selected==="material_requisition"?prepareRequisition(env,latest?.data?.snapshot,basis):editorDocument(env,selected,latest?.data?.snapshot)):undefined;
  const defaults=env&&selected==="condition_minutes"?await minutesDefaults(client,env.workspace_id):undefined;
  return <section id="ho-so-bieu-mau" className="panel my-5 case-documents">
  <div className="section-heading"><div><p className="eyebrow">Hồ sơ theo mã vụ việc</p><h2>Biên bản & phiếu lĩnh vật tư</h2></div><span className="count-chip">{records.data?.length??0} phiên bản đã lưu</span></div>
- <p>Biên bản tình trạng có ngày giờ và nội dung riêng, liên kết với mã vụ việc. Phiếu lĩnh lấy các dòng vật tư đã gắn với vụ việc.</p>
+ <p>Biên bản và phiếu lĩnh liên kết theo mã vụ việc. Phiếu mới kế thừa các dòng từ biên bản tình trạng đã lưu gần nhất; anh kiểm tra, sửa trước khi lưu.</p>
  <nav className="document-actions" aria-label="Chọn biểu mẫu vụ việc">{documentKinds.map(kind=><Link className={selected===kind?"button":"button button-secondary"} aria-current={selected===kind?"page":undefined} key={kind} href={`/cases/${caseId}?document=${kind}#ho-so-bieu-mau`}>{kind==="condition_minutes"?"Lập biên bản tình trạng":"Lập phiếu lĩnh vật tư"}</Link>)}</nav>
  {selected&&(!env||latest?.error)?<p role="alert">Chưa mở được biểu mẫu này. Kiểm tra quyền lập hồ sơ hoặc tải lại trang; chưa có dữ liệu nào được lưu.</p>:null}
  {draft&&env?<>

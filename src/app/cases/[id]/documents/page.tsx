@@ -6,6 +6,7 @@ import {documentKinds,documentKindLabels} from "@/lib/documents";
 import {sourceEnvelopeSchema,editorDocument} from "@/lib/document-source";
 import {DocumentEditor} from "@/components/document-editor";
 import {minutesDefaults} from "@/lib/document-defaults";
+import {prepareRequisition,requisitionBasis} from "@/lib/requisition";
 export const dynamic="force-dynamic";
 export default async function DocumentsPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{kind?:string;edit?:string}>}){
  const [{id},query]=await Promise.all([params,searchParams]);if(!uuid.safeParse(id).success)notFound();
@@ -19,7 +20,9 @@ export default async function DocumentsPage({params,searchParams}:{params:Promis
  if(source.error)return <><h1>Biểu mẫu & In</h1><p>Chưa đọc được nguồn biểu mẫu. Kiểm tra quyền truy cập hoặc tải lại trang.</p><Link href={`/cases/${id}`}>Về vụ việc</Link></>;
  if(records.error||latest.error)throw new Error("Không đọc được phiên bản biểu mẫu.");
  if(query.edit&&!latest.data)notFound();
- const env=sourceEnvelopeSchema.parse(source.data),draft=editorDocument(env,kind,latest.data?.snapshot);
+ const env=sourceEnvelopeSchema.parse(source.data);
+ const basis=kind==="material_requisition"?await requisitionBasis(client,id):undefined;
+ const draft=kind==="material_requisition"?prepareRequisition(env,latest.data?.snapshot,basis):editorDocument(env,kind,latest.data?.snapshot);
  const defaults=kind==="condition_minutes"?await minutesDefaults(client,env.workspace_id):undefined;
  return <><h1>Biểu mẫu & In — {env.data.source.case_code}</h1><p>{env.data.source.equipment_code} · Hồ sơ {env.data.source.order_code}</p>
  <div className="mb-5 flex flex-wrap gap-4"><Link href={`/cases/${id}`}>Về vụ việc</Link>{documentKinds.map(k=><Link key={k} href={`/cases/${id}/documents?kind=${k}`}>{documentKindLabels[k]}</Link>)}</div>

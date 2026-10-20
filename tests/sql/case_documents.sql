@@ -55,6 +55,7 @@ select public.release_document_drive((select id from test.results where name='pr
 insert into test.document_state values('lease2',public.claim_document_drive((select id from test.results where name='print_minutes'),'SYNTHETIC_DRIVE_FILE_002'));
 select test.ok((select drive_file_id='SYNTHETIC_DRIVE_FILE_001' from public.case_documents where id=(select id from test.results where name='print_minutes')),'retry reuses preallocated Drive ID instead of duplicating files');
 reset role;
+
 set role service_role;
 select test.fails($q$select public.finish_document_drive((select id from test.results where name='print_minutes'),gen_random_uuid(),repeat('a',64),'10000000-0000-0000-0000-000000000001')$q$,'40001','old/wrong Drive lease cannot finalize');
 select test.fails($q$select public.finish_document_drive((select id from test.results where name='print_minutes'),(select (data->>'drive_lease')::uuid from test.document_state where label='lease2'),repeat('a',64),'10000000-0000-0000-0000-000000000005')$q$,'42501','server finalization checks actor workspace access');
@@ -128,4 +129,18 @@ insert into test.results values('empty_material_minutes',public.save_case_docume
 select test.ok((select snapshot->'payload'->'lines'->0->>'used_text'='660 hours' from public.case_documents where id=(select id from test.results where name='empty_material_minutes'))
  and not exists(select 1 from public.repair_material_usages u join public.repair_work_items i on i.id=u.repair_work_item_id join public.repair_orders r on r.id=i.repair_order_id where r.case_id=(select id from test.results where name='empty_material_case')),
  'minutes save limits and actual values when case has no material usage, without creating any usage');
+reset role;
+-- New template inherits editable document rows, never real stock movements.
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+set role authenticated;
+insert into test.document_state values('inherited_voucher',
+ (select data from test.document_state where label='manual_payload')||jsonb_build_object('kind','material_requisition','voucher_template','bm0806',
+ 'basis_document_id',(select id from test.results where name='manual_minutes'),'unit','','location',''));
+insert into test.results values('inherited_voucher',public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
+ (select data from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid()));
+select test.ok((select snapshot->'payload'->'lines'->0->'usage_id'='null'::jsonb from public.case_documents where id=(select id from test.results where name='inherited_voucher')),'authorized minutes rows become document-only requisition rows');
+select test.fails($q$select public.save_case_document((select id from test.results where name='empty_material_case'),'material_requisition',
+ (select data from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='empty_material_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','inherited minutes must belong to the same case');
+select test.fails($q$select public.save_case_document((select id from test.results where name='personal_case'),'material_requisition',
+ (select data-'basis_document_id' from test.document_state where label='inherited_voucher'),public.get_case_document_source((select id from test.results where name='personal_case'),'material_requisition')->>'source_hash',gen_random_uuid())$q$,'22023','manual voucher rows still require an authorized minutes reference');
 reset role;
