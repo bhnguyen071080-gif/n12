@@ -133,20 +133,29 @@ function minutes(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number){
  }
 }
 type VoucherChunk={rows:{line:DocumentLine;index:number;cells:Cell[];height:number}[]};
+export function voucherSignatureMetrics(titleLines:number,nameLines:number){
+ const titleHeight=titleLines*11,captionOffset=titleHeight+8,blankHeight=25*MM;
+ // Reserve a real 25 mm blank below the caption, above the printed name.
+ const nameOffset=captionOffset+3+blankHeight+10;
+ return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
+}
 function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PDFPage[]{
  const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,widths=[.04,.30,.10,.06,.09,.09,.10,.12].map(v=>v*width/(modern?.9:1)),size=8.5;
  const head=mergedHeader(f.bold,size,widths,["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"],"Số lượng");
  const headHeight=head.height;
  const reason=wrapPdfText("Lý do xuất kho: "+d.reason,f.regular,9,width),warehouse=wrapPdfText("Lĩnh tại kho: "+d.warehouse,f.regular,9,width);
  const unitLines=modern?[...wrapPdfText(d.company,f.bold,9,width),...wrapPdfText(d.department,f.bold,9,width)]:wrapPdfText("Đơn vị: "+d.unit,f.bold,9,width),place=wrapPdfText(modern?"Họ và tên người nhận hàng: "+d.signer_names[2]:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,9,width);
- const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+38;
+ const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?27:38);
  const words=wrapPdfText("Cộng thành tiền (viết bằng chữ): "+(d.amount_words||"........................"),f.regular,8.5,width);
  const signatures=modern?["Phòng TCKT","Thủ kho","Người nhận","Lãnh đạo Phòng"]:["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"];
  const sigCols=signatures.map((label,i)=>({title:wrapPdfText(label,f.bold,8,width/signatures.length-6),name:wrapPdfText(d.signer_names[i],f.regular,8,width/signatures.length-6)}));
- const sigHeight=Math.max(...sigCols.map(c=>c.title.length))*11+Math.max(...sigCols.map(c=>c.name.length))*11+25;
- const footerSpace=words.length*11.5+sigHeight+32;
+ const signing=voucherSignatureMetrics(Math.max(...sigCols.map(c=>c.title.length)),Math.max(...sigCols.map(c=>c.name.length)));
+ const sigHeight=modern?signing.height:Math.max(...sigCols.map(c=>c.title.length))*11+Math.max(...sigCols.map(c=>c.name.length))*11+25;
+ // Sum row (23 pt), amount in words, gap, then the complete signing area.
+ // All wrapped header/name lines participate in the A5 height budget.
+ const footerSpace=modern?23+words.length*11.5+4+sigHeight:words.length*11.5+sigHeight+32;
  const rowBudget=A5-20*MM-headerSpace-headHeight-footerSpace;
- if(rowBudget<25)throw new Error("Phần đầu/ghi chú quá dài cho A5. Rút gọn nội dung trước khi xuất.");
+ if(rowBudget<(modern?size+3+8:25))throw new Error("Phần đầu/ghi chú quá dài cho A5. Rút gọn nội dung trước khi xuất.");
  const chunks:VoucherChunk[]=[];let chunk:VoucherChunk={rows:[]},remaining=rowBudget;
  d.lines.forEach((line,index)=>{
   const values=[String(index+1),[line.name,line.specification].filter(Boolean).join("\n"),line.catalogue_code,line.unit,number(line.requested),number(line.issued),number(line.unit_price),number(issuedAmount(line))];
@@ -166,12 +175,14 @@ function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PD
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
   const total=knownTotal(ch.rows.map(r=>r.line));tableRow(page,x,y,widths,[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}],18,size,f.regular);y-=23;
   paragraph(words,f.regular,8.5);y-=4;
+  if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn A5; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
   const titleHeight=Math.max(...sigCols.map(c=>c.title.length))*11;
   sigCols.forEach((c,i)=>{const col=width/signatures.length; c.title.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.bold.widthOfTextAtSize(line,8))/2,y-8-j*11,8,f.bold));
    centered(page,modern&&i===3?"(Ký, họ tên, đóng dấu)":"(Ký, ghi rõ họ tên)",y-titleHeight-8,7.5,f.regular,x+i*col,col);
-   c.name.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.regular.widthOfTextAtSize(line,8))/2,y-titleHeight-32-j*11,8,f.regular));
+   c.name.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.regular.widthOfTextAtSize(line,8))/2,y-(modern?signing.nameOffset:titleHeight+32)-j*11,8,f.regular));
   });
-  drawText(page,`${s.source.case_code} · v${revision} · Phần ${part+1}/${chunks.length}`,x,10,7.5,f.regular);
+  if(!modern)drawText(page,`${s.source.case_code} · v${revision} · Phần ${part+1}/${chunks.length}`,x,10,7.5,f.regular);
+  else if(chunks.length>1)page.drawText(`Phần ${part+1}/${chunks.length}`,{x,y:5*MM,size:6,font:f.regular,color:rgb(.65,.65,.65)});
   return page;
  });
 }

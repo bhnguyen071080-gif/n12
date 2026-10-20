@@ -4,6 +4,8 @@
 
 ### Phiếu lĩnh BM.08.06 từ 20/10/2026
 
+Phần ký dành khoảng trống 25 mm dưới hướng dẫn ký, trước họ tên in sẵn. Khuôn A5 tự tính từ số dòng đã xuống hàng của phần đầu, bảng, tiền bằng chữ và tên người ký; không cố định số hạng mục. Trường hợp phần đầu ngắn và mỗi vật tư một dòng chữ, khoảng 4 hạng mục vừa mỗi phiếu; nội dung dài giảm số dòng. Dòng vượt phần còn lại chuyển sang phần tiếp theo, mỗi phần ghép hai bản giống nhau trên A4; không co chữ hoặc cắt mất phần ký. Phiếu mới không in mã vụ việc hay phiên bản ở chân phiếu; nhiều phần chỉ có chỉ số phần màu xám nhạt. Mã vụ việc vẫn được giữ trong dữ liệu liên kết và tên tệp.
+
 Phiếu mới có đúng thông tin mẫu: cơ quan, phòng, họ tên người nhận hàng, lý do xuất kho, lĩnh tại kho; bảng STT/tên và quy cách/danh điểm/ĐVT/xin lĩnh/thực phát/đơn giá/thành tiền, cộng tiền bằng chữ. Bốn ô ký theo thứ tự Phòng TCKT, Thủ kho, Người nhận, Lãnh đạo Phòng. Người nhận chỉ nhập một lần, dùng ở đầu phiếu và ô ký. Không sao chép người, số lượng hay lý do đã điền trong tệp mẫu.
 
 Lần mở phiếu mới kế thừa tên vật tư, quy cách, danh điểm, ĐVT, số lượng gợi ý và thông tin cơ quan từ biên bản tình trạng mới nhất mà người dùng có quyền đọc trong chính vụ việc. Snapshot lưu basis_document_id để truy về bản biên bản bất biến; không lấy biên bản vụ việc khác. Số thực phát, đơn giá, kho và người nhận không được suy diễn. Các dòng kế thừa có usage_id=null, chỉ là nội dung giấy đề nghị, không tạo danh mục vật tư, giao dịch kho, tiến độ hay trả phiếu. Phiếu đã lưu luôn giữ các chỉnh sửa của mình, không tự thay bởi biên bản mới hơn. Bản cũ không có voucher_template vẫn in theo cấu trúc năm chữ ký cũ; khi chỉnh sửa sẽ tạo phiên bản mới theo mẫu bốn chữ ký.

@@ -4,7 +4,7 @@ import {prepareRequisition} from "../../src/lib/requisition";
 import {documentPayloadSchema} from "../../src/lib/documents";
 import {sourceEnvelopeSchema} from "../../src/lib/document-source";
 import {documentFixture} from "../fixtures/document";
-import {renderDocumentPdf} from "../../src/lib/document-pdf";
+import {renderDocumentPdf,voucherSignatureMetrics} from "../../src/lib/document-pdf";
 import {PDFDocument} from "pdf-lib";
 const minutes=documentFixture("condition_minutes",2);
 const env=sourceEnvelopeSchema.parse({workspace_id:minutes.source.case_id,source_hash:minutes.source_hash,data:{source:minutes.source,summary:"Case summary",items:[],lines:[]}});
@@ -31,4 +31,25 @@ test("new four-signature voucher remains printable in two identical A5 copies",a
  const d=prepareRequisition(env,undefined,basis).payload;
  const pdf=await PDFDocument.load(await renderDocumentPdf({...minutes,payload:d},1,"2026-10-20T00:00:00Z"));
  assert.equal(pdf.getPageCount(),1);assert.ok(Math.abs(pdf.getPage(0).getHeight()-841.89)<.01);
+});
+test("voucher signing has 25 mm clear space and reserves all wrapped name lines",()=>{
+ const one=voucherSignatureMetrics(1,1),long=voucherSignatureMetrics(2,3);
+ assert.ok(Math.abs(one.blankHeight*25.4/72-25)<.001);
+ assert.equal(one.nameOffset-one.captionOffset-13,one.blankHeight);
+ assert.equal(long.height-one.height,33);
+});
+test("A5 automatically moves rows to another two-copy A4 without squeezing signature space",async()=>{
+ const counts:number[]=[];
+ for(const count of [1,4,5,12]){
+  const source=documentFixture("condition_minutes",count);
+  source.payload.lines=source.payload.lines.map((l,i)=>({...l,name:`Vật tư ${i+1}`,specification:"",catalogue_code:""}));
+  source.payload.company="Công ty thử nghiệm";source.payload.department="Phòng kỹ thuật";
+  const payload=prepareRequisition(env,undefined,{...basis,snapshot:source}).payload;
+  payload.reason="Sửa chữa";payload.warehouse="Kho thử nghiệm";
+  payload.signer_names=["Người thử A","Người thử B","Người thử C","Người thử D",""];
+  const pdf=await PDFDocument.load(await renderDocumentPdf({...source,payload},1,"2026-10-20T00:00:00Z"));
+  counts.push(pdf.getPageCount());
+  for(const page of pdf.getPages()){assert.ok(Math.abs(page.getHeight()-841.89)<.01);assert.ok(Math.abs(page.getWidth()-595.276)<.01);}
+ }
+ assert.equal(counts[0],1);assert.equal(counts[1],1);assert.ok(counts[2]>1);assert.ok(counts[3]>=counts[2]);
 });
