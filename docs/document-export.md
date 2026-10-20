@@ -4,7 +4,7 @@
 
 ### Phiếu lĩnh BM.08.06 từ 20/10/2026
 
-Phần ký dành khoảng trống 25 mm dưới hướng dẫn ký, trước họ tên in sẵn. Khuôn A5 tự tính từ số dòng đã xuống hàng của phần đầu, bảng, tiền bằng chữ và tên người ký; không cố định số hạng mục. Trường hợp phần đầu ngắn và mỗi vật tư một dòng chữ, khoảng 4 hạng mục vừa mỗi phiếu; nội dung dài giảm số dòng. Dòng vượt phần còn lại chuyển sang phần tiếp theo, mỗi phần ghép hai bản giống nhau trên A4; không co chữ hoặc cắt mất phần ký. Phiếu mới không in mã vụ việc hay phiên bản ở chân phiếu; nhiều phần chỉ có chỉ số phần màu xám nhạt. Mã vụ việc vẫn được giữ trong dữ liệu liên kết và tên tệp.
+Ngay dưới tiêu đề, phiếu in địa danh/ngày tháng năm và số phiếu theo mẫu BM.08.06; hai trường này được nhập riêng, không lấy mã vụ việc thay số phiếu. Phần ký dành khoảng trống 21 mm dưới hướng dẫn ký, trước họ tên in sẵn. Khuôn A5 tự tính từ số dòng đã xuống hàng của phần đầu, bảng, tiền bằng chữ và tên người ký; không cố định số hạng mục. Trường hợp phần đầu ngắn và mỗi vật tư một dòng chữ, khoảng 4 hạng mục vừa mỗi phiếu; nội dung dài giảm số dòng. Dòng vượt phần còn lại chuyển sang phần tiếp theo, mỗi phần ghép hai bản giống nhau trên A4; không co chữ hoặc cắt mất phần ký. Phiếu mới không in mã vụ việc hay phiên bản ở chân phiếu; nhiều phần chỉ có chỉ số phần màu xám nhạt. Mã vụ việc vẫn được giữ trong dữ liệu liên kết và tên tệp.
 
 Phiếu mới có đúng thông tin mẫu: cơ quan, phòng, họ tên người nhận hàng, lý do xuất kho, lĩnh tại kho; bảng STT/tên và quy cách/danh điểm/ĐVT/xin lĩnh/thực phát/đơn giá/thành tiền, cộng tiền bằng chữ. Bốn ô ký theo thứ tự Phòng TCKT, Thủ kho, Người nhận, Lãnh đạo Phòng. Người nhận chỉ nhập một lần, dùng ở đầu phiếu và ô ký. Không sao chép người, số lượng hay lý do đã điền trong tệp mẫu.
 

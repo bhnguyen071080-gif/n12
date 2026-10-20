@@ -59,6 +59,7 @@ function tableRow(page:PDFPage,x:number,y:number,widths:number[],cells:Cell[],he
 }
 function number(n:number|null):string{return n===null?"":new Intl.NumberFormat("vi-VN",{maximumFractionDigits:3}).format(n);}
 function day(value:string):string{return `ngày ${value.slice(8,10)} tháng ${value.slice(5,7)} năm ${value.slice(0,4)}`;}
+export function voucherHeaderFields(documentAt:string,documentNumber:string){return {date:`Hải Phòng, ${day(documentAt)}`,number:`Số: ${documentNumber||"....."}`};}
 async function fonts(doc:PDFDocument):Promise<Fonts>{
  doc.registerFontkit(fontkit);
  const [regular,bold]=await Promise.all([readFile(join(process.cwd(),"assets/fonts/NotoSerif-Regular.ttf")),readFile(join(process.cwd(),"assets/fonts/NotoSerif-Bold.ttf"))]);
@@ -134,8 +135,8 @@ function minutes(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number){
 }
 type VoucherChunk={rows:{line:DocumentLine;index:number;cells:Cell[];height:number}[]};
 export function voucherSignatureMetrics(titleLines:number,nameLines:number){
- const titleHeight=titleLines*11,captionOffset=titleHeight+8,blankHeight=25*MM;
- // Reserve a real 25 mm blank below the caption, above the printed name.
+ const titleHeight=titleLines*11,captionOffset=titleHeight+8,blankHeight=21*MM;
+ // Reserve a real 21 mm blank below the caption, above the printed name.
  const nameOffset=captionOffset+3+blankHeight+10;
  return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
 }
@@ -145,7 +146,8 @@ function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PD
  const headHeight=head.height;
  const reason=wrapPdfText("Lý do xuất kho: "+d.reason,f.regular,9,width),warehouse=wrapPdfText("Lĩnh tại kho: "+d.warehouse,f.regular,9,width);
  const unitLines=modern?[...wrapPdfText(d.company,f.bold,9,width),...wrapPdfText(d.department,f.bold,9,width)]:wrapPdfText("Đơn vị: "+d.unit,f.bold,9,width),place=wrapPdfText(modern?"Họ và tên người nhận hàng: "+d.signer_names[2]:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,9,width);
- const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?27:38);
+ const headerFields=voucherHeaderFields(d.document_at,d.document_number),voucherDate=modern?headerFields.date:"",voucherNumber=modern?headerFields.number:"";
+ const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?42:38);
  const words=wrapPdfText("Cộng thành tiền (viết bằng chữ): "+(d.amount_words||"........................"),f.regular,8.5,width);
  const signatures=modern?["Phòng TCKT","Thủ kho","Người nhận","Lãnh đạo Phòng"]:["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"];
  const sigCols=signatures.map((label,i)=>({title:wrapPdfText(label,f.bold,8,width/signatures.length-6),name:wrapPdfText(d.signer_names[i],f.regular,8,width/signatures.length-6)}));
@@ -170,6 +172,7 @@ function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PD
   if(d.form_code&&!modern)drawText(page,d.form_code,x+width-f.bold.widthOfTextAtSize(d.form_code,8),A5-15,8,f.bold);
   const paragraph=(lines:string[],font:PDFFont,size=9)=>{lines.forEach(line=>{drawText(page,line,x,y-size,size,font);y-=size+3;});};
   paragraph(unitLines,f.bold);y-=2;centered(page,"PHIẾU LĨNH VẬT TƯ",y-14,14,f.bold,x,width);y-=22;
+  if(modern){centered(page,voucherDate,y-9,9,f.regular,x,width*.76);drawText(page,voucherNumber,x+width-f.regular.widthOfTextAtSize(voucherNumber,9),y-9,9,f.regular);y-=15;}
   paragraph(place,f.regular);paragraph(reason,f.regular);paragraph(warehouse,f.regular);y-=3;
   drawMergedHeader(page,x,y,widths,head,size,f.bold);y-=headHeight;
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
@@ -193,11 +196,16 @@ export async function renderDocumentPdf(input:DocumentSnapshot,revision:number,c
  for(const ch of JSON.stringify(s.payload)){const cp=ch.codePointAt(0);if(cp!==undefined&&!charset.has(cp))throw new Error("Ký tự không được font PDF hỗ trợ; thay ký tự đặc biệt trước khi xuất.");}
  if(s.payload.kind==="condition_minutes")minutes(doc,f,s,revision);
  else{
-  const pages=vouchers(doc,f,s,revision),out=await PDFDocument.create();metadata(out,s,createdAt);
-  // Fonts are lazy PDF objects. Flush before copying pages into the two-up document.
-  await doc.flush();
-  const embedded=await out.embedPages(pages);
-  embedded.forEach(p=>{const page=out.addPage([W,H]);page.drawPage(p,{x:0,y:A5,width:W,height:A5});page.drawPage(p,{x:0,y:0,width:W,height:A5});page.drawLine({start:{x:10*MM,y:A5},end:{x:W-10*MM,y:A5},thickness:.35,dashArray:[3,3],color:BLACK});});
+  vouchers(doc,f,s,revision);const out=await PDFDocument.create();metadata(out,s,createdAt);
+  // Finalize and reopen the A5 source before embedding. This preserves every
+  // page resource when a voucher continues beyond the first A4 sheet.
+  const sourceBytes=await doc.save();
+  for(let i=0;i<doc.getPageCount();i++){
+   // Load each source page independently so font/resource dictionaries from
+   // continuation pages cannot overwrite the preceding embedded page.
+   const [p]=await out.embedPdf(sourceBytes,[i]);
+   const page=out.addPage([W,H]);page.drawPage(p,{x:0,y:A5,width:W,height:A5});page.drawPage(p,{x:0,y:0,width:W,height:A5});page.drawLine({start:{x:10*MM,y:A5},end:{x:W-10*MM,y:A5},thickness:.35,dashArray:[3,3],color:BLACK});
+  }
   return out.save();
  }
  return doc.save();
