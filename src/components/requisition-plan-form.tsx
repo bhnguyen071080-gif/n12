@@ -21,7 +21,7 @@ export function RequisitionPlanForm({workspaceName,equipmentCodes}:{workspaceNam
  const [showPreview,setShowPreview]=useState(false);
  const available=useMemo(()=>new Set(equipmentCodes),[equipmentCodes]);
  const rows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)),[groups]);
- const previews=useMemo(()=>buildVoucherPreviews(octoberMaintenancePlan,groups,grouping),[groups,grouping]);
+ const previews=useMemo(()=>buildVoucherPreviews(octoberMaintenancePlan,groups,grouping,plannedDay),[groups,grouping,plannedDay]);
  const unresolved=rows.filter(row=>!available.has(row.equipmentCode));
 
  function toggleGroup(group:PlanGroup){
@@ -47,6 +47,7 @@ export function RequisitionPlanForm({workspaceName,equipmentCodes}:{workspaceNam
     <fieldset className="plan-choice"><legend>Cách gom phiếu</legend>
      <label><input type="radio" name="grouping" checked={grouping==="group"} onChange={()=>{setGrouping("group");setShowPreview(false);}}/>Theo nhóm phương tiện</label>
      <label><input type="radio" name="grouping" checked={grouping==="equipment"} onChange={()=>{setGrouping("equipment");setShowPreview(false);}}/>Theo từng phương tiện</label>
+    <label><input type="radio" name="grouping" checked={grouping==="date"} onChange={()=>{setGrouping("date");setShowPreview(false);}}/>Theo ngày cùng thực hiện</label>
     </fieldset>
     <fieldset className="plan-choice"><legend>Nhóm phương tiện</legend>
      {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({octoberMaintenancePlan.filter(row=>row.group===group).length})</small></label>)}
@@ -58,7 +59,7 @@ export function RequisitionPlanForm({workspaceName,equipmentCodes}:{workspaceNam
 
   <section className="plan-stats" aria-label="Tóm tắt phạm vi">
    <article className="panel"><span>Phương tiện</span><strong>{rows.length}</strong><small>dòng kế hoạch được chọn</small></article>
-   <article className="panel"><span>Phiếu dự kiến</span><strong>{previews.length}</strong><small>{grouping==="group"?"gom theo nhóm và nguồn":"tách theo phương tiện và nguồn"}</small></article>
+   <article className="panel"><span>Phiếu dự kiến</span><strong>{previews.length}</strong><small>{grouping==="group"?"gom theo nhóm, ngày và nguồn":grouping==="date"?"gom các phương tiện cùng ngày và nguồn":"tách theo phương tiện, ngày và nguồn"}</small></article>
    <article className="panel"><span>Kho vật tư</span><strong>{sourceCounts.warehouse}</strong><small>phiếu lọc/phụ tùng</small></article>
    <article className="panel"><span>Nguyên–nhiên liệu</span><strong>{sourceCounts.maintenance_consumable}</strong><small>phiếu dầu, mỡ, nhiên liệu</small></article>
   </section>

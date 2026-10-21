@@ -1,6 +1,6 @@
 export type PlanGroup="TUKAN"|"QC"|"RTG"|"KHUNG_CAU";
 export type SupplySource="warehouse"|"maintenance_consumable";
-export type VoucherGrouping="equipment"|"group";
+export type VoucherGrouping="equipment"|"group"|"date";
 
 export type PlannedMaterial={
  key:string;
@@ -112,13 +112,13 @@ const frameRows:MaintenancePlanRow[]=[
 // so it cannot enter totals, previews or a later saved requisition.
 export const octoberMaintenancePlan:readonly MaintenancePlanRow[]=[...tukanRows,...qcRows,...rtgRows,...frameRows];
 
-export function buildVoucherPreviews(rows:readonly MaintenancePlanRow[],groups:readonly PlanGroup[],grouping:VoucherGrouping):VoucherPreview[]{
+export function buildVoucherPreviews(rows:readonly MaintenancePlanRow[],groups:readonly PlanGroup[],grouping:VoucherGrouping,plannedDay?:string):VoucherPreview[]{
  const selected=new Set(groups),buckets=new Map<string,{source:SupplySource;scopeLabel:string;equipmentCodes:Set<string>;lines:Map<string,PlannedMaterial>}>();
  for(const plan of rows){
   if(!selected.has(plan.group))continue;
   for(const item of plan.materials){
-   const scope=grouping==="group"?plan.group:plan.equipmentCode;
-   const scopeLabel=grouping==="group"?planGroupLabels[plan.group]:plan.sourceLabel;
+   const scope=grouping==="date"?`date:${plannedDay??"same-day"}`:grouping==="group"?plan.group:plan.equipmentCode;
+   const scopeLabel=grouping==="date"?(plannedDay?`Ngày ${plannedDay.slice(8,10)}/${plannedDay.slice(5,7)}/${plannedDay.slice(0,4)}`:"Cùng ngày thực hiện"):grouping==="group"?planGroupLabels[plan.group]:plan.sourceLabel;
    const id=`${scope}:${item.source}`;
    const bucket=buckets.get(id)??{source:item.source,scopeLabel,equipmentCodes:new Set<string>(),lines:new Map<string,PlannedMaterial>()};
    bucket.equipmentCodes.add(plan.equipmentCode);

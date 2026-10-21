@@ -35,3 +35,12 @@ test("individual preview creates a separate voucher only when an equipment has t
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,54);
 });
 
+test("same-day preview combines all selected equipment but keeps sources separate",()=>{
+ const vouchers=buildVoucherPreviews(octoberMaintenancePlan,groups,"date","2026-10-21");
+ assert.equal(vouchers.length,2);
+ assert.equal(vouchers.filter(voucher=>voucher.source==="warehouse").length,1);
+ assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,1);
+ assert.equal(vouchers.every(voucher=>voucher.scopeLabel==="Ngày 21/10/2026"),true);
+ assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.equipmentCodes.length,54);
+});
+
