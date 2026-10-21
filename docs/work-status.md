@@ -1,20 +1,21 @@
-# TV-EAM — handoff, 21/10/2026 (UTC+7)
+# TV-EAM — handoff, 22/10/2026 (UTC+7)
 
-## Current work
+The active app branch is `codex/tv-eam-phase3`; `main` still contains only the initial README. PR #3 fixed immutable font downloads and calendar-date display and was merged as `88da793c1ac38dbc1807b87e3391437bb8469069`.
 
-Continue from `codex/tv-eam-phase3`, not `main` (which still contains only the initial README). This repair starts at `1a0fe7f31b5edc5a53cee30f04ba7656ccd1b2c4` and targets that development branch.
+PR #4 implements `/requisitions` saving for the existing October 2026 source plan:
+- Explicit workspace-catalog mapping, review and confirmation before saving.
+- Immutable versioned snapshots, idempotent retries and one pending maintenance case per equipment/planned day. Regrouping reuses cases.
+- Separate warehouse/consumables PDFs, grouped by equipment, group or day, using BM.08.06 with two A5 copies per A4 sheet.
+- A saved-plan detail page with source allocations and real case links. Actual issue, price, completion and signatures are not inferred. Planning does not create stock or material-usage transactions.
+- Existing case-document source validation remains separate and unchanged.
 
-Fixed in this change:
-- Clean-build print font downloads use an immutable Noto repository commit and verified SHA-256 values, with the matching OFL license. The moving distribution URL previously returned different font bytes and blocked pretest/prebuild.
-- Planned dates are formatted as calendar dates, independent of the device time zone.
-- Regression tests cover all 48 group/mode combinations and interactive preview grouping, source separation, stale-preview invalidation and dates in UTC/Vietnam time zones.
+Verification at initial feature commit `eef040ed63c115b5af03f5a6e9b4cdb0c83cb9ca`:
+- Web Actions run `39678473489`: 71 unit tests, 16 browser tests, strict TypeScript, dependency audit and production build passed.
+- Database Actions run `39678473741`: full PostgreSQL17 regression suite passed, including workspace isolation, role boundaries, immutable snapshots, retries, case reuse and atomic rollback.
+- Both grouped PDF sources rendered; Vietnamese glyphs and A4 two-copy layout visually checked with synthetic data.
+- Additive `maintenance_requisition_runs` migration applied to the connected database. A rollback-only smoke test exercised the RPC under an existing authenticated role; retry and pending-state checks passed. Subsequent read confirmed zero saved test plans and zero residual test cases.
+- New tables have RLS; anonymous execution and direct authenticated updates are denied. The two private registries intentionally expose no policies/grants. The pre-existing leaked-password-protection warning remains an account configuration item.
 
-Verification: TypeScript strict and all 68 unit tests passed locally (Node 24, in-process TypeScript diagnostic runner because Windows blocked esbuild subprocesses). The authoritative standard Node 22 build, unit, browser and database results are the GitHub Actions checks attached to the repair PR. Do not infer cloud deployment from those checks.
+Deployment follows the existing Netlify integration. The PR #4 deploy preview built successfully. Updating Phase 3 updates the existing PR #2 preview. Netlify Team Protection requires the user's browser login for direct authenticated end-to-end verification; do not claim that verification from CI alone.
 
-## Remaining product work
-
-`/requisitions` is still a preview-only October 2026 maintenance plan. It does not save a plan, create actual work cases, or transfer those previews to printable BM.08.06 documents. The existing case-document PDF flow is separate.
-
-Next: agree and implement catalog matching and an idempotent plan-save workflow, then creation of work cases and printable vouchers. Verify with authenticated test data before production use. Do not invent a source of truth for the hardcoded monthly plan or import it into a real workspace automatically.
-
-At the next session: fetch the development branch, inspect the repair PR/checks and new commits, read this handoff, and record the tested commit and remaining scope after changes.
+Scope remains the supplied October 2026 source plan. Arbitrary-month source import, editing saved versions and posted warehouse issues are separate work. Never auto-import the source into real operational data or apply test fixtures to the connected database. No private project identifiers, credentials or operational records belong in this public repository.
