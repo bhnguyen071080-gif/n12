@@ -37,6 +37,7 @@
     "@types/qrcode": "1.5.5",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "esbuild": "0.25.12",
     "jsqr": "1.4.0",
     "pngjs": "7.0.0",
     "tailwindcss": "4.1.14",
