@@ -9,6 +9,7 @@ const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/catalog",label:"Danh mục phương tiện",icon:"crane"},
  {href:"/materials",label:"Danh mục vật tư",icon:"layers"},
  {href:"/cases",label:"Vụ việc & vật tư",icon:"wrench"},
+ {href:"/requisitions",label:"Phiếu lĩnh theo kế hoạch",icon:"check"},
  {href:"/monthly",label:"Giám sát giờ & sản lượng",icon:"calendar"},
  {href:"/life",label:"Giờ vật tư & định mức",icon:"clock"},
  {href:"/reports",label:"Báo cáo kỹ thuật",icon:"chart"},
@@ -33,3 +34,4 @@ export function AppShell({children}:{children:ReactNode}){
   </div>
  </div>;
 }
+
