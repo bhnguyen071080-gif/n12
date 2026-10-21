@@ -1,6 +1,7 @@
 import type {Equipment,Reliability,Cost,Cause} from "./domain";
 import type {WorkItem,MaterialHours} from "./followup";
 import type {CaseDocument} from "./documents";
+import type {SavedRequisitionPlan} from "./saved-requisition-plan";
 export type Json=string|number|boolean|null|Json[]|{[key:string]:Json|undefined};
 type Table<Row>={Row:Row;Insert:Partial<Row>;Update:Partial<Row>;Relationships:[]};
 type View<Row>={Row:Row;Relationships:[]};
@@ -14,6 +15,7 @@ type ImportArgs={p_workspace:string;p_rows:Json;p_key:string};
 export interface Database {
  public:{
   Tables:{
+   maintenance_requisition_runs:Table<SavedRequisitionPlan>;
    case_documents:Table<CaseDocument>;
    workspaces:Table<Workspace>;
    work_cases:Table<{id:string;equipment_id:string;kind:"repair"|"maintenance"|"cleaning"|"inspection";code:string;summary:string;created_at:string;tracking_only:boolean;actual_started_at:string}>;
@@ -45,6 +47,7 @@ export interface Database {
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number|null;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
   Functions:{
+   save_maintenance_requisition:{Args:{p_workspace:string;p_day:string;p_grouping:string;p_rows:Json;p_print:Json;p_key:string};Returns:string};
    preview_import_table:{Args:{p_workspace:string;p_kind:string;p_rows:Json};Returns:Json};
    import_table_batch:{Args:{p_workspace:string;p_kind:string;p_mode:string;p_plan:Json;p_key:string};Returns:number};
    save_equipment_catalog:{Args:{p_workspace:string;p_id:string|null;p_version:number|null;p_key:string;p_code:string;p_name:string;p_category:string;p_base_status:string;p_serial:string|null;p_year:number|null;p_notes:string;p_aliases:string[]};Returns:string};

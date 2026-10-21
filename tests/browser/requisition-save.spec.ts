@@ -1,0 +1,30 @@
+import {test,expect} from "@playwright/test";
+import {buildSync} from "esbuild";
+const bundle=buildSync({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
+ import {RequisitionPlanForm} from './src/components/requisition-plan-form';
+ import {octoberMaintenancePlan} from './src/lib/maintenance-requisition-plan';
+ const equipment=octoberMaintenancePlan.map((r,i)=>({id:'70000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),code:r.equipmentCode,name:r.sourceLabel}));
+ window.requests=[];
+ const save=async(data)=>{window.requests.push(Object.fromEntries(data));return window.requests.length===1?{ok:false,message:'Mất xác nhận, hãy gửi lại'}:{ok:true,message:'Đã lưu',id:'70000000-0000-4000-8000-000000000100'};};
+ createRoot(document.getElementById('root')).render(<RequisitionPlanForm workspaceName="Fixture" workspaceId="70000000-0000-4000-8000-000000000101" equipment={equipment} saveAction={save}/>);`,resolveDir:process.cwd(),loader:"tsx"},bundle:true,write:false,platform:"browser",format:"iife",jsx:"automatic",define:{"process.env.NODE_ENV":'"production"'}}).outputFiles[0].text;
+test("saving requires explicit confirmation and keeps retry key after a lost response",async({page})=>{
+ await page.goto("/login");await page.setContent('<main id="root"></main>');await page.addScriptTag({content:bundle});
+ await page.getByRole("button",{name:"Tính và xem trước phiếu"}).click();
+ await page.getByLabel("Công ty",{exact:true}).fill("Công ty thử");await page.getByLabel("Phòng / đơn vị").fill("Kỹ thuật");
+ const save=page.getByRole("button",{name:"Lưu kế hoạch và tạo phiếu"});
+ await save.click();expect(await page.evaluate(()=>((window as unknown as {requests:unknown[]}).requests).length)).toBe(0);
+ await page.getByRole("checkbox",{name:"Tôi đã đối chiếu phương tiện và số lượng xin lĩnh."}).check();
+ await save.click();await expect(page.getByText("Mất xác nhận, hãy gửi lại")).toBeVisible();await save.click();
+ await expect(page.getByRole("link",{name:/Mở kế hoạch đã lưu/})).toHaveAttribute("href","/requisitions/70000000-0000-4000-8000-000000000100");
+ const requests=await page.evaluate(()=>((window as unknown as {requests:Record<string,string>[]}).requests));
+ expect(requests).toHaveLength(2);expect(requests[0].request_key).toBe(requests[1].request_key);
+ expect(JSON.parse(requests[1].plan).print.company).toBe("Công ty thử");await expect(save).toBeDisabled();
+});
+test("duplicate equipment mapping prevents saving",async({page})=>{
+ await page.goto("/login");await page.setContent('<main id="root"></main>');await page.addScriptTag({content:bundle});
+ await page.getByText("Đối chiếu / ghép phương tiện trong danh mục",{exact:true}).click();
+ await page.getByLabel("Ghép Tukan 05",{exact:true}).selectOption("70000000-0000-4000-8000-000000000002");
+ await page.getByRole("button",{name:"Tính và xem trước phiếu"}).click();
+ await expect(page.getByRole("button",{name:"Lưu kế hoạch và tạo phiếu"})).toHaveCount(0);
+ await expect(page.getByText("Hai dòng đang ghép cùng phương tiện. Chọn lại trước khi lưu.")).toBeVisible();
+});

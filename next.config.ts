@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
  poweredByHeader: false,
- outputFileTracingIncludes:{"/api/documents/**":["./assets/fonts/**"],"/cases/**":["./assets/fonts/**"]},
+ outputFileTracingIncludes:{"/api/documents/**":["./assets/fonts/**"],"/api/requisition-plans/**":["./assets/fonts/**"],"/requisitions":["./assets/fonts/**"],"/cases/**":["./assets/fonts/**"]},
  async headers() {
   return [{source:"/:path*",headers:[
    {key:"X-Content-Type-Options",value:"nosniff"},

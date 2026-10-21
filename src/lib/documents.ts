@@ -20,7 +20,7 @@ export const documentLineSchema=z.object({
  unit_price:z.number().finite().nonnegative().int().max(1e12).nullable(),
  limit_text:text(200),used_text:text(200),condition:text(4000),notes:text(1000)
 }).strict().refine(l=>l.unit_price===null||l.issued===null||Number.isSafeInteger(Math.round(l.issued*l.unit_price)),"Thành tiền vượt phạm vi an toàn");
-export const documentPayloadSchema=z.object({
+export const documentPayloadFields=z.object({
  schema_version:z.literal(1),kind:z.enum(documentKinds),company:required(200),department:required(200),
  unit:text(200),location:text(200),form_code:text(50),document_number:text(100),
  document_at:text(16).refine(s=>{try{actualTimestamp(s);return true;}catch{return false;}},"Ngày giờ lập không hợp lệ"),
@@ -29,7 +29,8 @@ export const documentPayloadSchema=z.object({
  signer_names:z.array(text(100)).length(5),amount_words:text(1000),
  lines:z.array(documentLineSchema).max(150),
  voucher_template:z.literal("bm0806").optional(),basis_document_id:uuid.optional()
-}).strict().superRefine((d,c)=>{
+}).strict();
+export const documentPayloadSchema=documentPayloadFields.superRefine((d,c)=>{
  const modern=d.kind==="material_requisition"&&d.voucher_template==="bm0806";
  if(!modern&&(!d.unit||!d.location))c.addIssue({code:z.ZodIssueCode.custom,message:"Nhập đơn vị và địa điểm",path:["unit"]});
  if((d.voucher_template||d.basis_document_id)&&!modern)c.addIssue({code:z.ZodIssueCode.custom,message:"Sai loại biểu mẫu",path:["kind"]});
