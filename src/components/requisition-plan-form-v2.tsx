@@ -17,10 +17,14 @@ import {
 const allGroups=Object.keys(planGroupLabels) as PlanGroup[];
 
 type EquipmentOption={id:string;code:string;name:string};
-export function RequisitionPlanForm({workspace,workspaceName,equipment}:{workspace:string;workspaceName:string;equipment:EquipmentOption[]}){
+type VoucherKind="planned"|"supplemental";
+export function RequisitionPlanForm({workspace,workspaceName,equipment,today}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];today:string}){
  const [groups,setGroups]=useState<PlanGroup[]>(allGroups);
  const [grouping,setGrouping]=useState<VoucherGrouping>("group");
  const [plannedDay,setPlannedDay]=useState("2026-10-21");
+ const [documentDay,setDocumentDay]=useState(today);
+ const [voucherKind,setVoucherKind]=useState<VoucherKind>("planned");
+ const [supplementNote,setSupplementNote]=useState("");
  const [showPreview,setShowPreview]=useState(false);
  const [source,setSource]=useState<{name:string;sha256:string}|null>(null),[sourceError,setSourceError]=useState("");
  const [savedRun,setSavedRun]=useState("");
@@ -59,9 +63,15 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment}:{workspa
    <form onSubmit={event=>{event.preventDefault();setShowPreview(true);}}>
     <div className="plan-form-grid">
      <label>Tháng kế hoạch<input type="month" value="2026-10" readOnly aria-describedby="plan-month-note"/></label>
-     <label>Ngày dự kiến thực hiện<input type="date" required value={plannedDay} min="2026-10-01" max="2026-10-31" onChange={event=>{setPlannedDay(event.target.value);setShowPreview(false);}}/></label>
+     <label>Ngày theo kế hoạch bảo dưỡng<input type="date" required value={plannedDay} min="2026-10-01" max="2026-10-31" onChange={event=>{setPlannedDay(event.target.value);setShowPreview(false);}}/></label>
+     <label>Ngày lập phiếu lĩnh thực tế<input type="date" required value={documentDay} onChange={event=>setDocumentDay(event.target.value)}/></label>
     </div>
-    <p id="plan-month-note" className="muted">Ngày này dùng để xem trước mã vụ việc. Mã chính thức vẫn do cơ sở dữ liệu sinh khi lưu.</p>
+    <p id="plan-month-note" className="muted">Ngày kế hoạch dùng để liên kết vụ việc bảo dưỡng và xem trước mã vụ việc. Ngày lập phiếu là ngày in trên chứng từ; hai ngày không bắt buộc phải trùng nhau.</p>
+    <fieldset className="plan-choice"><legend>Loại phiếu</legend>
+     <label><input type="radio" name="voucher_kind" checked={voucherKind==="planned"} onChange={()=>setVoucherKind("planned")}/>Phiếu theo kế hoạch</label>
+     <label><input type="radio" name="voucher_kind" checked={voucherKind==="supplemental"} onChange={()=>setVoucherKind("supplemental")}/>Phiếu bổ sung vật tư phát sinh</label>
+    </fieldset>
+    {voucherKind==="supplemental"?<label>Lý do bổ sung<input value={supplementNote} required maxLength={500} placeholder="Ví dụ: bổ sung dầu thủy lực phát sinh khi bảo dưỡng" onChange={event=>setSupplementNote(event.target.value)}/></label>:null}
     <fieldset className="plan-choice"><legend>Cách gom phiếu</legend>
      <label><input type="radio" name="grouping" checked={grouping==="group"} onChange={()=>{setGrouping("group");setShowPreview(false);}}/>Theo nhóm phương tiện</label>
      <label><input type="radio" name="grouping" checked={grouping==="equipment"} onChange={()=>{setGrouping("equipment");setShowPreview(false);}}/>Theo từng phương tiện</label>
@@ -71,7 +81,7 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment}:{workspa
      {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({octoberMaintenancePlan.filter(row=>row.group===group).length})</small></label>)}
     </fieldset>
     <div className="plan-source-note"><strong>Hệ thống luôn tách thành hai nguồn:</strong><span>Vật tư kho vật tư</span><span>Nguyên liệu, nhiên liệu bảo dưỡng</span></div>
-    <button type="submit" disabled={!groups.length||!plannedDay}>Tính và xem trước phiếu</button>
+    <button type="submit" disabled={!groups.length||!plannedDay||!documentDay||(voucherKind==="supplemental"&&!supplementNote.trim())}>Tính và xem trước phiếu</button>
    </form>
   </section>
 
@@ -100,17 +110,18 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment}:{workspa
     const sourceVouchers=previews.filter(voucher=>voucher.source===source);
     if(!sourceVouchers.length)return null;
     return <section className="voucher-source" key={source}><h3>{supplySourceLabels[source]} <span>{sourceVouchers.length} phiếu</span></h3><div className="voucher-preview-grid">
-     {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>Phiếu {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày dự kiến: {new Date(`${plannedDay}T00:00:00+07:00`).toLocaleDateString("vi-VN")}</p><p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
+     {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>{voucherKind==="supplemental"?"Phiếu bổ sung":"Phiếu theo kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày kế hoạch: {new Date(`${plannedDay}T00:00:00+07:00`).toLocaleDateString("vi-VN")} · Ngày phiếu lĩnh: {new Date(`${documentDay}T00:00:00+07:00`).toLocaleDateString("vi-VN")}</p>{voucherKind==="supplemental"?<p><strong>Lý do bổ sung:</strong> {supplementNote}</p>:null}<p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
     </div></section>;
    })}
    <div className="plan-next-step"><strong>Kiểm soát trước khi nhập</strong><span>Hệ thống chỉ lưu các dòng đã khớp phương tiện, kèm tên tệp và SHA-256 để nhận biết đúng bản PDF nguồn.</span></div>
    {!savedRun?<section className="plan-confirm"><h3>4. Xác nhận nhập dữ liệu và tạo vụ việc</h3>
     {(!source||unresolved.length>0)?<p className="plan-warning">Chưa thể xác nhận: {!source?"chưa kiểm tra tệp PDF. ":""}{unresolved.length?"còn phương tiện chưa khớp danh mục.":""}</p>:<AsyncForm action={saveMaintenanceRequisition} label="Xác nhận nhập dữ liệu & tạo vụ việc" onSuccess={result=>setSavedRun(result.id??"")}>
-     <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="planned_day" value={plannedDay}/><input type="hidden" name="grouping" value={grouping}/>
+     <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="planned_day" value={plannedDay}/><input type="hidden" name="document_day" value={documentDay}/><input type="hidden" name="voucher_kind" value={voucherKind}/><input type="hidden" name="supplement_note" value={voucherKind==="supplemental"?supplementNote.trim():""}/><input type="hidden" name="grouping" value={grouping}/>
      <input type="hidden" name="rows" value={JSON.stringify(saveRows)}/><input type="hidden" name="source_filename" value={source?.name??""}/><input type="hidden" name="source_sha256" value={source?.sha256??""}/>
-     <div className="plan-form-grid"><label>Công ty<input name="company" defaultValue="CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG" required/></label><label>Đơn vị<input name="department" defaultValue="XÍ NGHIỆP XẾP DỠ TÂN VŨ" required/></label><label>Người nhận<input name="recipient" placeholder="Có thể bổ sung khi in"/></label><label>Kho vật tư<input name="warehouse" defaultValue="Kho vật tư"/></label><label>Kho nguyên liệu, nhiên liệu<input name="consumable_warehouse" defaultValue="Kho nguyên liệu, nhiên liệu"/></label><label>Ngày chứng từ<input type="date" name="document_day" value={plannedDay} readOnly/></label></div>
+     <div className="plan-form-grid"><label>Công ty<input name="company" defaultValue="CÔNG TY CỔ PHẦN CẢNG HẢI PHÒNG" required/></label><label>Đơn vị<input name="department" defaultValue="XÍ NGHIỆP XẾP DỠ TÂN VŨ" required/></label><label>Người nhận<input name="recipient" placeholder="Có thể bổ sung khi in"/></label><label>Kho vật tư<input name="warehouse" defaultValue="Kho vật tư"/></label><label>Kho nguyên liệu, nhiên liệu<input name="consumable_warehouse" defaultValue="Kho nguyên liệu, nhiên liệu"/></label><label>Ngày chứng từ<input type="date" value={documentDay} readOnly/></label></div>
     </AsyncForm>}
    </section>:<p className="plan-ok"><strong>Đã nhập thành công.</strong> Mã lần nhập: <code>{savedRun}</code>. Mở danh sách vụ việc để kiểm tra và in BM.08.06.</p>}
   </section>:null}
  </div>;
 }
+
