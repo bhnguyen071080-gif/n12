@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {context} from "@/lib/supabase";
-import {CaseEntry,MaterialEntry} from "@/components/case-editor";
+import {CaseEntry} from "@/components/case-editor";
 import {WorkspaceSelect} from "@/components/workspace-select";
 import {kindLabels} from "@/lib/followup";
 export const dynamic="force-dynamic";
@@ -19,8 +19,9 @@ export default async function Cases({searchParams}:{searchParams:Promise<{worksp
  const codes=new Map(equipment.data?.map(e=>[e.id,e.code])),states=new Map(followup.data?.map(f=>[f.case_id,f.return_status]));
  const rows=orders.data??[],canCatalogue=membership.data?.some(r=>r.role==="CAN_BO_VAT_TU"||r.role==="TRUONG_BO_PHAN_KY_THUAT");
  const canCreate=membership.data?.some(r=>r.role==="KY_THUAT_VIEN"||r.role==="TRUONG_BO_PHAN_KY_THUAT");
- return <><h1>Vụ việc & theo dõi vật tư</h1><WorkspaceSelect workspaces={c.workspaces} selected={w}/><p>Mỗi vụ việc nhiều hạng mục/vật tư, một trạng thái trả phiếu chung. Không lập phiếu hay ghi sổ kho.</p>
+ return <><h1>Vụ việc & lý lịch phương tiện</h1><WorkspaceSelect workspaces={c.workspaces} selected={w}/><p>Tạo vụ việc kỹ thuật tại đây. Bổ sung hoặc sửa mã vật tư thực hiện riêng trong Danh mục vật tư để tránh trùng và sai tên.</p>
  <section className="panel"><h2>500 vụ việc gần nhất</h2><div className="overflow-x-auto"><table><thead><tr><th>Mã vụ việc</th><th>Phương tiện</th><th>Loại</th><th>Nội dung</th><th>Trả phiếu</th></tr></thead><tbody>{rows?.map(r=><tr key={r.id}>
  <td><Link href={"/cases/"+r.id}>{r.code}</Link></td><td>{codes.get(r.equipment_id)}</td><td>{kindLabels[r.kind]}</td><td>{r.summary}</td><td>{states.get(r.id)==="completed"?"Đã hoàn tất":"Chưa hoàn tất / chưa phát sinh"}</td></tr>)}</tbody></table></div></section>
- <div className="grid gap-5 lg:grid-cols-2">{canCreate&&<CaseEntry equipment={equipment.data??[]}/ >}{canCatalogue&&<MaterialEntry workspace={w}/>}</div></>;
+ <div className="flex flex-wrap gap-4"><Link className="button button-secondary" href={"/history?workspace="+w}>Chiết xuất lý lịch phương tiện</Link>{canCatalogue&&<Link className="button button-secondary" href={"/materials?workspace="+w}>Mở danh mục vật tư</Link>}</div>
+ {canCreate&&<CaseEntry equipment={equipment.data??[]}/ >}</>;
 }

@@ -317,3 +317,29 @@ p { margin-bottom:.65rem; }
 }
 @media print { .sidebar,.topbar,.app-footer,.skip-link,.quick-links,.hero-art,nav,button,form { display:none!important; } body { background:white; } .app-shell { display:block; } .app-main { padding:0; } .panel { break-inside:avoid; box-shadow:none; background:white; } .dashboard-hero { background:white; color:var(--navy); } .dashboard-hero p:not(.eyebrow) { color:var(--navy); } }
 
+
+
+.requisition-type-picker h1 { margin-bottom:1rem; }
+.requisition-filters,.history-filters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1rem; align-items:end; }
+.requisition-filters button,.history-filters button { min-height:46px; }
+.plan-confirm { margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--line); }
+.history-screen-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:1.2rem; }
+.history-screen-heading h1 { max-width:1000px; font-size:1.45rem; line-height:1.35; }
+.history-sheet header { text-align:center; margin-bottom:1rem; }
+.history-table { min-width:900px; }
+.history-table th:first-child { width:130px; }
+.history-table th:last-child { width:240px; }
+.history-table small { display:block; color:var(--muted); margin-bottom:.25rem; }
+.history-table p { margin:0; white-space:pre-wrap; }
+.signature-space { display:block; min-height:70px; }
+.alert-normal td:first-child { border-left:5px solid #27935b; }
+.alert-due_soon td:first-child { border-left:5px solid #d19a20; }
+.alert-overdue td:first-child { border-left:5px solid #c44343; }
+.alert-incomplete td:first-child { border-left:5px solid #697783; }
+.report-bars { display:grid; gap:.65rem; margin-top:1.2rem; }
+.report-bar-row { display:grid; grid-template-columns:90px 1fr 70px; gap:.75rem; align-items:center; }
+.report-bar-row>span { display:flex; height:16px; overflow:hidden; border-radius:8px; background:#edf2f5; }
+.report-bar-row i { display:block; height:100%; }
+.bar-repair { background:#d87832; }.bar-maintenance { background:#2786a8; }
+@media(max-width:900px) { .requisition-filters,.history-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } .history-screen-heading { display:block; } }
+@media(max-width:600px) { .requisition-filters,.history-filters { grid-template-columns:1fr; } }

@@ -1,7 +1,7 @@
 "use client";
 import {useRouter} from "next/navigation";
 import {createTrackingCase,saveTrackingItem,addTrackingMaterial,updateTrackingMaterial,setMaterialReturn,saveMaterialCatalogue} from "@/app/followup-actions";
-import {kinds,kindLabels,progressOptions,progressNames,defaults,supplyLabels,type WorkItem} from "@/lib/followup";
+import {kinds,kindLabels,progressOptions,progressNames,defaults,standardWorkContents,supplyLabels,type WorkItem} from "@/lib/followup";
 import {formatNumber,localInputNow} from "@/lib/domain";
 import {AsyncForm} from "./async-form";
 type Material={id:string;code:string;name:string;unit:string};
@@ -9,18 +9,20 @@ type Usage={id:string;material_id:string;quantity:number;supply_state:"planned"|
 type Followup={case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number};
 export function CaseEntry({equipment}:{equipment:{id:string;code:string}[]}){
  const router=useRouter();
- return <section className="panel"><h2>Tạo vụ việc</h2><p>Mã tự sinh theo thời điểm nhập. Ngày thực hiện bên dưới là ngày công việc ghi trong lý lịch.</p>
+ return <section className="panel"><h2>Tạo vụ việc</h2><p>Mã tự sinh theo thời điểm nhập. Chọn nội dung chuẩn trước, chỉ ghi phần chi tiết riêng của phương tiện để tránh một công việc có nhiều cách viết.</p>
  <AsyncForm action={createTrackingCase} onSuccess={r=>{if(r.id)router.push("/cases/"+r.id);}} label="Tạo vụ việc">
  <label>Phương tiện<select name="equipment" required>{equipment.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>
  <label>Loại việc<select name="kind">{kinds.map(k=><option key={k} value={k}>{kindLabels[k]}</option>)}</select></label>
  <label>Ngày thực hiện<input name="performed_on" type="date" defaultValue={localInputNow().slice(0,10)} required/></label>
- <label>Nội dung vụ việc<textarea name="summary" required maxLength={8000} rows={3}/></label></AsyncForm></section>;
+ <label>Nội dung công việc chuẩn<select name="standard_summary" required><option value="">Chọn nội dung chuẩn</option>{kinds.map(kind=><optgroup key={kind} label={kindLabels[kind]}>{standardWorkContents[kind].map(value=><option key={value} value={value}>{value}</option>)}</optgroup>)}</select></label>
+ <label>Chi tiết bổ sung<textarea name="summary_detail" maxLength={7600} rows={3} placeholder="Ví dụ: thay lọc dầu động cơ số 1; không lặp lại tên công việc chuẩn"/></label></AsyncForm></section>;
 }
 export function ItemEditor({order,item}:{order:string;item?:WorkItem}){
  const router=useRouter();
  return <AsyncForm action={saveTrackingItem} onSuccess={()=>router.refresh()} label={item?"Lưu nội dung & tiến độ":"Thêm hạng mục"}>
  <input name="order" type="hidden" value={order}/><input name="item" type="hidden" value={item?.id??""}/><input name="version" type="hidden" value={item?.version_no??""}/>
  <label>Ngày thực hiện ghi trong lý lịch<input name="performed_on" type="date" defaultValue={item?.performed_on??""}/></label>
+ <label>Thời gian thực hiện hạng mục (phút)<input name="work_duration_minutes" type="number" min="0" max="43200" step="1" defaultValue={item?.work_duration_minutes??0} required/></label>
  <div className="grid gap-3 md:grid-cols-2">{([["symptom","Hiện tượng"],["root_cause","Nguyên nhân"],["solution_plan","Phương án"],["execution_result","Kết quả"]] as const).map(([key,label])=>
  <label key={key}>{label}<textarea name={key} defaultValue={item?.[key]??""} rows={3} maxLength={8000}/></label>)}</div>
  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(Object.keys(progressOptions) as (keyof typeof progressOptions)[]).map(key=>
