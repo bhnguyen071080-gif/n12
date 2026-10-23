@@ -1,21 +1,11 @@
-# TV-EAM — handoff, 22/10/2026 (UTC+7)
+# TV-EAM handoff — 23/10/2026 (UTC+7)
 
-The active app branch is `codex/tv-eam-phase3`; `main` still contains only the initial README. PR #3 fixed immutable font downloads and calendar-date display and was merged as `88da793c1ac38dbc1807b87e3391437bb8469069`.
+Active branch: `codex/tv-eam-phase3`. PR #4 reconciles the pending print workflow with Phase 3 through `59b5e6ba38553e52d0dcc1de33fdbc4deef4a6d7`, preserving the latest repair/maintenance split, source-PDF metadata, separate document date and supplemental shortfall form.
 
-PR #4 implements `/requisitions` saving for the existing October 2026 source plan:
-- Explicit workspace-catalog mapping, review and confirmation before saving.
-- Immutable versioned snapshots, idempotent retries and one pending maintenance case per equipment/planned day. Regrouping reuses cases.
-- Separate warehouse/consumables PDFs, grouped by equipment, group or day, using BM.08.06 with two A5 copies per A4 sheet.
-- A saved-plan detail page with source allocations and real case links. Actual issue, price, completion and signatures are not inferred. Planning does not create stock or material-usage transactions.
-- Existing case-document source validation remains separate and unchanged.
+The live database had the original immutable-plan guard, while the new v2/v3 wrappers tried to update source/date metadata after inserting a plan. The initial insert also omitted the newly required document_day. The additive `maintenance_requisition_atomic_save` migration consolidates metadata into a single initial insert, preserves pending-case semantics, validates supplemental materials against the workspace catalog, and fingerprints source metadata for safe retries. Legacy save endpoints delegate to the same implementation. Existing data is not rewritten.
 
-Verification at initial feature commit `eef040ed63c115b5af03f5a6e9b4cdb0c83cb9ca`:
-- Web Actions run `39678473489`: 71 unit tests, 16 browser tests, strict TypeScript, dependency audit and production build passed.
-- Database Actions run `39678473741`: full PostgreSQL17 regression suite passed, including workspace isolation, role boundaries, immutable snapshots, retries, case reuse and atomic rollback.
-- Both grouped PDF sources rendered; Vietnamese glyphs and A4 two-copy layout visually checked with synthetic data.
-- Additive `maintenance_requisition_runs` migration applied to the connected database. A rollback-only smoke test exercised the RPC under an existing authenticated role; retry and pending-state checks passed. Subsequent read confirmed zero saved test plans and zero residual test cases.
-- New tables have RLS; anonymous execution and direct authenticated updates are denied. The two private registries intentionally expose no policies/grants. The pre-existing leaked-password-protection warning remains an account configuration item.
+Saved plans have a dedicated detail page and BM.08.06 PDF endpoint. Grouped plan documents retain all per-equipment allocations and never impersonate a single-case document. The latest form links to the saved detail, freezes after success, explicitly confirms source/quantities, and formats both dates independently of device time zone. Selecting a source PDF records its filename/hash; it does not extract the file contents. The material list remains the supplied October 2026 plan plus explicitly selected supplemental shortfalls.
 
-Deployment follows the existing Netlify integration. The PR #4 deploy preview built successfully. Updating Phase 3 updates the existing PR #2 preview. Netlify Team Protection requires the user's browser login for direct authenticated end-to-end verification; do not claim that verification from CI alone.
+Local strict TypeScript and 72 unit tests passed. GitHub CI validates the integrated migration on disposable PostgreSQL17, including v3 date/source persistence, unchanged retries, source-fingerprint conflicts, catalog validation, case reuse, RLS and atomic rollback. Browser coverage mounts the actual current form in UTC and Vietnam time zones, checks date fields and failed-response retry behavior, and verifies the saved-plan print link.
 
-Scope remains the supplied October 2026 source plan. Arbitrary-month source import, editing saved versions and posted warehouse issues are separate work. Never auto-import the source into real operational data or apply test fixtures to the connected database. No private project identifiers, credentials or operational records belong in this public repository.
+Before claiming completion, check the latest PR #4 CI, apply only the new additive migration to the connected database, run a rollback-only authenticated smoke check, merge the verified head, and check Netlify's status for the resulting Phase 3 commit. Never apply fixture SQL to the connected database. No private project identifiers, credentials or operational records belong in this public repository.

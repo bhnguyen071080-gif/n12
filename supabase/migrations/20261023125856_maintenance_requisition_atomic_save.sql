@@ -1,61 +1,48 @@
 begin;
--- Separate immutable planning snapshots: no warehouse issue or maintenance
--- completion is inferred by creating a requisition.
-create table public.maintenance_requisition_runs (
- id uuid primary key default gen_random_uuid(),workspace_id uuid not null references public.workspaces(id),
- planned_day date not null,grouping_mode text not null check(grouping_mode in ('equipment','group','date')),
- snapshot jsonb not null,created_by uuid not null references auth.users(id),created_at timestamptz not null default now(),
- fingerprint text not null,unique(workspace_id,created_by,fingerprint)
-);
-create index maintenance_requisition_runs_workspace_time on public.maintenance_requisition_runs(workspace_id,created_at desc);
-create index maintenance_requisition_runs_actor on public.maintenance_requisition_runs(created_by);
-create table private.maintenance_requisition_cases (
- equipment_id uuid not null references public.equipment(id),planned_day date not null,
- case_id uuid not null unique references public.work_cases(id),primary key(equipment_id,planned_day)
-);
-create table private.maintenance_requisition_requests (
- request_key uuid primary key,actor_id uuid not null references auth.users(id),fingerprint text not null,
- run_id uuid not null references public.maintenance_requisition_runs(id)
-);
-create index maintenance_requisition_requests_actor on private.maintenance_requisition_requests(actor_id);
-create index maintenance_requisition_requests_run on private.maintenance_requisition_requests(run_id);
-alter table public.maintenance_requisition_runs enable row level security;
-alter table private.maintenance_requisition_cases enable row level security;
-alter table private.maintenance_requisition_requests enable row level security;
-revoke all on public.maintenance_requisition_runs from public,anon,authenticated;
-revoke all on private.maintenance_requisition_cases,private.maintenance_requisition_requests from public,anon,authenticated;
-grant select on public.maintenance_requisition_runs to authenticated;
-create policy maintenance_requisition_read on public.maintenance_requisition_runs for select to authenticated
- using(private.has_role(workspace_id,array['KY_THUAT_VIEN','TRUONG_BO_PHAN_KY_THUAT','CAN_BO_VAT_TU']::public.eam_role[]));
-
-create function private.guard_requisition_snapshot() returns trigger language plpgsql set search_path='' as $$
+-- Reconcile fresh installs with the deployed immutable-plan schema. All metadata
+-- is now included in the initial insert; no wrapper mutates a saved snapshot.
+create index if not exists maintenance_requisition_runs_workspace_time on public.maintenance_requisition_runs(workspace_id,created_at desc);
+create index if not exists maintenance_requisition_runs_actor on public.maintenance_requisition_runs(created_by);
+create index if not exists maintenance_requisition_requests_actor on private.maintenance_requisition_requests(actor_id);
+create index if not exists maintenance_requisition_requests_run on private.maintenance_requisition_requests(run_id);
+create or replace function private.guard_requisition_snapshot() returns trigger language plpgsql set search_path='' as $$
 begin raise exception using errcode='42501',message='Kế hoạch đã lưu là bất biến; hãy lưu phiên bản mới'; end; $$;
 revoke all on function private.guard_requisition_snapshot() from public,anon,authenticated;
+drop trigger if exists immutable_snapshot on public.maintenance_requisition_runs;
 create trigger immutable_snapshot before update or delete on public.maintenance_requisition_runs for each row execute function private.guard_requisition_snapshot();
+drop trigger if exists audit_row on public.maintenance_requisition_runs;
 create trigger audit_row after insert on public.maintenance_requisition_runs for each row execute function private.audit_change();
-
-create function private.save_maintenance_requisition(p_workspace uuid,p_day date,p_grouping text,p_rows jsonb,p_print jsonb,p_key uuid)
+create or replace function private.save_maintenance_requisition_v3(p_workspace uuid,p_planned_day date,p_document_day date,p_voucher_kind text,p_supplement_note text,p_grouping text,p_rows jsonb,p_print jsonb,p_source_filename text,p_source_sha256 text,p_key uuid)
 returns uuid language plpgsql security definer set search_path='' as $$
 declare fp text; prior private.maintenance_requisition_requests; rid uuid; r jsonb; m jsonb; e public.equipment;
- cid uuid; oid uuid; summary_text text; saved_rows jsonb:='[]'; seen uuid[]:='{}'; amount numeric; k text; v jsonb;
+ cid uuid; oid uuid; summary_text text; saved_rows jsonb:='[]'; seen uuid[]:='{}'; amount numeric; k text; v jsonb; clean_note text; print_data jsonb; catalog public.materials;
 begin
  if auth.uid() is null or not private.has_role(p_workspace,array['KY_THUAT_VIEN','TRUONG_BO_PHAN_KY_THUAT']::public.eam_role[]) then
   raise exception using errcode='42501',message='Không có quyền lập kế hoạch'; end if;
- if p_key is null or p_day is null or p_day<date '2000-01-01' or p_day>date '2100-12-31'
+ clean_note:=nullif(btrim(p_supplement_note),'');
+ if p_document_day is null or p_document_day not between date '2000-01-01' and date '2100-12-31'
+ or p_voucher_kind is null or p_voucher_kind not in ('planned','supplemental')
+ or (p_voucher_kind='planned' and clean_note is not null)
+ or (p_voucher_kind='supplemental' and (clean_note is null or length(clean_note) not between 3 and 500))
+ or (p_source_filename is null)<>(p_source_sha256 is null)
+ or (p_source_filename is not null and (length(btrim(p_source_filename)) not between 1 and 255 or p_source_filename like '%/%' or position(chr(92) in p_source_filename)>0 or p_source_filename !~* '[.]pdf$' or p_source_sha256 !~ '^[a-f0-9]{64}$')) then
+  raise exception using errcode='22023',message='Sai ngày, loại phiếu hoặc tệp nguồn'; end if;
+ if p_key is null or p_planned_day is null or p_planned_day<date '2000-01-01' or p_planned_day>date '2100-12-31'
  or p_grouping is null or p_grouping not in ('equipment','group','date') or p_rows is null or jsonb_typeof(p_rows)<>'array'
  or jsonb_array_length(p_rows) not between 1 and 60 or octet_length(p_rows::text)>400000
  or p_print is null or jsonb_typeof(p_print)<>'object' then
   raise exception using errcode='22023',message='Sai dữ liệu kế hoạch'; end if;
- if (p_print-array['company','department','recipient','warehouse','consumableWarehouse','documentDay'])<>'{}'
+ if (p_print-array['company','department','recipient','warehouse','consumableWarehouse','documentDay','voucherKind','supplementNote'])<>'{}'
  or not p_print ?& array['company','department','recipient','warehouse','consumableWarehouse','documentDay'] then
   raise exception using errcode='22023',message='Sai thông tin in'; end if;
  for k,v in select * from jsonb_each(p_print) loop
-  if jsonb_typeof(v)<>'string' or length(v#>>'{}')>200 or (v#>>'{}') ~ '[[:cntrl:]]' then raise exception using errcode='22023',message='Sai thông tin in'; end if;
+  if jsonb_typeof(v)<>'string' or length(v#>>'{}')>case when k='supplementNote' then 500 else 200 end or (v#>>'{}') ~ '[[:cntrl:]]' then raise exception using errcode='22023',message='Sai thông tin in'; end if;
  end loop;
  if length(btrim(p_print->>'company'))=0 or length(btrim(p_print->>'department'))=0 or length(p_print->>'recipient')>100
  or p_print->>'documentDay' !~ '^\d{4}-\d{2}-\d{2}$' or (p_print->>'documentDay')::date not between date '2000-01-01' and date '2100-12-31' then
   raise exception using errcode='22023',message='Thiếu thông tin in'; end if;
- fp:=encode(sha256(convert_to(jsonb_build_array(p_workspace,p_day,p_grouping,p_rows,p_print)::text,'UTF8')),'hex');
+ print_data:=(p_print-array['documentDay','voucherKind','supplementNote'])||jsonb_build_object('documentDay',p_document_day::text,'voucherKind',p_voucher_kind,'supplementNote',coalesce(clean_note,''));
+ fp:=encode(sha256(convert_to(jsonb_build_array(p_workspace,p_planned_day,p_grouping,p_rows,print_data,p_source_filename,p_source_sha256)::text,'UTF8')),'hex');
  -- Serialize a workspace batch; individual equipment locks follow in stable order.
  perform 1 from public.workspaces where id=p_workspace for update;
  select * into prior from private.maintenance_requisition_requests where request_key=p_key;
@@ -92,18 +79,24 @@ begin
    for k,v in select * from jsonb_each(m) where key<>'quantity' loop
     if jsonb_typeof(v)<>'string' or (v#>>'{}') ~ '[[:cntrl:]]' then raise exception using errcode='22023',message='Sai trường vật tư'; end if;
    end loop;
+   if p_voucher_kind='supplemental' then
+    if m->>'key' !~ '^catalog:[a-f0-9-]{36}:(warehouse|maintenance_consumable)$' then raise exception using errcode='22023',message='Vật tư bổ sung phải chọn từ danh mục'; end if;
+    select * into catalog from public.materials where id=split_part(m->>'key',':',2)::uuid and workspace_id=p_workspace;
+    if not found or catalog.code is distinct from m->>'catalogueCode' or catalog.name is distinct from m->>'name' or catalog.unit is distinct from m->>'unit' or split_part(m->>'key',':',3) is distinct from m->>'source' then
+     raise exception using errcode='22023',message='Vật tư bổ sung không khớp danh mục'; end if;
+   end if;
    amount:=(m->>'quantity')::numeric;
    if amount<=0 or amount>100000 or amount<>round(amount,3) then raise exception using errcode='22023',message='Sai số lượng'; end if;
   end loop;
-  select case_id into cid from private.maintenance_requisition_cases where equipment_id=e.id and planned_day=p_day;
+  select case_id into cid from private.maintenance_requisition_cases where equipment_id=e.id and planned_day=p_planned_day;
   if cid is null then
-   summary_text:='Kế hoạch bảo dưỡng '||p_day::text||' · '||(r->>'maintenanceLevel');
+   summary_text:='Kế hoạch bảo dưỡng '||p_planned_day::text||' · '||(r->>'maintenanceLevel');
    cid:=private.create_case(e.id,'maintenance',clock_timestamp(),null,summary_text,gen_random_uuid());
    update public.work_cases set tracking_only=true where id=cid;
    insert into public.repair_orders(equipment_id,code,title,case_id) values(e.id,'AUTO',summary_text,cid) returning id into oid;
    insert into public.repair_work_items(repair_order_id,item_no,symptom,solution_plan) values(oid,1,summary_text,'Theo kế hoạch đã lưu; chưa xác nhận thực hiện');
    insert into public.case_material_followups(case_id) values(cid);
-   insert into private.maintenance_requisition_cases values(e.id,p_day,cid);
+   insert into private.maintenance_requisition_cases values(e.id,p_planned_day,cid);
   end if;
   saved_rows:=saved_rows||jsonb_build_array(r||jsonb_build_object('equipmentName',e.name,'caseId',cid,'caseCode',(select code from public.work_cases where id=cid)));
  end loop;
@@ -111,13 +104,21 @@ begin
   group by y.material->>'key',y.material->>'unit',coalesce(y.material->>'catalogueCode',''),y.material->>'source'
   having count(distinct y.material->>'name')>1 or sum((y.material->>'quantity')::numeric)>10000000) then
   raise exception using errcode='22023',message='Danh điểm hoặc tổng số lượng không nhất quán'; end if;
- insert into public.maintenance_requisition_runs(workspace_id,planned_day,grouping_mode,snapshot,created_by,fingerprint)
- values(p_workspace,p_day,p_grouping,jsonb_build_object('version',1,'rows',saved_rows,'print',p_print),auth.uid(),fp) returning id into rid;
+ insert into public.maintenance_requisition_runs(workspace_id,planned_day,grouping_mode,snapshot,created_by,fingerprint,document_day,voucher_kind,supplement_note,source_filename,source_sha256)
+ values(p_workspace,p_planned_day,p_grouping,jsonb_build_object('version',1,'rows',saved_rows,'print',print_data),auth.uid(),fp,p_document_day,p_voucher_kind,clean_note,p_source_filename,p_source_sha256) returning id into rid;
  insert into private.maintenance_requisition_requests values(p_key,auth.uid(),fp,rid);
  return rid;
 end; $$;
-create function public.save_maintenance_requisition(p_workspace uuid,p_day date,p_grouping text,p_rows jsonb,p_print jsonb,p_key uuid)
-returns uuid language sql security invoker set search_path='' as $$select private.save_maintenance_requisition(p_workspace,p_day,p_grouping,p_rows,p_print,p_key)$$;
-revoke all on function private.save_maintenance_requisition(uuid,date,text,jsonb,jsonb,uuid),public.save_maintenance_requisition(uuid,date,text,jsonb,jsonb,uuid) from public,anon;
-grant execute on function private.save_maintenance_requisition(uuid,date,text,jsonb,jsonb,uuid),public.save_maintenance_requisition(uuid,date,text,jsonb,jsonb,uuid) to authenticated;
+
+-- Backwards-compatible endpoints use the same atomic implementation.
+create or replace function private.save_maintenance_requisition(p_workspace uuid,p_day date,p_grouping text,p_rows jsonb,p_print jsonb,p_key uuid)
+returns uuid language sql security definer set search_path='' as $$
+ select private.save_maintenance_requisition_v3(p_workspace,p_day,(p_print->>'documentDay')::date,'planned',null,p_grouping,p_rows,p_print,null,null,p_key)
+$$;
+create or replace function private.save_maintenance_requisition_v2(p_workspace uuid,p_day date,p_grouping text,p_rows jsonb,p_print jsonb,p_source_filename text,p_source_sha256 text,p_key uuid)
+returns uuid language sql security definer set search_path='' as $$
+ select private.save_maintenance_requisition_v3(p_workspace,p_day,(p_print->>'documentDay')::date,'planned',null,p_grouping,p_rows,p_print,p_source_filename,p_source_sha256,p_key)
+$$;
+revoke all on function private.save_maintenance_requisition_v3(uuid,date,date,text,text,text,jsonb,jsonb,text,text,uuid) from public,anon;
+grant execute on function private.save_maintenance_requisition_v3(uuid,date,date,text,text,text,jsonb,jsonb,text,text,uuid) to authenticated;
 commit;

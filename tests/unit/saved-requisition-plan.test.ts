@@ -38,3 +38,8 @@ test("full 54-equipment plan renders both real BM0806 sources as A4 two-copy PDF
   if(process.env.DOCUMENT_QA_DIR){mkdirSync(process.env.DOCUMENT_QA_DIR,{recursive:true});writeFileSync(join(process.env.DOCUMENT_QA_DIR,`plan-${v.source}.pdf`),bytes);}
  }
 });
+test("supplemental PDF uses its actual document date and explicit shortfall description",()=>{
+ const p=plan();p.snapshot.print={...p.snapshot.print,documentDay:"2026-11-02",voucherKind:"supplemental",supplementNote:"Thiếu thêm khi tháo kiểm tra"};
+ p.snapshot.rows=[{...p.snapshot.rows[0],materials:[{key:"extra",name:"Lọc bổ sung",unit:"chiếc",quantity:2,source:"warehouse"}]}];
+ const d=planVoucherPayload(p,savedPlanVouchers(p)[0]);assert.equal(d.document_at,"2026-11-02T08:00");assert.match(d.reason,/Thiếu thêm khi tháo kiểm tra/);assert.equal(d.lines.length,1);assert.equal(d.lines[0].requested,2);assert.equal(d.lines[0].issued,null);
+});

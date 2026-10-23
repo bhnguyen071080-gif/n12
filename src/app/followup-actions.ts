@@ -4,22 +4,26 @@ import {revalidatePath} from "next/cache";
 import {session} from "@/lib/supabase";
 import {actualTimestamp,uuid} from "@/lib/domain";
 import {actualDay} from "@/lib/monthly-hours";
-import {kinds,itemPayload} from "@/lib/followup";
+import {kinds,itemPayload,standardWorkContents} from "@/lib/followup";
 import type {ActionResult} from "./actions";
 const field=(data:FormData,key:string)=>String(data.get(key)??"");
 const fail=(code?:string):ActionResult=>({ok:false,message:code==="40001"?"Dữ liệu đã thay đổi; tải lại trang trước khi lưu.":"Chưa lưu được. Kiểm tra quyền, ngày thực hiện và trạng thái hồ sơ."});
 function refresh(){for(const path of ["/cases","/equipment","/life","/reports","/"])revalidatePath(path,"layout");}
 export async function createTrackingCase(data:FormData):Promise<ActionResult>{
  const {client}=await session();
- try{const r=await client.rpc("create_tracking_case",{p_equipment:uuid.parse(field(data,"equipment")),p_kind:z.enum(kinds).parse(field(data,"kind")),
- p_day:actualDay(field(data,"performed_on")),p_summary:z.string().trim().min(1).max(8000).parse(field(data,"summary")),p_key:uuid.parse(field(data,"request_key"))});
+ try{const kind=z.enum(kinds).parse(field(data,"kind")),standard=z.string().trim().min(1).max(300).parse(field(data,"standard_summary"));
+ if(!(standardWorkContents[kind] as readonly string[]).includes(standard))return {ok:false,message:"Nội dung chuẩn không phù hợp loại việc đã chọn."};
+ const detail=z.string().trim().max(7600).parse(field(data,"summary_detail"));
+ const summary=detail?standard+" — "+detail:standard;
+ const r=await client.rpc("create_tracking_case",{p_equipment:uuid.parse(field(data,"equipment")),p_kind:kind,
+ p_day:actualDay(field(data,"performed_on")),p_summary:summary,p_key:uuid.parse(field(data,"request_key"))});
  if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã tạo vụ việc; mã theo thời điểm nhập, ngày thực hiện lưu riêng.",id:r.data};}catch{return fail();}
 }
 export async function saveTrackingItem(data:FormData):Promise<ActionResult>{
  const {client}=await session();
  try{const payload:Record<string,string|null>={};for(const key of Object.keys(itemPayload.shape))payload[key]=key==="performed_on"?(field(data,key)||null):field(data,key);
- const id=field(data,"item"),r=await client.rpc("save_tracking_item",{p_order:uuid.parse(field(data,"order")),p_item:id?uuid.parse(id):null,
- p_version:id?z.coerce.number().int().positive().parse(field(data,"version")):null,p_data:itemPayload.parse(payload),p_key:uuid.parse(field(data,"request_key"))});
+ const id=field(data,"item"),r=await client.rpc("save_tracking_item_v2",{p_order:uuid.parse(field(data,"order")),p_item:id?uuid.parse(id):null,
+ p_version:id?z.coerce.number().int().positive().parse(field(data,"version")):null,p_data:itemPayload.parse(payload),p_minutes:z.coerce.number().int().min(0).max(43200).parse(field(data,"work_duration_minutes")),p_key:uuid.parse(field(data,"request_key"))});
  if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật hạng mục và lý lịch từ cùng dữ liệu.",id:r.data};}catch{return fail();}
 }
 export async function addTrackingMaterial(data:FormData):Promise<ActionResult>{

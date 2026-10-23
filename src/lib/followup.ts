@@ -3,6 +3,12 @@ import {numeric,uuid} from "./domain";
 import {actualDay} from "./monthly-hours";
 export const kinds=["repair","maintenance","cleaning","inspection"] as const;
 export const kindLabels={repair:"Sửa chữa",maintenance:"Bảo dưỡng",cleaning:"Vệ sinh",inspection:"Kiểm tra"} as const;
+export const standardWorkContents={
+ repair:["Sửa chữa hư hỏng cơ khí","Sửa chữa hệ thống điện/PLC","Sửa chữa hệ thống thủy lực","Thay thế vật tư, phụ tùng","Cải tạo bộ phận/cơ cấu"],
+ maintenance:["Bảo dưỡng cấp I theo giờ","Bảo dưỡng cấp I theo tháng","Bảo dưỡng cấp II","Bôi trơn và kiểm tra định kỳ","Thay vật tư định kỳ"],
+ cleaning:["Vệ sinh phương tiện và khu vực máy","Vệ sinh tủ điện và thiết bị điều khiển"],
+ inspection:["Kiểm tra đầu ca","Kiểm tra an toàn máy trục","Kiểm tra bất thường theo phản ánh"],
+} as const;
 export const progressOptions={
  basis_status:{incident_code_assigned:"Đã có mã vụ việc",minutes_in_progress:"Đang lập biên bản",no_basis:"Chưa có căn cứ"},
  material_status:{stock_available:"Đủ vật tư kho",borrowed:"Đang vay vật tư",procurement_pending:"Chờ mua sắm",not_required:"Không dùng vật tư"},
@@ -21,7 +27,7 @@ export const itemPayload=z.object({
  acceptance_status:z.enum(["accepted","pending","rework_required"]),dossier_status:z.enum(["closed","missing_reimbursement_documents","collecting"])
 }).strict();
 // Database reads may include system columns; keep the separate write payload strict.
-export const itemSchema=itemPayload.extend({id:uuid,repair_order_id:uuid,item_no:z.number().int(),version_no:z.number().int()}).strip();
+export const itemSchema=itemPayload.extend({id:uuid,repair_order_id:uuid,item_no:z.number().int(),version_no:z.number().int(),work_duration_minutes:z.number().int().nonnegative().default(0)}).strip();
 export type WorkItem=z.infer<typeof itemSchema>;
 export const lifeReportSchema=z.object({
  material_id:uuid,material_code:z.string(),material_name:z.string(),unit:z.string(),usage_id:uuid,case_id:uuid.nullable(),

@@ -10,12 +10,12 @@ import {cargoUnitLabels} from "@/lib/table-import";
 import {canImportTable} from "@/lib/import-placement";
 import {TableImportPanel} from "@/components/table-import-panel";
 export const dynamic="force-dynamic";
-export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string;import?:string}>}){
+export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string;group?:string;import?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
  const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours";
  const w=c.workspace.id;let month:string|undefined;try{month=p.month?monthStart(p.month):undefined;}catch{return <p>Tháng không hợp lệ.</p>;}
  const [eq,cargo,metrics,other,memberships]=await Promise.all([
- c.client.from("equipment").select("id,code,initial_hours,accumulated_hours,hours_start_month").eq("workspace_id",w).order("code"),
+ c.client.from("equipment").select("id,code,category,initial_hours,accumulated_hours,hours_start_month").eq("workspace_id",w).order("code"),
  c.client.from("cargo_types").select("code,name,unit").eq("workspace_id",w),
  c.client.from("vw_monthly_activity").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
  c.client.from("vw_other_cargo_monthly").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
@@ -34,6 +34,15 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
   if(r.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(r.data);
  }
  const summary=summarizeHours(hours);
+ let overview:{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}[]=[];
+ const selectedGroup=p.group??"";
+ if(kind==="hours"&&selected){
+  const bounds=inclusiveRange(from,to),activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).limit(5000);
+  if(activity.error)throw new Error("Không đọc được bảng tổng thể.");const byId=new Map(eq.data?.map(row=>[row.id,row]));
+  const grouped=new Map<string,{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}>();
+  for(const row of activity.data??[]){const item=byId.get(row.equipment_id);if(!item||(selectedGroup&&item.category!==selectedGroup))continue;const prior=grouped.get(row.equipment_id)??{equipment_id:row.equipment_id,equipment_code:row.equipment_code,category:item.category,hours:0,boxes:0,months:0};prior.hours+=Number(row.operating_hours??0);prior.boxes+=Number(row.boxes??0);if(row.operating_hours!==null)prior.months+=1;grouped.set(row.equipment_id,prior);}
+  overview=[...grouped.values()].sort((a,b)=>a.equipment_code.localeCompare(b.equipment_code,"vi"));
+ }
  const rows=(metrics.data??[]).filter(r=>(!month||r.month===month) && (kind==="hours"?r.operating_hours!==null:r.boxes!==null));
  const otherRows=(other.data??[]).filter(r=>!month||r.month===month);
  return <><h1>{kind==="hours"?"Giám sát giờ hoạt động":kind==="container"?"Sản lượng container hàng tháng":"Sản lượng hàng khác hàng tháng"}</h1>
@@ -51,6 +60,11 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
    <p className="text-xl font-bold">{selected.code} · {monthLabel(from)} → {monthLabel(to)}: {formatNumber(summary.total)} h đã ghi nhận</p>
    {summary.missing.length>0&&<p role="alert" className="text-red-800">Thiếu {summary.missing.length} tháng: {summary.missing.map(monthLabel).join(", ")}. Tổng chưa đầy đủ; không coi tháng thiếu là 0 giờ.</p>}
    <div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng–năm</th><th>Giờ hoạt động</th></tr></thead><tbody>{hours.map(r=><tr key={r.month}><td>{selected.code}</td><td>{monthLabel(r.month)}</td><td>{r.operating_hours===null?"Thiếu dữ liệu":formatNumber(r.operating_hours)+" h"}</td></tr>)}</tbody></table></div></section>}
+  {kind==="hours"&&selected&&<section className="panel"><div className="section-heading"><div><p className="eyebrow">BẢNG TỔNG THỂ</p><h2>Theo dõi theo nhóm hoặc tất cả phương tiện</h2></div><span className="count-chip">{overview.length} phương tiện</span></div>
+   <form method="get" className="flex flex-wrap items-end gap-4"><input type="hidden" name="workspace" value={w}/><input type="hidden" name="kind" value="hours"/><input type="hidden" name="equipment" value={selected.id}/><input type="hidden" name="from" value={from}/><input type="hidden" name="to" value={to}/><label>Nhóm phương tiện<select name="group" defaultValue={selectedGroup}><option value="">Tất cả phương tiện</option>{[...new Set((eq.data??[]).map(row=>row.category))].map(category=><option key={category} value={category}>{category}</option>)}</select></label><button type="submit">Xác nhận nhóm</button></form>
+   <div className="flex flex-wrap gap-4"><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"xlsx"})}>Xuất Excel .xlsx</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"pdf"})}>Xuất PDF</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"csv"})}>Tải CSV để mở bằng Google Sheets</Link></div>
+   <div className="overflow-x-auto"><table><thead><tr><th>Nhóm</th><th>Phương tiện</th><th>Giờ chạy</th><th>Số tháng có dữ liệu</th><th>Container (chiếc)</th></tr></thead><tbody>{overview.map(row=><tr key={row.equipment_id}><td>{row.category}</td><td>{row.equipment_code}</td><td>{formatNumber(row.hours)} h</td><td>{row.months}</td><td>{formatNumber(row.boxes,0)}</td></tr>)}</tbody></table></div>
+  </section>}
   {eq.data?.length?<MonthlyEntry workspace={w} kind={kind} codes={eq.data.map(e=>e.code)} cargoCodes={(cargo.data??[]).map(r=>r.code)}/>:<section className="panel"><h2>Chưa có phương tiện</h2><p>Khai báo phương tiện trước, sau đó đối chiếu giờ gốc và ghi nhận giờ chạy tại đây.</p><Link className="button" href={"/catalog?workspace="+w}>Mở danh mục phương tiện</Link></section>}
   {kind!=="other" && <Link className="button" href={"/sheets?workspace="+w}>Cập nhật từ Google Sheets · TH</Link>}
   <section className="panel"><h2>Dữ liệu hiện có (tối đa 500 dòng gần nhất)</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="hours"?<th>Tổng giờ chạy</th>:kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>
