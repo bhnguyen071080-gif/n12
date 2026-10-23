@@ -11,7 +11,7 @@ const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/
 
 export default async function RequisitionsPage({searchParams}:{searchParams:Promise<Params>}){
  const params=await searchParams,current=await context(params.workspace);if(!current.workspace)return <p>Chưa có workspace.</p>;
- const w=current.workspace.id,equipment=await current.client.from("equipment").select("id,code,name").eq("workspace_id",w).order("code");
+ const w=current.workspace.id,equipment=await current.client.from("equipment").select("id,code,name,category").eq("workspace_id",w).order("code");
  if(equipment.error)throw new Error("Không đọc được danh mục phương tiện.");
  const kind=params.type==="repair"?"repair":"maintenance",workspaceQuery="workspace="+w;
  return <><WorkspaceSelect workspaces={current.workspaces} selected={w}/>
@@ -22,9 +22,11 @@ export default async function RequisitionsPage({searchParams}:{searchParams:Prom
   {kind==="repair"?<RepairRequisitions workspace={w} params={params} equipment={equipment.data}/>:<MaintenanceRequisitions workspace={w} workspaceName={current.workspace.name} equipment={equipment.data} client={current.client}/>}</>;
 }
 
-async function MaintenanceRequisitions({workspace,workspaceName,equipment,client}:{workspace:string;workspaceName:string;equipment:{id:string;code:string;name:string}[];client:AppClient}){
+async function MaintenanceRequisitions({workspace,workspaceName,equipment,client}:{workspace:string;workspaceName:string;equipment:{id:string;code:string;name:string;category:string}[];client:AppClient}){
+ const materials=await client.from("materials").select("id,code,name,unit").eq("workspace_id",workspace).order("code");
+ if(materials.error)throw new Error("Không đọc được danh mục vật tư chuẩn.");
  const runs=await client.from("maintenance_requisition_runs").select("id,planned_day,document_day,voucher_kind,supplement_note,grouping_mode,created_at,source_filename").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(10);
- return <><RequisitionPlanForm workspace={workspace} workspaceName={workspaceName} equipment={equipment} today={localInputNow().slice(0,10)}/>
+ return <><RequisitionPlanForm workspace={workspace} workspaceName={workspaceName} equipment={equipment} materials={materials.data} today={localInputNow().slice(0,10)}/>
   {!runs.error&&<section className="panel"><h2>Lịch sử phiếu lĩnh gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Loại phiếu</th><th>Ngày kế hoạch</th><th>Ngày phiếu lĩnh</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Lý do bổ sung</th><th>Thời điểm xác nhận</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td>{run.voucher_kind==="supplemental"?"Bổ sung phát sinh":"Theo kế hoạch"}</td><td>{run.planned_day}</td><td>{run.document_day??run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{run.supplement_note??"—"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td></tr>)}</tbody></table></div>:<p>Chưa có phiếu lĩnh được xác nhận.</p>}</section>}
  </>;
 }
