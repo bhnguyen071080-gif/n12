@@ -9,6 +9,7 @@ import {
  planGroupLabels,
  previewCaseCode,
  supplySourceLabels,
+ type PlannedMaterial,
  type PlanGroup,
  type SupplySource,
  type VoucherGrouping,
@@ -16,21 +17,30 @@ import {
 
 const allGroups=Object.keys(planGroupLabels) as PlanGroup[];
 
-type EquipmentOption={id:string;code:string;name:string};
+type EquipmentOption={id:string;code:string;name:string;category:string};
+type MaterialOption={id:string;code:string;name:string;unit:string};
 type VoucherKind="planned"|"supplemental";
-export function RequisitionPlanForm({workspace,workspaceName,equipment,today}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];today:string}){
+export function RequisitionPlanForm({workspace,workspaceName,equipment,materials,today}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string}){
  const [groups,setGroups]=useState<PlanGroup[]>(allGroups);
  const [grouping,setGrouping]=useState<VoucherGrouping>("group");
  const [plannedDay,setPlannedDay]=useState("2026-10-21");
  const [documentDay,setDocumentDay]=useState(today);
  const [voucherKind,setVoucherKind]=useState<VoucherKind>("planned");
  const [supplementNote,setSupplementNote]=useState("");
+ const [supplementEquipment,setSupplementEquipment]=useState("");
+ const [supplementMaterial,setSupplementMaterial]=useState("");
+ const [supplementSource,setSupplementSource]=useState<SupplySource>("warehouse");
+ const [supplementQuantity,setSupplementQuantity]=useState("1");
+ const [supplementLines,setSupplementLines]=useState<PlannedMaterial[]>([]);
  const [showPreview,setShowPreview]=useState(false);
  const [source,setSource]=useState<{name:string;sha256:string}|null>(null),[sourceError,setSourceError]=useState("");
  const [savedRun,setSavedRun]=useState("");
  const available=useMemo(()=>new Map(equipment.map(item=>[item.code,item])),[equipment]);
- const rows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)),[groups]);
- const previews=useMemo(()=>buildVoucherPreviews(octoberMaintenancePlan,groups,grouping,plannedDay),[groups,grouping,plannedDay]);
+ const plannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)),[groups]);
+ const supplementBase=octoberMaintenancePlan.find(row=>row.equipmentCode===supplementEquipment);
+ const rows=useMemo(()=>voucherKind==="planned"?plannedRows:supplementBase&&supplementLines.length?[{...supplementBase,materials:supplementLines}]:[],[voucherKind,plannedRows,supplementBase,supplementLines]);
+ const previewGroups=useMemo(()=>voucherKind==="planned"?groups:supplementBase?[supplementBase.group]:[],[voucherKind,groups,supplementBase]);
+ const previews=useMemo(()=>buildVoucherPreviews(rows,previewGroups,grouping,plannedDay),[rows,previewGroups,grouping,plannedDay]);
  const unresolved=rows.filter(row=>!available.has(row.equipmentCode));
  const saveRows=rows.flatMap(row=>{const match=available.get(row.equipmentCode);return match?[{...row,equipmentId:match.id,equipmentName:match.name}]:[];});
 
@@ -47,6 +57,14 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,today}:{w
  function toggleGroup(group:PlanGroup){
   setGroups(current=>current.includes(group)?current.filter(value=>value!==group):[...current,group]);
   setShowPreview(false);
+ }
+
+ function addSupplementLine(){
+  const item=materials.find(material=>material.id===supplementMaterial),quantity=Number(supplementQuantity);
+  if(!item||!Number.isFinite(quantity)||quantity<=0)return;
+  const key=`catalog:${item.id}:${supplementSource}`;
+  setSupplementLines(current=>{const prior=current.find(line=>line.key===key);return prior?current.map(line=>line.key===key?{...line,quantity:line.quantity+quantity}:line):[...current,{key,name:item.name,unit:item.unit,quantity,source:supplementSource,catalogueCode:item.code}];});
+  setSupplementQuantity("1");setShowPreview(false);
  }
 
  const sourceCounts=previews.reduce<Record<SupplySource,number>>((result,voucher)=>{result[voucher.source]+=1;return result;},{warehouse:0,maintenance_consumable:0});
@@ -68,20 +86,30 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,today}:{w
     </div>
     <p id="plan-month-note" className="muted">Ngày kế hoạch dùng để liên kết vụ việc bảo dưỡng và xem trước mã vụ việc. Ngày lập phiếu là ngày in trên chứng từ; hai ngày không bắt buộc phải trùng nhau.</p>
     <fieldset className="plan-choice"><legend>Loại phiếu</legend>
-     <label><input type="radio" name="voucher_kind" checked={voucherKind==="planned"} onChange={()=>setVoucherKind("planned")}/>Phiếu theo kế hoạch</label>
-     <label><input type="radio" name="voucher_kind" checked={voucherKind==="supplemental"} onChange={()=>setVoucherKind("supplemental")}/>Phiếu bổ sung vật tư phát sinh</label>
+     <label><input type="radio" name="voucher_kind" checked={voucherKind==="planned"} onChange={()=>{setVoucherKind("planned");setShowPreview(false);}}/>Phiếu theo kế hoạch</label>
+     <label><input type="radio" name="voucher_kind" checked={voucherKind==="supplemental"} onChange={()=>{setVoucherKind("supplemental");setShowPreview(false);}}/>Phiếu bổ sung vật tư phát sinh</label>
     </fieldset>
-    {voucherKind==="supplemental"?<label>Lý do bổ sung<input value={supplementNote} required maxLength={500} placeholder="Ví dụ: bổ sung dầu thủy lực phát sinh khi bảo dưỡng" onChange={event=>setSupplementNote(event.target.value)}/></label>:null}
+    {voucherKind==="supplemental"?<div className="space-y-4">
+     <label>Lý do bổ sung<input value={supplementNote} required maxLength={500} placeholder="Ví dụ: bổ sung dầu thủy lực phát sinh khi bảo dưỡng" onChange={event=>{setSupplementNote(event.target.value);setShowPreview(false);}}/></label>
+     <div className="plan-form-grid">
+      <label>Phương tiện liên quan<select value={supplementEquipment} required onChange={event=>{setSupplementEquipment(event.target.value);setShowPreview(false);}}><option value="">Chọn phương tiện trong kế hoạch</option>{octoberMaintenancePlan.filter(row=>available.has(row.equipmentCode)).map(row=><option key={row.equipmentCode} value={row.equipmentCode}>{row.sourceLabel} · {row.maintenanceLevel}</option>)}</select></label>
+      <label>Vật tư chuẩn trong danh mục<select value={supplementMaterial} onChange={event=>setSupplementMaterial(event.target.value)}><option value="">Chọn vật tư</option>{materials.map(item=><option key={item.id} value={item.id}>{item.code} · {item.name} ({item.unit})</option>)}</select></label>
+      <label>Nguồn lĩnh<select value={supplementSource} onChange={event=>setSupplementSource(event.target.value as SupplySource)}><option value="warehouse">Kho vật tư</option><option value="maintenance_consumable">Nguyên liệu, nhiên liệu bảo dưỡng</option></select></label>
+      <label>Số lượng<input type="number" min="0.001" step="0.001" value={supplementQuantity} onChange={event=>setSupplementQuantity(event.target.value)}/></label>
+     </div>
+     <button type="button" className="button button-secondary" disabled={!supplementEquipment||!supplementMaterial||Number(supplementQuantity)<=0} onClick={addSupplementLine}>Thêm vật tư phát sinh</button>
+     {supplementLines.length?<div className="overflow-x-auto"><table><thead><tr><th>Vật tư bổ sung</th><th>Nguồn</th><th>Số lượng</th><th></th></tr></thead><tbody>{supplementLines.map(line=><tr key={line.key}><td>{line.catalogueCode} · {line.name}</td><td>{supplySourceLabels[line.source]}</td><td>{line.quantity.toLocaleString("vi-VN")} {line.unit}</td><td><button type="button" className="button button-secondary" onClick={()=>{setSupplementLines(current=>current.filter(item=>item.key!==line.key));setShowPreview(false);}}>Bỏ</button></td></tr>)}</tbody></table></div>:<p className="muted">Chưa có dòng vật tư phát sinh. Chỉ vật tư đã chuẩn hóa trong Danh mục vật tư mới được chọn.</p>}
+    </div>:null}
     <fieldset className="plan-choice"><legend>Cách gom phiếu</legend>
      <label><input type="radio" name="grouping" checked={grouping==="group"} onChange={()=>{setGrouping("group");setShowPreview(false);}}/>Theo nhóm phương tiện</label>
      <label><input type="radio" name="grouping" checked={grouping==="equipment"} onChange={()=>{setGrouping("equipment");setShowPreview(false);}}/>Theo từng phương tiện</label>
     <label><input type="radio" name="grouping" checked={grouping==="date"} onChange={()=>{setGrouping("date");setShowPreview(false);}}/>Theo ngày cùng thực hiện</label>
     </fieldset>
-    <fieldset className="plan-choice"><legend>Nhóm phương tiện</legend>
+    {voucherKind==="planned"?<fieldset className="plan-choice"><legend>Nhóm phương tiện</legend>
      {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({octoberMaintenancePlan.filter(row=>row.group===group).length})</small></label>)}
-    </fieldset>
+    </fieldset>:null}
     <div className="plan-source-note"><strong>Hệ thống luôn tách thành hai nguồn:</strong><span>Vật tư kho vật tư</span><span>Nguyên liệu, nhiên liệu bảo dưỡng</span></div>
-    <button type="submit" disabled={!groups.length||!plannedDay||!documentDay||(voucherKind==="supplemental"&&!supplementNote.trim())}>Tính và xem trước phiếu</button>
+    <button type="submit" disabled={!rows.length||!plannedDay||!documentDay||(voucherKind==="supplemental"&&(!supplementNote.trim()||!supplementEquipment||!supplementLines.length))}>Tính và xem trước phiếu</button>
    </form>
   </section>
 
