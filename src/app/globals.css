@@ -359,3 +359,35 @@ p { margin-bottom:.65rem; }
 .equipment-table-actions a:not(.button) { font-size:.72rem; }
 .equipment-table-actions .button { min-height:32px; padding:.35rem .6rem; font-size:.68rem; }
 @media(max-width:800px) { .equipment-table-scroll { max-height:none; } }
+
+.overview-compact { padding:.9rem 1rem; }
+.overview-compact-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.8rem; }
+.overview-compact-head h2 { margin:0 0 .15rem; font-size:1rem; }
+.overview-compact-head p { margin:0; font-size:.68rem; }
+.overview-compact-head .workspace-select { margin:0; }
+.overview-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border:1px solid var(--line); border-radius:.7rem; overflow:hidden; background:#f8fbfd; }
+.overview-metric { display:flex; align-items:center; gap:.7rem; min-height:62px; padding:.65rem .8rem; border-right:1px solid var(--line); }
+.overview-metric:last-child { border-right:0; }
+.overview-metric .stat-icon { width:34px; height:34px; padding:.45rem; }
+.overview-metric .stat-icon svg { width:18px; height:18px; }
+.overview-metric strong { display:block; font-size:1.25rem; line-height:1; }
+.overview-metric p { margin:.22rem 0 0; color:var(--muted); font-size:.65rem; }
+.material-alert-preview .section-heading h2 { display:flex; align-items:center; gap:.5rem; font-size:1rem; }
+.material-alert-preview .section-heading p { margin:.2rem 0 0; font-size:.68rem; }
+.alert-demo { margin-top:.8rem; border:1px dashed #abc0ce; border-radius:.7rem; background:#f8fbfd; }
+.alert-demo summary { cursor:pointer; padding:.75rem 1rem; color:#285c7a; font-size:.78rem; font-weight:700; }
+.alert-demo>p { margin:0; padding:0 1rem .65rem; color:var(--muted); font-size:.68rem; }
+.alert-demo .overflow-x-auto { padding:0 1rem 1rem; }
+.alert-demo table { margin:0; font-size:.72rem; }
+@media(max-width:800px) {
+ .overview-compact-head { align-items:flex-start; flex-direction:column; }
+ .overview-compact-head .workspace-select { width:100%; }
+ .overview-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .overview-metric:nth-child(2) { border-right:0; }
+ .overview-metric:nth-child(-n+2) { border-bottom:1px solid var(--line); }
+}
+@media(max-width:480px) {
+ .overview-metric { min-height:56px; padding:.55rem .6rem; }
+ .overview-metric strong { font-size:1.1rem; }
+ .overview-metric p { font-size:.6rem; }
+}
