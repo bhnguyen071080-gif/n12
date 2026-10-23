@@ -23,9 +23,9 @@ export default async function RequisitionsPage({searchParams}:{searchParams:Prom
 }
 
 async function MaintenanceRequisitions({workspace,workspaceName,equipment,client}:{workspace:string;workspaceName:string;equipment:{id:string;code:string;name:string}[];client:AppClient}){
- const runs=await client.from("maintenance_requisition_runs").select("id,planned_day,grouping_mode,created_at,source_filename").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(10);
- return <><RequisitionPlanForm workspace={workspace} workspaceName={workspaceName} equipment={equipment}/>
-  {!runs.error&&<section className="panel"><h2>Lịch sử xác nhận kế hoạch gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Ngày thực hiện</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Thời điểm xác nhận</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td>{run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td></tr>)}</tbody></table></div>:<p>Chưa có lần xác nhận nhập kế hoạch.</p>}</section>}
+ const runs=await client.from("maintenance_requisition_runs").select("id,planned_day,document_day,voucher_kind,supplement_note,grouping_mode,created_at,source_filename").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(10);
+ return <><RequisitionPlanForm workspace={workspace} workspaceName={workspaceName} equipment={equipment} today={localInputNow().slice(0,10)}/>
+  {!runs.error&&<section className="panel"><h2>Lịch sử phiếu lĩnh gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Loại phiếu</th><th>Ngày kế hoạch</th><th>Ngày phiếu lĩnh</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Lý do bổ sung</th><th>Thời điểm xác nhận</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td>{run.voucher_kind==="supplemental"?"Bổ sung phát sinh":"Theo kế hoạch"}</td><td>{run.planned_day}</td><td>{run.document_day??run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{run.supplement_note??"—"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td></tr>)}</tbody></table></div>:<p>Chưa có phiếu lĩnh được xác nhận.</p>}</section>}
  </>;
 }
 
@@ -45,3 +45,4 @@ async function RepairRequisitions({workspace,params,equipment}:{workspace:string
   </form></section>
   <section className="panel"><div className="section-heading"><h2>Kết quả theo dõi</h2><span className="count-chip">{rows.length} dòng</span></div><div className="overflow-x-auto"><table><thead><tr><th>Ngày</th><th>Vụ việc</th><th>Phương tiện</th><th>Vật tư chuẩn</th><th>Số lượng</th><th>Trạng thái</th><th>Phiếu</th></tr></thead><tbody>{rows.map(row=><tr key={row.id}><td>{row.item.performed_on??row.workCase.actual_started_at.slice(0,10)}</td><td><Link href={"/cases/"+row.workCase.id}>{row.workCase.code}</Link><p>{row.workCase.summary}</p></td><td>{row.equipment?.code}</td><td>{row.material.code} · {row.material.name}</td><td>{formatNumber(row.quantity,3)} {row.material.unit}</td><td>{row.supply_state==="issued"?"Đã lĩnh":row.supply_state==="borrowed"?"Đang vay":"Dự trù"}{row.is_installed?" · Đã thay":""}</td><td><Link href={"/cases/"+row.workCase.id+"?document=material_requisition"}>Mở BM.08.06</Link></td></tr>)}</tbody></table></div>{!rows.length&&<p>Không có dòng vật tư phù hợp bộ lọc.</p>}</section></>;
 }
+
