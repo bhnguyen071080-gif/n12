@@ -20,7 +20,7 @@ const allGroups=Object.keys(planGroupLabels) as PlanGroup[];
 type EquipmentOption={id:string;code:string;name:string;category:string};
 type MaterialOption={id:string;code:string;name:string;unit:string};
 type VoucherKind="planned"|"supplemental";
-export function RequisitionPlanForm({workspace,workspaceName,equipment,materials,today}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string}){
+export function RequisitionPlanForm({workspace,equipment,materials,today}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string}){
  const [groups,setGroups]=useState<PlanGroup[]>(allGroups);
  const [grouping,setGrouping]=useState<VoucherGrouping>("group");
  const [plannedDay,setPlannedDay]=useState("2026-10-21");
@@ -70,14 +70,13 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,materials
  const sourceCounts=previews.reduce<Record<SupplySource,number>>((result,voucher)=>{result[voucher.source]+=1;return result;},{warehouse:0,maintenance_consumable:0});
  return <div className="requisition-plan space-y-5">
   <section className="panel requisition-plan-intro">
-   <div><p className="eyebrow">VẬT TƯ, VẬT LIỆU PHỤC VỤ BẢO DƯỠNG</p><h1>Lập phiếu lĩnh từ kế hoạch bảo dưỡng tháng</h1><p>Không gian dữ liệu: <strong>{workspaceName}</strong>. Hệ thống kiểm tra tệp nguồn, đối chiếu mã và chỉ tạo vụ việc sau khi anh xác nhận nhập.</p></div>
-   <span className="plan-status">Giẻ lau đã loại bỏ</span>
+   <div><h1>Phiếu lĩnh vật tư bảo dưỡng</h1><p>Lập phiếu theo kế hoạch tháng hoặc bổ sung vật tư phát sinh trong quá trình thực hiện.</p></div>
   </section>
 
   <section className="panel">
    <h2>1. Liên kết tệp PDF và chọn phạm vi</h2>
    <label>Tệp kế hoạch sửa chữa, bảo dưỡng tháng (.pdf)<input type="file" accept="application/pdf,.pdf" onChange={event=>void checkPdf(event.target.files?.[0])}/></label>
-   {source?<p className="plan-ok" role="status">Đã kiểm tra tệp: <strong>{source.name}</strong> · mã kiểm soát {source.sha256.slice(0,12)}…</p>:<p className="plan-warning" role="status">{sourceError||"Chọn đúng tệp PDF nguồn trước khi xác nhận nhập dữ liệu."}</p>}
+   {source?<p className="plan-ok" role="status">Đã chọn tệp: <strong>{source.name}</strong></p>:<p className="plan-warning" role="status">{sourceError||"Chọn đúng tệp PDF nguồn trước khi xác nhận nhập dữ liệu."}</p>}
    <form onSubmit={event=>{event.preventDefault();setShowPreview(true);}}>
     <div className="plan-form-grid">
      <label>Tháng kế hoạch<input type="month" value="2026-10" readOnly aria-describedby="plan-month-note"/></label>
@@ -122,8 +121,8 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,materials
   </section>
 
   <section className="panel">
-   <div className="section-heading"><div><p className="eyebrow">Đối chiếu nguồn</p><h2>2. Dòng kế hoạch sẽ sử dụng</h2></div><span className="count-chip">{rows.length} phương tiện</span></div>
-   {unresolved.length?<p className="plan-warning" role="status"><strong>{unresolved.length} dòng chưa khớp mã danh mục:</strong> {unresolved.map(row=>row.sourceLabel).join(", ")}. Bản chạy thử vẫn cho xem trước; khi bật lưu phải ghép đúng mã trước.</p>:<p className="plan-ok" role="status">Tất cả phương tiện đã khớp danh mục TV‑EAM.</p>}
+   <div className="section-heading"><div><h2>2. Danh sách vật tư lập phiếu</h2></div><span className="count-chip">{rows.length} phương tiện</span></div>
+   {unresolved.length?<p className="plan-warning" role="status"><strong>{unresolved.length} dòng chưa khớp mã danh mục:</strong> {unresolved.map(row=>row.sourceLabel).join(", ")}. Cần ghép đúng mã phương tiện trước khi xác nhận.</p>:<p className="plan-ok" role="status">Tất cả phương tiện đã khớp danh mục.</p>}
    <div className="overflow-x-auto"><table className="plan-table"><thead><tr><th>Nhóm</th><th>Phương tiện</th><th>Cấp bảo dưỡng</th><th>Vật tư kho</th><th>Nguyên liệu, nhiên liệu</th><th>Mã vụ việc dự kiến</th></tr></thead><tbody>
     {rows.map(plan=>{
      const warehouse=plan.materials.filter(item=>item.source==="warehouse"),consumables=plan.materials.filter(item=>item.source==="maintenance_consumable");
@@ -133,8 +132,7 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,materials
   </section>
 
   {showPreview?<section className="panel" aria-live="polite">
-   <div className="section-heading"><div><p className="eyebrow">Kết quả chạy thử</p><h2>3. Các phiếu sẽ được sinh</h2></div><span className="count-chip">{previews.length} phiếu</span></div>
-   <p className="plan-ok">Đã tách nguồn và cộng lại từ từng phương tiện. Không có dòng giẻ lau trong kết quả.</p>
+   <div className="section-heading"><div><h2>3. Xem trước phiếu lĩnh</h2></div><span className="count-chip">{previews.length} phiếu</span></div>
    {(["warehouse","maintenance_consumable"] as const).map(source=>{
     const sourceVouchers=previews.filter(voucher=>voucher.source===source);
     if(!sourceVouchers.length)return null;
@@ -142,7 +140,7 @@ export function RequisitionPlanForm({workspace,workspaceName,equipment,materials
      {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>{voucherKind==="supplemental"?"Phiếu bổ sung khi thực hiện":"Phiếu theo kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày kế hoạch: {new Date(`${plannedDay}T00:00:00+07:00`).toLocaleDateString("vi-VN")} · Ngày phiếu lĩnh: {new Date(`${documentDay}T00:00:00+07:00`).toLocaleDateString("vi-VN")}</p>{voucherKind==="supplemental"?<><p><strong>Phát hiện khi thực hiện:</strong> {supplementNote}</p><p className="muted">Phiếu chỉ gồm phần thiếu/phát sinh, không thay thế danh sách kế hoạch ban đầu.</p></>:null}<p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
     </div></section>;
    })}
-   <div className="plan-next-step"><strong>Kiểm soát trước khi nhập</strong><span>Hệ thống chỉ lưu các dòng đã khớp phương tiện, kèm tên tệp và SHA-256 để nhận biết đúng bản PDF nguồn.</span></div>
+   <div className="plan-next-step"><strong>Kiểm soát trước khi nhập</strong><span>Chỉ các dòng đã khớp đúng phương tiện mới được xác nhận.</span></div>
    {!savedRun?<section className="plan-confirm"><h3>4. Xác nhận nhập dữ liệu và tạo vụ việc</h3>
     {(!source||unresolved.length>0)?<p className="plan-warning">Chưa thể xác nhận: {!source?"chưa kiểm tra tệp PDF. ":""}{unresolved.length?"còn phương tiện chưa khớp danh mục.":""}</p>:<AsyncForm action={saveMaintenanceRequisition} label="Xác nhận nhập dữ liệu & tạo vụ việc" onSuccess={result=>setSavedRun(result.id??"")}>
      <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="planned_day" value={plannedDay}/><input type="hidden" name="document_day" value={documentDay}/><input type="hidden" name="voucher_kind" value={voucherKind}/><input type="hidden" name="supplement_note" value={voucherKind==="supplemental"?supplementNote.trim():""}/><input type="hidden" name="grouping" value={grouping}/>
