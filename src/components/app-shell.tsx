@@ -9,7 +9,7 @@ const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/catalog",label:"Danh mục phương tiện",icon:"crane"},
  {href:"/materials",label:"Danh mục vật tư",icon:"layers"},
  {href:"/cases",label:"Vụ việc & lý lịch",icon:"wrench"},
- {href:"/history",label:"Lý lịch phương tiện",icon:"clipboard"},
+ {href:"/history",label:"Lý lịch phương tiện",icon:"clock"},
  {href:"/requisitions",label:"Phiếu lĩnh theo kế hoạch",icon:"check"},
  {href:"/monthly",label:"Giám sát giờ & sản lượng",icon:"calendar"},
  {href:"/life",label:"Giờ vật tư & định mức",icon:"clock"},
