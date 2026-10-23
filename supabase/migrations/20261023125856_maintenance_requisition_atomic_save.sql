@@ -36,7 +36,7 @@ begin
  or not p_print ?& array['company','department','recipient','warehouse','consumableWarehouse','documentDay'] then
   raise exception using errcode='22023',message='Sai thông tin in'; end if;
  for k,v in select * from jsonb_each(p_print) loop
-  if jsonb_typeof(v)<>'string' or length(v#>>'{}')>case when k='supplementNote' then 500 else 200 end or (v#>>'{}') ~ '[[:cntrl:]]' then raise exception using errcode='22023',message='Sai thông tin in'; end if;
+  if jsonb_typeof(v)<>'string' or length(v#>>'{}')>(case when k='supplementNote' then 500 else 200 end) or (v#>>'{}') ~ '[[:cntrl:]]' then raise exception using errcode='22023',message='Sai thông tin in'; end if;
  end loop;
  if length(btrim(p_print->>'company'))=0 or length(btrim(p_print->>'department'))=0 or length(p_print->>'recipient')>100
  or p_print->>'documentDay' !~ '^\d{4}-\d{2}-\d{2}$' or (p_print->>'documentDay')::date not between date '2000-01-01' and date '2100-12-31' then
