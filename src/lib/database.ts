@@ -22,7 +22,7 @@ export interface Database {
    repair_material_usages:Table<{id:string;repair_work_item_id:string;material_id:string;quantity:number;supply_state:"planned"|"borrowed"|"issued";is_installed:boolean;installation_position:string;installed_at:string|null}>;
    materials:Table<{id:string;workspace_id:string;code:string;name:string;unit:string;equipment_category:string|null;service_limit_hours:number|null;service_warning_hours:number}>;
    case_material_followups:Table<{case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number}>;
-   maintenance_requisition_runs:Table<{id:string;workspace_id:string;planned_day:string;grouping_mode:string;snapshot:Json;created_by:string;created_at:string;fingerprint:string;source_filename:string|null;source_sha256:string|null}>;
+   maintenance_requisition_runs:Table<{id:string;workspace_id:string;planned_day:string;document_day:string;voucher_kind:"planned"|"supplemental";supplement_note:string|null;grouping_mode:string;snapshot:Json;created_by:string;created_at:string;fingerprint:string;source_filename:string|null;source_sha256:string|null}>;
    sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;source_kind:"container"|"hours";start_month:string|null;created_by:string;created_at:string}>;
    sheet_sync_runs:Table<{id:string;source_id:string;workspace_id:string;request_key:string;actor_id:string;fingerprint:string;accepted_rows:Json;row_count:number;created_at:string}>;
    equipment:Table<Equipment>;
@@ -66,6 +66,7 @@ export interface Database {
    update_tracking_material:{Args:{p_usage:string;p_supply:string;p_installed:boolean};Returns:undefined};
    set_material_return:{Args:{p_case:string;p_status:string;p_completed:string|null;p_version:number;p_notes:string};Returns:undefined};
    save_maintenance_requisition_v2:{Args:{p_workspace:string;p_day:string;p_grouping:string;p_rows:Json;p_print:Json;p_source_filename:string;p_source_sha256:string;p_key:string};Returns:string};
+   save_maintenance_requisition_v3:{Args:{p_workspace:string;p_planned_day:string;p_document_day:string;p_voucher_kind:"planned"|"supplemental";p_supplement_note:string|null;p_grouping:string;p_rows:Json;p_print:Json;p_source_filename:string;p_source_sha256:string;p_key:string};Returns:string};
    sync_hours_source:{Args:{p_source:string;p_rows:Json;p_key:string};Returns:number};
    sync_container_source:{Args:{p_source:string;p_rows:Json;p_key:string};Returns:number};
    report_reliability:{Args:PeriodArgs;Returns:Reliability[]};
@@ -81,3 +82,4 @@ export interface Database {
   Enums:Record<string,never>;CompositeTypes:Record<string,never>;
  };
 }
+
