@@ -27,7 +27,6 @@ export default async function Home({searchParams}:{searchParams:Promise<{workspa
  const workspaceQuery="?workspace="+c.workspace.id;
  const importantAlerts=(materialAlerts.data??[]).filter(row=>row.alert_level==="overdue"||row.alert_level==="due_soon");
  const alertExamples=[
-  {level:"normal",label:"Xanh · bình thường",equipment:"QC05",material:"Cáp thép nâng hàng",used:"1.520 h",remaining:"480 h"},
   {level:"due_soon",label:"Vàng · gần tới hạn",equipment:"RTG12",material:"Lốp di chuyển",used:"1.900 h",remaining:"100 h"},
   {level:"overdue",label:"Đỏ · quá hạn",equipment:"TUKAN12",material:"Ắc quy khởi động",used:"2.150 h",remaining:"-150 h"},
  ];

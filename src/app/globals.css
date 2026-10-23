@@ -333,8 +333,12 @@ p { margin-bottom:.65rem; }
 .history-table p { margin:0; white-space:pre-wrap; }
 .signature-space { display:block; min-height:70px; }
 .alert-normal td:first-child { border-left:5px solid #27935b; }
-.alert-due_soon td:first-child { border-left:5px solid #d19a20; }
-.alert-overdue td:first-child { border-left:5px solid #c44343; }
+.alert-due_soon td { background:#fff1bd; color:#684400; border-color:#e6ce76; }
+.alert-due_soon td:first-child { border-left:5px solid #c58a00; font-weight:700; }
+.alert-overdue td { background:#fbd7d7; color:#7d2020; border-color:#e8a7a7; }
+.alert-overdue td:first-child { border-left:5px solid #b72f2f; font-weight:700; }
+.alert-due_soon:hover td { background:#ffe89a; }
+.alert-overdue:hover td { background:#f7c2c2; }
 .alert-incomplete td:first-child { border-left:5px solid #697783; }
 .report-bars { display:grid; gap:.65rem; margin-top:1.2rem; }
 .report-bar-row { display:grid; grid-template-columns:90px 1fr 70px; gap:.75rem; align-items:center; }
