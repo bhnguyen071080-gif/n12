@@ -16,7 +16,7 @@ const itemSchema=z.object({
 type HistoryParams={workspace?:string;equipment?:string;from?:string;to?:string};
 
 function validDay(value:string){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T00:00:00+07:00"));}
-function displayDay(value:string){return new Date(value+"T00:00:00+07:00").toLocaleDateString("vi-VN",{timeZone:"Asia/Bangkok"});}
+function displayDay(value:string){return new Date(value+"T00:00:00+07:00").toLocaleDateString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Asia/Bangkok"});}
 
 export default async function EquipmentHistory({searchParams}:{searchParams:Promise<HistoryParams>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa có workspace.</p>;
