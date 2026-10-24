@@ -410,19 +410,14 @@ p { margin-bottom:.65rem; }
 .contractor-form-body { padding-top:1rem; }
 .contractor-form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
 .contractor-form-grid .contractor-wide { grid-column:1/-1; }
-.contractor-filters { display:grid; grid-template-columns:2fr 1fr 1fr; gap:1rem; margin-bottom:1rem; }
+.contractor-filters { display:grid; grid-template-columns:2fr 1fr; gap:1rem; margin-bottom:1rem; }
 .contractor-materials td small { display:block; margin-top:.2rem; color:var(--muted); }
 .contractor-badge { display:inline-block; padding:.3rem .55rem; border-radius:2rem; font-size:.68rem; font-weight:800; white-space:nowrap; }
-.contractor-active,.quality-accepted { background:#e4f4ea; color:#17613d; }
-.contractor-due_soon,.quality-conditional { background:#fff0bd; color:#765000; }
-.contractor-expired,.quality-rejected { background:#fbd7d7; color:#8b2424; }
-.quality-pending { background:#e7edf2; color:#4d6170; }
+.contractor-active { background:#e4f4ea; color:#17613d; }
+.contractor-due_soon { background:#fff0bd; color:#765000; }
+.contractor-expired { background:#fbd7d7; color:#8b2424; }
 .contractor-alert-due_soon td:first-child { border-left:5px solid #c58a00; }
 .contractor-alert-expired td:first-child { border-left:5px solid #b72f2f; }
-.quality-update { margin-top:.5rem; min-width:180px; }
-.quality-update>summary { cursor:pointer; color:#17638d; font-size:.68rem; font-weight:700; }
-.quality-update form { margin-top:.6rem; padding:.65rem; border:1px solid #cbd8e1; border-radius:.6rem; background:#f8fbfd; }
-.quality-update textarea { min-height:70px; }
 @media(max-width:900px) { .contractor-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .contractor-filters { grid-template-columns:1fr 1fr; } }
 @media(max-width:600px) { .contractor-intro { display:block; } .contractor-form-grid,.contractor-filters { grid-template-columns:1fr; } .contractor-form-grid .contractor-wide { grid-column:auto; } }
 @media(max-width:1200px) {
