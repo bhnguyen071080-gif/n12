@@ -24,7 +24,7 @@ export interface Database {
    materials:Table<{id:string;workspace_id:string;code:string;name:string;unit:string;equipment_category:string|null;service_limit_hours:number|null;service_warning_hours:number}>;
    case_material_followups:Table<{case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number}>;
    maintenance_requisition_runs:Table<SavedRequisitionPlan&{document_day:string;voucher_kind:"planned"|"supplemental";supplement_note:string|null;fingerprint:string;source_filename:string|null;source_sha256:string|null}>;
-   contractor_materials:Table<{id:string;workspace_id:string;equipment_id:string;material_name:string;unit:string;quantity:number;contractor_name:string;signed_on:string;warranty_months:number;warranty_ends_on:string;quality_status:string;quality_checked_on:string|null;quality_note:string;notes:string;request_key:string;created_by:string;updated_by:string;created_at:string;updated_at:string}>;
+   contractor_materials:Table<{id:string;workspace_id:string;equipment_id:string;material_name:string;unit:string;quantity:number;contractor_name:string;signed_on:string;warranty_months:number;warranty_ends_on:string;notes:string;request_key:string;created_by:string;updated_by:string;created_at:string;updated_at:string}>;
    sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;source_kind:"container"|"hours";start_month:string|null;created_by:string;created_at:string}>;
    sheet_sync_runs:Table<{id:string;source_id:string;workspace_id:string;request_key:string;actor_id:string;fingerprint:string;accepted_rows:Json;row_count:number;created_at:string}>;
    equipment:Table<Equipment>;

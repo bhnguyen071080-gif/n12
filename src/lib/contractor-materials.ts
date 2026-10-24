@@ -1,7 +1,5 @@
 export const warrantyStateLabels={active:"Còn hạn",due_soon:"Gần tới",expired:"Hết hạn"} as const;
-export const qualityStatusLabels={pending:"Chờ kiểm tra",accepted:"Đạt",conditional:"Chấp nhận có điều kiện",rejected:"Không đạt"} as const;
 export type WarrantyState=keyof typeof warrantyStateLabels;
-export type QualityStatus=keyof typeof qualityStatusLabels;
 
 function parseDate(value:string):[number,number,number]{
  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);if(!match)throw new Error("Ngày phải theo dạng YYYY-MM-DD");
@@ -30,7 +28,6 @@ export function formatDateVi(value:string|null):string{
 
 export type ContractorMaterialRow={
  id:string;workspace_id:string;equipment_id:string;material_name:string;unit:string;quantity:number;contractor_name:string;
- signed_on:string;warranty_months:number;warranty_ends_on:string;quality_status:QualityStatus;quality_checked_on:string|null;
- quality_note:string;notes:string;created_at:string;equipment_code:string;equipment_name:string;
+ signed_on:string;warranty_months:number;warranty_ends_on:string;notes:string;created_at:string;equipment_code:string;equipment_name:string;
 };
 
