@@ -44,7 +44,7 @@ export function safeNext(value:string|undefined):string {
  if(!value || !value.startsWith("/") || value.startsWith("//") || /[\\\r\n]/.test(value)) return "/";
  try {
   const url=new URL(value,"https://internal.invalid");
-  if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets|cases|catalog|imports|materials)?(\/|\?|$)/.test(value)) return "/";
+ if(url.origin!=="https://internal.invalid" || !/^\/(equipment|reports|monthly|life|sheets|cases|catalog|imports|materials|contractor-materials)?(\/|\?|$)/.test(value)) return "/";
   return url.pathname+url.search;
  } catch {return "/";}
 }
@@ -84,3 +84,4 @@ const base={equipment_code:equipmentCode,month:z.string().regex(/^\d{4}-(0[1-9]|
 export const hoursRows=z.array(z.object({...base,operating_hours:decimal(2)}).strict()).min(1).max(1000);
 export const containerRows=z.array(z.object({...base,boxes:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)}).strict()).min(1).max(1000);
 export const otherRows=z.array(z.object({...base,cargo_code:z.string().min(1).max(40),quantity:decimal(3)}).strict()).min(1).max(1000);
+
