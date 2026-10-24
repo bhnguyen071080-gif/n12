@@ -421,6 +421,8 @@ p { margin-bottom:.65rem; }
 .contractor-expired { background:#fbd7d7; color:#8b2424; }
 .contractor-alert-due_soon td:first-child { border-left:5px solid #c58a00; }
 .contractor-alert-expired td:first-child { border-left:5px solid #b72f2f; }
+.table-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
+.table-actions .button { white-space:nowrap; }
 @media(max-width:900px) { .contractor-form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .contractor-filters { grid-template-columns:1fr 1fr; } }
 @media(max-width:600px) { .contractor-intro { display:block; } .contractor-form-grid,.contractor-filters { grid-template-columns:1fr; } .contractor-form-grid .contractor-wide { grid-column:auto; } }
 @media(max-width:1200px) {
