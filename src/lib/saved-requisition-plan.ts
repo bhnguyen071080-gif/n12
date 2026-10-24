@@ -9,7 +9,7 @@ export const planPrintSchema=z.object({company:short.refine(s=>s.length>0),depar
 export const savePlanInputSchema=z.object({
  plannedDay:day.refine(s=>s.startsWith("2026-10-"),"Chọn ngày trong tháng kế hoạch 10/2026"),
  grouping:z.enum(["equipment","group","date"]),groups:z.array(z.enum(["TUKAN","QC","RTG","KHUNG_CAU"])).min(1).max(4),
- mappings:z.record(uuid),print:planPrintSchema,
+ mappings:z.record(z.string(),uuid),print:planPrintSchema,
 }).strict();
 export type SavePlanInput=z.infer<typeof savePlanInputSchema>;
 export type PlanEquipment={id:string;code:string;name:string};

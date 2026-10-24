@@ -7,7 +7,7 @@ const sample=z.union([
  z.object({equipment_code:z.string(),month:z.string(),boxes:z.number()}).strict(),
  z.object({equipment_code:z.string(),month:z.string(),operating_hours:z.number()}).strict()
 ]);
-const previewSchema=z.object({sourceId:z.string().uuid(),kind:z.enum(["container","hours"]),startMonth:z.string().nullable(),
+const previewSchema=z.object({sourceId:z.guid(),kind:z.enum(["container","hours"]),startMonth:z.string().nullable(),
  hash:z.string(),count:z.number(),sample:z.array(sample),unknownCodes:z.array(z.string()),
  issues:z.array(z.object({equipment_code:z.string(),month:z.string(),message:z.string()}))});
 type Preview=z.infer<typeof previewSchema>;

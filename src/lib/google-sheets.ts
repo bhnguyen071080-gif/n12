@@ -5,8 +5,8 @@ import {z} from "zod";
 import {equipmentCode} from "./domain";
 import {thContainerRows,thHoursRows,hoursIssues} from "./sheets-layout";
 export const sourceSchema=z.object({
- id:z.string().uuid(),workspace_id:z.string().uuid(),spreadsheet_id:z.string().regex(/^[A-Za-z0-9_-]{20,150}$/),
- tab_name:z.string().min(1).max(100),a1_range:z.string(),equipment_aliases:z.record(equipmentCode),source_kind:z.enum(["container","hours"]),start_month:z.string().nullable()
+ id:z.guid(),workspace_id:z.guid(),spreadsheet_id:z.string().regex(/^[A-Za-z0-9_-]{20,150}$/),
+ tab_name:z.string().min(1).max(100),a1_range:z.string(),equipment_aliases:z.record(z.string(),equipmentCode),source_kind:z.enum(["container","hours"]),start_month:z.string().nullable()
 });
 export function boundedRange(range:string){
  const m=/^([A-Z]{1,2})([1-9]\d{0,3}):([A-Z]{1,2})([1-9]\d{0,3})$/.exec(range);
@@ -20,7 +20,7 @@ export async function previewSource(source:unknown){
  const s=sourceSchema.parse(source),email=process.env.GOOGLE_SHEETS_CLIENT_EMAIL,key=process.env.GOOGLE_SHEETS_PRIVATE_KEY;
  if(!email || !key)throw new Error("Chưa cấu hình kết nối Sheets chỉ đọc");
  const configured:unknown=JSON.parse(process.env.GOOGLE_SHEETS_ALLOWED_SOURCES??"{}");
- const allowlist=z.record(z.array(z.string())).parse(configured);
+ const allowlist=z.record(z.string(),z.array(z.string())).parse(configured);
  if(!allowlist[s.workspace_id]?.includes(s.spreadsheet_id))throw new Error("Nguồn chưa được quản trị triển khai cho phép trong workspace này");
  const auth=new JWT({email,key:key.replace(/\\n/g,"\n"),scopes:["https://www.googleapis.com/auth/spreadsheets.readonly"]});
  const range="'"+s.tab_name.replaceAll("'","''")+"'!"+boundedRange(s.a1_range);
