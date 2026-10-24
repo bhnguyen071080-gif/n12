@@ -3,6 +3,8 @@ import {join} from "node:path";
 import {PDFDocument,PDFPage,PDFFont,rgb} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {snapshotSchema,issuedAmount,knownTotal,type DocumentSnapshot,type DocumentLine} from "./documents";
+import {planVoucherPayloadSchema} from "./saved-requisition-plan";
+type PrintableSnapshot={payload:DocumentSnapshot["payload"];source:{case_code:string}};
 import {parseRepresentatives,representativeLabel,structuredRepresentatives} from "./document-people";
 
 const MM=72/25.4,W=210*MM,H=297*MM,A5=H/2,BLACK=rgb(0,0,0);
@@ -66,7 +68,7 @@ async function fonts(doc:PDFDocument):Promise<Fonts>{
  const [r,b]=await Promise.all([doc.embedFont(regular,{subset:true,customName:"TVSerif"}),doc.embedFont(bold,{subset:true,customName:"TVSerifBold"})]);
  return {regular:r,bold:b};
 }
-function metadata(doc:PDFDocument,s:DocumentSnapshot,createdAt:string){
+function metadata(doc:PDFDocument,s:PrintableSnapshot,createdAt:string){
  const date=new Date(createdAt);if(!Number.isFinite(date.getTime()))throw new Error("Ngày lưu không hợp lệ");
  doc.setCreationDate(date);doc.setModificationDate(date);doc.setCreator("TV-EAM");doc.setProducer("TV-EAM print-1");
  doc.setTitle(s.payload.kind==="condition_minutes"?"Biên bản xác định tình trạng kỹ thuật":"Phiếu lĩnh vật tư");
@@ -74,7 +76,7 @@ function metadata(doc:PDFDocument,s:DocumentSnapshot,createdAt:string){
 }
 class MinutesFlow{
  page:PDFPage;y=H-28;readonly x=20*MM;readonly width=W-35*MM;
- constructor(readonly doc:PDFDocument,readonly f:Fonts,readonly s:DocumentSnapshot,readonly revision:number){this.page=this.newPage();}
+ constructor(readonly doc:PDFDocument,readonly f:Fonts,readonly s:PrintableSnapshot,readonly revision:number){this.page=this.newPage();}
  newPage():PDFPage{
   const page=this.doc.addPage([W,H]);
   drawText(page,`${this.s.source.case_code} · v${this.revision}`,20*MM,12,8,this.f.regular);
@@ -89,7 +91,7 @@ class MinutesFlow{
  }
  center(value:string,size=12){const lines=wrapPdfText(value,this.f.bold,size,this.width);this.ensure(lines.length*(size+3)+5);centered(this.page,value,this.y-size,size,this.f.bold,this.x,this.width);this.y-=lines.length*(size+3)+5;}
 }
-function minutes(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number){
+function minutes(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number){
  const d=s.payload,flow=new MinutesFlow(doc,f,s,revision),half=flow.width/2;
  if(d.form_code)drawText(flow.page,`Mẫu: ${d.form_code}`,W-15*MM-f.bold.widthOfTextAtSize(`Mẫu: ${d.form_code}`,8),H-15,8,f.bold);
  const left=[d.company,d.department,`Số: ${d.document_number||"................"}`];
@@ -140,7 +142,7 @@ export function voucherSignatureMetrics(titleLines:number,nameLines:number){
  const nameOffset=captionOffset+3+blankHeight+10;
  return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
 }
-function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PDFPage[]{
+function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number):PDFPage[]{
  const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,widths=[.04,.30,.10,.06,.09,.09,.10,.12].map(v=>v*width/(modern?.9:1)),size=8.5;
  const head=mergedHeader(f.bold,size,widths,["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"],"Số lượng");
  const headHeight=head.height;
@@ -191,6 +193,12 @@ function vouchers(doc:PDFDocument,f:Fonts,s:DocumentSnapshot,revision:number):PD
 }
 export async function renderDocumentPdf(input:DocumentSnapshot,revision:number,createdAt:string):Promise<Uint8Array>{
  const s=snapshotSchema.parse(input);if(!Number.isInteger(revision)||revision<1)throw new Error("Phiên bản không hợp lệ");
+ return renderPrintable(s,revision,createdAt);
+}
+export async function renderPlanVoucherPdf(payload:unknown,planId:string,createdAt:string):Promise<Uint8Array>{
+ return renderPrintable({payload:planVoucherPayloadSchema.parse(payload),source:{case_code:`Kế hoạch ${planId}`}},1,createdAt);
+}
+async function renderPrintable(s:PrintableSnapshot,revision:number,createdAt:string):Promise<Uint8Array>{
  const doc=await PDFDocument.create();metadata(doc,s,createdAt);const f=await fonts(doc);
  const charset=new Set(f.regular.getCharacterSet());
  for(const ch of JSON.stringify(s.payload)){const cp=ch.codePointAt(0);if(cp!==undefined&&!charset.has(cp))throw new Error("Ký tự không được font PDF hỗ trợ; thay ký tự đặc biệt trước khi xuất.");}

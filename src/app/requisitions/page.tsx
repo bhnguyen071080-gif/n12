@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {saveMaintenanceRequisition} from "./actions";
 import {RequisitionPlanForm} from "@/components/requisition-plan-form-v2";
 import {WorkspaceSelect} from "@/components/workspace-select";
 import {context} from "@/lib/supabase";
@@ -26,8 +27,8 @@ async function MaintenanceRequisitions({workspace,workspaceName,equipment,client
  const materials=await client.from("materials").select("id,code,name,unit").eq("workspace_id",workspace).order("code");
  if(materials.error)throw new Error("Không đọc được danh mục vật tư chuẩn.");
  const runs=await client.from("maintenance_requisition_runs").select("id,planned_day,document_day,voucher_kind,supplement_note,grouping_mode,created_at,source_filename").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(10);
- return <><RequisitionPlanForm workspace={workspace} workspaceName={workspaceName} equipment={equipment} materials={materials.data} today={localInputNow().slice(0,10)}/>
-  {!runs.error&&<section className="panel"><h2>Lịch sử phiếu lĩnh gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Loại phiếu</th><th>Ngày kế hoạch</th><th>Ngày phiếu lĩnh</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Lý do bổ sung</th><th>Thời điểm xác nhận</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td>{run.voucher_kind==="supplemental"?"Bổ sung phát sinh":"Theo kế hoạch"}</td><td>{run.planned_day}</td><td>{run.document_day??run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{run.supplement_note??"—"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td></tr>)}</tbody></table></div>:<p>Chưa có phiếu lĩnh được xác nhận.</p>}</section>}
+ return <><RequisitionPlanForm key={workspace} saveAction={saveMaintenanceRequisition} workspace={workspace} workspaceName={workspaceName} equipment={equipment} materials={materials.data} today={localInputNow().slice(0,10)}/>
+  {runs.error?<p role="alert">Không đọc được lịch sử phiếu đã lưu. Kiểm tra kết nối cơ sở dữ liệu.</p>:<section className="panel"><h2>Lịch sử phiếu lĩnh gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Loại phiếu</th><th>Ngày kế hoạch</th><th>Ngày phiếu lĩnh</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Lý do bổ sung</th><th>Thời điểm xác nhận</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td><Link href={`/requisitions/${run.id}`}>{run.voucher_kind==="supplemental"?"Bổ sung phát sinh":"Theo kế hoạch"}</Link></td><td>{run.planned_day}</td><td>{run.document_day??run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{run.supplement_note??"—"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td></tr>)}</tbody></table></div>:<p>Chưa có phiếu lĩnh được xác nhận.</p>}</section>}
  </>;
 }
 

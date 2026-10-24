@@ -1,20 +1,11 @@
-# TV-EAM — handoff, 21/10/2026 (UTC+7)
+# TV-EAM handoff — 23/10/2026 (UTC+7)
 
-## Current work
+Active branch: `codex/tv-eam-phase3`. PR #4 reconciles the pending print workflow with Phase 3 through `59b5e6ba38553e52d0dcc1de33fdbc4deef4a6d7`, preserving the latest repair/maintenance split, source-PDF metadata, separate document date and supplemental shortfall form.
 
-Continue from `codex/tv-eam-phase3`, not `main` (which still contains only the initial README). This repair starts at `1a0fe7f31b5edc5a53cee30f04ba7656ccd1b2c4` and targets that development branch.
+The live database had the original immutable-plan guard, while the new v2/v3 wrappers tried to update source/date metadata after inserting a plan. The initial insert also omitted the newly required document_day. The additive `maintenance_requisition_atomic_save` migration consolidates metadata into a single initial insert, preserves pending-case semantics, validates supplemental materials against the workspace catalog, and fingerprints source metadata for safe retries. Legacy save endpoints delegate to the same implementation. Existing data is not rewritten.
 
-Fixed in this change:
-- Clean-build print font downloads use an immutable Noto repository commit and verified SHA-256 values, with the matching OFL license. The moving distribution URL previously returned different font bytes and blocked pretest/prebuild.
-- Planned dates are formatted as calendar dates, independent of the device time zone.
-- Regression tests cover all 48 group/mode combinations and interactive preview grouping, source separation, stale-preview invalidation and dates in UTC/Vietnam time zones.
+Saved plans have a dedicated detail page and BM.08.06 PDF endpoint. Grouped plan documents retain all per-equipment allocations and never impersonate a single-case document. The latest form links to the saved detail, freezes after success, explicitly confirms source/quantities, and formats both dates independently of device time zone. Selecting a source PDF records its filename/hash; it does not extract the file contents. The material list remains the supplied October 2026 plan plus explicitly selected supplemental shortfalls.
 
-Verification: TypeScript strict and all 68 unit tests passed locally (Node 24, in-process TypeScript diagnostic runner because Windows blocked esbuild subprocesses). The authoritative standard Node 22 build, unit, browser and database results are the GitHub Actions checks attached to the repair PR. Do not infer cloud deployment from those checks.
+Local strict TypeScript and 72 unit tests passed. GitHub CI validates the integrated migration on disposable PostgreSQL17, including v3 date/source persistence, unchanged retries, source-fingerprint conflicts, catalog validation, case reuse, RLS and atomic rollback. Browser coverage mounts the actual current form in UTC and Vietnam time zones, checks date fields and failed-response retry behavior, and verifies the saved-plan print link.
 
-## Remaining product work
-
-`/requisitions` is still a preview-only October 2026 maintenance plan. It does not save a plan, create actual work cases, or transfer those previews to printable BM.08.06 documents. The existing case-document PDF flow is separate.
-
-Next: agree and implement catalog matching and an idempotent plan-save workflow, then creation of work cases and printable vouchers. Verify with authenticated test data before production use. Do not invent a source of truth for the hardcoded monthly plan or import it into a real workspace automatically.
-
-At the next session: fetch the development branch, inspect the repair PR/checks and new commits, read this handoff, and record the tested commit and remaining scope after changes.
+Before claiming completion, check the latest PR #4 CI, apply only the new additive migration to the connected database, run a rollback-only authenticated smoke check, merge the verified head, and check Netlify's status for the resulting Phase 3 commit. Never apply fixture SQL to the connected database. No private project identifiers, credentials or operational records belong in this public repository.
