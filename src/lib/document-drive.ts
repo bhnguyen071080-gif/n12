@@ -8,11 +8,11 @@ import {snapshotSchema,documentFilename,type CaseDocument} from "./documents";
 import {renderDocumentPdf} from "./document-pdf";
 
 const fileId=z.string().regex(/^[A-Za-z0-9_-]{10,200}$/);
-const claimSchema=z.object({id:z.string().uuid(),workspace_id:z.string().uuid(),kind:z.enum(["condition_minutes","material_requisition"]),
+const claimSchema=z.object({id:z.guid(),workspace_id:z.guid(),kind:z.enum(["condition_minutes","material_requisition"]),
  revision:z.number().int().positive(),created_at:z.string(),snapshot:snapshotSchema,drive_file_id:fileId,
- drive_state:z.enum(["pending","uploading","saved"]),drive_lease:z.string().uuid().nullable()});
-const fileSchema=z.object({id:fileId,trashed:z.boolean().optional(),parents:z.array(z.string()),size:z.string(),appProperties:z.record(z.string())});
-const folderMap=()=>z.record(fileId).parse(JSON.parse(process.env.GOOGLE_DRIVE_FOLDERS??"{}") as unknown);
+ drive_state:z.enum(["pending","uploading","saved"]),drive_lease:z.guid().nullable()});
+const fileSchema=z.object({id:fileId,trashed:z.boolean().optional(),parents:z.array(z.string()),size:z.string(),appProperties:z.record(z.string(),z.string())});
+const folderMap=()=>z.record(z.string(),fileId).parse(JSON.parse(process.env.GOOGLE_DRIVE_FOLDERS??"{}") as unknown);
 export function driveConfigured(workspace:string):boolean{
  try{return Boolean(process.env.GOOGLE_DRIVE_CLIENT_ID&&process.env.GOOGLE_DRIVE_CLIENT_SECRET&&process.env.GOOGLE_DRIVE_REFRESH_TOKEN&&process.env.SUPABASE_SERVICE_ROLE_KEY&&folderMap()[workspace]);}catch{return false;}
 }

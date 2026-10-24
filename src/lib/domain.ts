@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const uuid = z.string().uuid();
+export const uuid = z.guid();
 export const equipmentCode = z.string().regex(/^[A-Z0-9_-]{1,40}$/);
 export const numeric = z.union([z.number().finite(),z.string().regex(/^-?\d+(\.\d+)?$/)]).transform(Number);
 export const nullableNumeric = numeric.nullable();

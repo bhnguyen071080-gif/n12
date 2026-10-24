@@ -4,7 +4,7 @@ export const categoryLabels:Record<typeof equipmentCategories[number],string>={Q
 export const baseStatusLabels={available:"Đang khai thác",stopped:"Dừng máy",decommissioned:"Ngừng sử dụng"};
 const blankNull=(value:string)=>value.trim()===""?null:value.trim();
 const catalogInput=z.object({
- workspace:z.string().uuid(),id:z.string().uuid().nullable(),version:z.number().int().positive().nullable(),key:z.string().uuid(),
+ workspace:z.guid(),id:z.guid().nullable(),version:z.number().int().positive().nullable(),key:z.guid(),
  code:z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{1,40}$/,"Mã gồm chữ không dấu, số, gạch ngang hoặc gạch dưới; tối đa 40 ký tự."),name:z.string().trim().min(1).max(200),
  category:z.enum(equipmentCategories),base_status:z.enum(["available","stopped","decommissioned"]),serial:z.string().trim().max(100).nullable(),
  year:z.number().int().min(1900).max(new Date().getFullYear()).nullable(),notes:z.string().trim().max(2000),
