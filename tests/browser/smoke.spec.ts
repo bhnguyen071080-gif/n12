@@ -30,7 +30,7 @@ test("PWA shell does not cache business records",async({request})=>{
 });
 
 test("personal cases and month filters stay behind cloud configuration gate",async({page})=>{
- for(const path of ["/imports","/imports?kind=materials","/imports?kind=cargo","/imports?kind=hours","/imports?kind=container","/imports?kind=other","/materials","/materials?import=materials","/materials?import=cargo","/catalog","/catalog?import=equipment","/catalog?edit=not-a-uuid","/cases","/cases/e0000000-0000-0000-0000-000000000001","/cases/e0000000-0000-0000-0000-000000000001/documents","/monthly?kind=hours&import=hours","/monthly?kind=container&import=container","/monthly?kind=other&import=other","/life"]){
+ for(const path of ["/imports","/imports?kind=materials","/imports?kind=cargo","/imports?kind=hours","/imports?kind=container","/imports?kind=other","/materials","/materials?import=materials","/materials?import=cargo","/catalog","/catalog?import=equipment","/catalog?edit=not-a-uuid","/cases","/cases/e0000000-0000-0000-0000-000000000001","/cases/e0000000-0000-0000-0000-000000000001/documents","/monthly?kind=hours&import=hours","/monthly?kind=container&import=container","/monthly?kind=other&import=other","/life","/contractor-materials"]){
   await page.goto(path);await expect(page).toHaveURL(/setup/);
  }
 });
@@ -38,3 +38,4 @@ test("PDF endpoints do not disclose data without a configured backend",async({re
  const r=await request.get("/api/documents/00000000-0000-4000-8000-000000000001/pdf");expect(r.status()).toBe(503);
  const bad=await request.get("/api/documents/not-a-uuid/pdf");expect(bad.status()).toBe(400);
 });
+
