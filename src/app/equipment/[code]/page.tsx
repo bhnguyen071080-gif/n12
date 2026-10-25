@@ -22,7 +22,7 @@ export default async function EquipmentPage({params,searchParams}:{params:Promis
   client.from("failure_incidents").select("*").eq("equipment_id",e.id).eq("confirmed",false)]);
  if(history.error || faults.error)throw new Error("Không đọc được lý lịch");
  const qr="/api/equipment/"+code+"/qr?workspace="+e.workspace_id;
- return <><h1>{e.code} · {e.name}</h1><p>{statusLabels[e.status]} · <Link href={"/monthly?workspace="+e.workspace_id+"&kind=hours&equipment="+e.id}>Giờ hoạt động tháng</Link> · <Link href={"/life?workspace="+e.workspace_id+"&equipment="+e.id}>Giờ từ lượt thay gần nhất</Link></p>
+ return <><h1>{e.name}</h1><p>Mã gõ tắt: <strong>{e.code}</strong> · {statusLabels[e.status]} · <Link href={"/monthly?workspace="+e.workspace_id+"&kind=hours&equipment="+e.id}>Giờ hoạt động tháng</Link> · <Link href={"/life?workspace="+e.workspace_id+"&equipment="+e.id}>Giờ từ lượt thay gần nhất</Link></p>
   <section className="panel"><div className="section-heading"><h2>Thông tin danh mục</h2><Link className="button button-secondary" href={"/catalog?workspace="+e.workspace_id+"&edit="+e.id}>Chỉnh sửa danh mục</Link></div><div className="catalog-fields"><p>Loại thiết bị: {categoryLabels[e.category as keyof typeof categoryLabels]??"Chưa phân loại"}</p><p>Số chế tạo: {e.serial_number??"Chưa ghi"}</p><p>Năm sản xuất: {e.manufacture_year??"Chưa ghi"}</p></div>{e.source_codes?.length?<p>Mã tham chiếu: {e.source_codes.join("; ")}</p>:null}{e.catalog_notes && <p>Ghi chú: {e.catalog_notes}</p>}<p><Link href={"/monthly?workspace="+e.workspace_id+"&kind=hours&equipment="+e.id+"#moc-gio"}>Xem mốc giờ trong Giám sát giờ hoạt động</Link></p></section>
   <div className="grid gap-5 lg:grid-cols-2"><QuickEntry equipment={e.id} mode={p.action==="quick-fault"?"fault":"inspection"}/>
   <section className="panel"><h2>QR định danh phương tiện</h2><p>QR chứa đường dẫn, không chứa quyền truy cập. APP_BASE_URL cần là địa chỉ triển khai ổn định.</p><img src={qr} alt={"QR mở kiểm tra nhanh "+e.code} width={256} height={256}/><Link className="button" href={qr}>Mở / tải nhãn QR</Link><p>In mã phương tiện cạnh QR để nhận diện khi nhãn bị hỏng.</p></section></div>
@@ -32,3 +32,4 @@ export default async function EquipmentPage({params,searchParams}:{params:Promis
   </article>)}</section>
  </>;
 }
+
