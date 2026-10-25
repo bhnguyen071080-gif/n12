@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useDeferredValue,useMemo,useState} from "react";
 import {useRouter} from "next/navigation";
 import {saveMaterial} from "@/app/materials/actions";
 import {materialCategoryLabels,materialDuplicateGroups,type MaterialCatalogRow} from "@/lib/material-catalog";
@@ -7,11 +7,16 @@ import {formatNumber} from "@/lib/domain";
 import {TableImporter} from "./table-importer";
 import {AsyncForm} from "./async-form";
 import {Icon} from "./icons";
+import {TablePagination} from "./table-pagination";
+import {paginate} from "@/lib/pagination";
+const pageSize=50;
+const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").toLowerCase();
 export function MaterialCatalog({workspace,rows,canEdit}:{workspace:string;rows:MaterialCatalogRow[];canEdit:boolean;openImport?:boolean}){
- const router=useRouter(),[view,setView]=useState<"list"|"manual">("list"),[edited,setEdited]=useState<MaterialCatalogRow>(),[search,setSearch]=useState(""),[category,setCategory]=useState("");
- const normalize=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").toLowerCase();
- const found=rows.filter(r=>(!category||(category==="unknown"?!r.equipment_category:r.equipment_category===category))&&normalize(r.code+" "+r.name).includes(normalize(search.trim())));
- const duplicates=materialDuplicateGroups(rows);
+ const router=useRouter(),[view,setView]=useState<"list"|"manual">("list"),[edited,setEdited]=useState<MaterialCatalogRow>(),[search,setSearch]=useState(""),[category,setCategory]=useState(""),[page,setPage]=useState(1);
+ const deferredSearch=useDeferredValue(search),term=normalize(deferredSearch.trim());
+ const found=useMemo(()=>rows.filter(r=>(!category||(category==="unknown"?!r.equipment_category:r.equipment_category===category))&&(!term||normalize(r.code+" "+r.name).includes(term))),[rows,category,term]);
+ const duplicates=useMemo(()=>materialDuplicateGroups(rows),[rows]);
+ const pagination=paginate(found,page,pageSize),currentPage=pagination.page,visible=pagination.items;
  const expected=edited?{id:edited.id,name:edited.name,unit:edited.unit,equipment_category:edited.equipment_category}:null;
  return <div className="material-catalog space-y-5">
   <section className="panel" id="nhap-tu-tep-materials"><h2>Nhập vật tư từ bảng mẫu</h2><p>Tải bảng mẫu, nhập dữ liệu, bấm <strong>Kiểm tra</strong> để đối chiếu với danh mục hiện có rồi mới bấm <strong>Xác nhận nhập</strong>. Mã vật tư là khóa chuẩn; không nhập cùng một vật tư bằng tên viết khác.</p><TableImporter workspace={workspace} kind="materials" canImport={canEdit} embedded/></section>
@@ -26,8 +31,9 @@ export function MaterialCatalog({workspace,rows,canEdit}:{workspace:string;rows:
   </div>
   <section className="panel material-list"><div className="section-heading"><div><p className="eyebrow">DỮ LIỆU HIỆN CÓ</p><h2>Danh sách vật tư</h2></div><div className="flex flex-wrap items-center gap-3"><span className="count-chip">{found.length} / {rows.length} mã</span>{canEdit&&<button type="button" className="button-secondary" onClick={()=>{setEdited(undefined);setView("manual");}}>Thêm vật tư bằng tay</button>}</div></div>
    {duplicates.length>0&&<div className="plan-warning" role="status"><strong>Cần kiểm tra {duplicates.length} nhóm trùng tên, đơn vị và nhóm phương tiện:</strong> {duplicates.slice(0,8).map(group=>group.map(row=>row.code).join(" / ")).join("; ")}. Vật tư cùng tên nhưng thuộc nhóm phương tiện khác nhau được giữ riêng.</div>}
-   <div className="material-filters"><label>Tìm vật tư<input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nhập mã hoặc tên vật tư…"/></label><label>Lọc loại phương tiện<select value={category} onChange={e=>setCategory(e.target.value)}><option value="">Tất cả loại phương tiện</option><option value="unknown">Chưa phân loại</option>{Object.entries(materialCategoryLabels).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label></div>
-   <div className="overflow-x-auto"><table><thead><tr><th>Mã vật tư</th><th>Tên vật tư</th><th>Đơn vị</th><th>Loại phương tiện</th><th>Định mức giờ</th>{canEdit&&<th>Thao tác</th>}</tr></thead><tbody>{found.map(r=><tr key={r.id}><td><strong>{r.code}</strong></td><td>{r.name}</td><td>{r.unit}</td><td>{r.equipment_category?materialCategoryLabels[r.equipment_category]??"Chưa phân loại":"Chưa phân loại"}</td><td>{formatNumber(r.service_limit_hours)}</td>{canEdit&&<td><button type="button" className="button-secondary" onClick={()=>{setEdited(r);setView("manual");}}>Chỉnh sửa</button></td>}</tr>)}</tbody></table></div>
+   <div className="material-filters"><label>Tìm vật tư<input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Nhập mã hoặc tên vật tư…"/></label><label>Lọc loại phương tiện<select value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Tất cả loại phương tiện</option><option value="unknown">Chưa phân loại</option>{Object.entries(materialCategoryLabels).map(([v,label])=><option key={v} value={v}>{label}</option>)}</select></label></div>
+   <div className="overflow-x-auto catalog-table-scroll"><table className="compact-table material-table"><thead><tr><th>Mã vật tư</th><th>Tên vật tư</th><th>Đơn vị</th><th>Loại phương tiện</th><th>Định mức giờ</th>{canEdit&&<th>Thao tác</th>}</tr></thead><tbody>{visible.map(r=><tr key={r.id}><td><strong>{r.code}</strong></td><td className="single-line" title={r.name}>{r.name}</td><td>{r.unit}</td><td>{r.equipment_category?materialCategoryLabels[r.equipment_category]??"Chưa phân loại":"Chưa phân loại"}</td><td>{formatNumber(r.service_limit_hours)}</td>{canEdit&&<td><button type="button" className="button-secondary table-action" onClick={()=>{setEdited(r);setView("manual");}}>Chỉnh sửa</button></td>}</tr>)}</tbody></table></div>
+   <TablePagination page={currentPage} total={found.length} pageSize={pageSize} onChange={setPage}/>
    {rows.length?!found.length&&<p>Không tìm thấy vật tư phù hợp. Hãy đổi nội dung tìm kiếm hoặc bộ lọc.</p>:<div className="material-empty"><span><Icon name="layers" width={34} height={34}/></span><div><h3>Chưa có vật tư trong danh mục</h3><p>Tải mẫu Excel, điền dữ liệu rồi bấm Nhập dữ liệu ở phía trên.</p></div></div>}
   </section>
  </div>;
