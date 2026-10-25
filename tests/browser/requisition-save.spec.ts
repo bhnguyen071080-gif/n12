@@ -21,7 +21,7 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await expect(page.getByText(/2 liên A4 · \d+ trang in/).first()).toBeVisible();
   const firstOil=page.getByRole("checkbox",{name:/P554004 · Lọc dầu máy: 1 chiếc/}).first();
   await firstOil.uncheck();
-  await expect(page.locator(".voucher-preview").first().locator("tr",{hasText:"Lọc dầu máy"})).toContainText("2");
+  await expect(page.locator(".voucher-preview").first().locator("tr",{hasText:"Lọc dầu máy"}).first()).toContainText("2");
   await firstOil.check();
   await page.getByLabel("Ngày lập phiếu lĩnh thực tế").fill("2026-10-24");
   await expect(page.locator(".voucher-preview").first()).toContainText("Ngày phiếu lĩnh: 24/10/2026");
