@@ -94,10 +94,13 @@ test("requisition PDF repeats identical A5 content twice on each A4, including c
  const long=documentFixture("material_requisition",18),more=await renderDocumentPdf(long,1,created),pages=await PDFDocument.load(more);assert.ok(pages.getPageCount()>1);
  if(process.env.DOCUMENT_QA_DIR){await mkdir(process.env.DOCUMENT_QA_DIR,{recursive:true});await writeFile(join(process.env.DOCUMENT_QA_DIR,"voucher-a5-two-up.pdf"),pdf);await writeFile(join(process.env.DOCUMENT_QA_DIR,"voucher-long.pdf"),more);}
 });
-test("A5 overflow is explicit, never silent clipping",async()=>{
+test("content that exceeds A5 automatically moves to two full A4 copies without clipping",async()=>{
  const d=documentFixture("material_requisition");d.payload.lines[0].name="Vật tư ".repeat(60);
- await assert.rejects(()=>renderDocumentPdf(d,1,created),/A5/);
+ const pdf=await PDFDocument.load(await renderDocumentPdf(d,1,created));
+ assert.equal(pdf.getPageCount(),2);
+ for(const page of pdf.getPages()){assert.ok(Math.abs(page.getHeight()-841.89)<.01);assert.ok(Math.abs(page.getWidth()-595.276)<.01);}
 });
 test("unsupported glyphs are rejected instead of appearing as missing boxes",async()=>{
  const d=documentFixture();d.payload.inspection_subject="🛠️";await assert.rejects(()=>renderDocumentPdf(d,1,created),/font PDF/);
 });
+

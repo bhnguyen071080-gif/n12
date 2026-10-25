@@ -30,10 +30,11 @@ test("plan vouchers preserve allocations and requested quantities without invent
  assert.equal(savedPlanVouchers({...p,grouping_mode:"group"}).length,5);
  assert.equal(savedPlanVouchers({...p,grouping_mode:"equipment"}).length,57);
 });
-test("full 54-equipment plan renders both real BM0806 sources as A4 two-copy PDFs",async()=>{
+test("full 54-equipment plan renders two automatic copies for both BM0806 sources",async()=>{
  const p=plan();for(const v of savedPlanVouchers(p)){
   const bytes=await renderPlanVoucherPdf(planVoucherPayload(p,v),p.id,p.created_at);
   const pdf=await PDFDocument.load(bytes);assert.ok(pdf.getPageCount()>=1);
+  if(v.lines.length>4)assert.equal(pdf.getPageCount()%2,0,"full-A4 mode duplicates the complete page sequence");
   for(const page of pdf.getPages()){assert.ok(Math.abs(page.getWidth()-595.276)<1);assert.ok(Math.abs(page.getHeight()-841.89)<1);}
   if(process.env.DOCUMENT_QA_DIR){mkdirSync(process.env.DOCUMENT_QA_DIR,{recursive:true});writeFileSync(join(process.env.DOCUMENT_QA_DIR,`plan-${v.source}.pdf`),bytes);}
  }
@@ -43,3 +44,4 @@ test("supplemental PDF uses its actual document date and explicit shortfall desc
  p.snapshot.rows=[{...p.snapshot.rows[0],materials:[{key:"extra",name:"Lọc bổ sung",unit:"chiếc",quantity:2,source:"warehouse"}]}];
  const d=planVoucherPayload(p,savedPlanVouchers(p)[0]);assert.equal(d.document_at,"2026-11-02T08:00");assert.match(d.reason,/Thiếu thêm khi tháo kiểm tra/);assert.equal(d.lines.length,1);assert.equal(d.lines[0].requested,2);assert.equal(d.lines[0].issued,null);
 });
+

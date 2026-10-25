@@ -27,7 +27,7 @@ test("saved voucher edits are never replaced by newer case data or newer minutes
  const next=prepareRequisition({...env,source_hash:"b".repeat(64)},prior,{...basis,snapshot:{...minutes,payload:{...minutes.payload,company:"Changed company"}}});
  assert.deepEqual(next.payload,d);assert.equal(next.sourceChanged,true);
 });
-test("new four-signature voucher remains printable in two identical A5 copies",async()=>{
+test("short four-signature voucher remains printable as two identical A5 copies",async()=>{
  const d=prepareRequisition(env,undefined,basis).payload;
  const pdf=await PDFDocument.load(await renderDocumentPdf({...minutes,payload:d},1,"2026-10-20T00:00:00Z"));
  assert.equal(pdf.getPageCount(),1);assert.ok(Math.abs(pdf.getPage(0).getHeight()-841.89)<.01);
@@ -42,9 +42,9 @@ test("voucher header follows BM.08.06 date and number wording",()=>{
  assert.deepEqual(voucherHeaderFields("2026-10-20T08:30","PL-001"),{date:"Hải Phòng, ngày 20 tháng 10 năm 2026",number:"Số: PL-001"});
  assert.equal(voucherHeaderFields("2026-10-20T08:30","").number,"Số: .....");
 });
-test("A5 automatically moves rows to another two-copy A4 without squeezing signature space",async()=>{
+test("print layout automatically changes from two-up A5 to two full A4 copies",async()=>{
  const counts:number[]=[];
- for(const count of [1,4,5,12]){
+ for(const count of [1,4,5,25]){
   const source=documentFixture("condition_minutes",count);
   source.payload.lines=source.payload.lines.map((l,i)=>({...l,name:`Vật tư ${i+1}`,specification:"",catalogue_code:""}));
   source.payload.company="Công ty thử nghiệm";source.payload.department="Phòng kỹ thuật";
@@ -55,5 +55,6 @@ test("A5 automatically moves rows to another two-copy A4 without squeezing signa
   counts.push(pdf.getPageCount());
   for(const page of pdf.getPages()){assert.ok(Math.abs(page.getHeight()-841.89)<.01);assert.ok(Math.abs(page.getWidth()-595.276)<.01);}
  }
- assert.deepEqual(counts.slice(0,3),[1,1,2]);assert.ok(counts[3]>=counts[2]);
+ assert.deepEqual(counts.slice(0,3),[1,1,2]);assert.ok(counts[3]>=4);
 });
+
