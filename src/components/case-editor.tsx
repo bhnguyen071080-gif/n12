@@ -1,12 +1,19 @@
 "use client";
 import {useRouter} from "next/navigation";
-import {createTrackingCase,saveTrackingItem,addTrackingMaterial,updateTrackingMaterial,setMaterialReturn,saveMaterialCatalogue} from "@/app/followup-actions";
+import {createTrackingCase,saveTrackingItem,addTrackingMaterial,updateTrackingMaterial,setMaterialReturn,saveMaterialCatalogue,saveMaterialStandard,saveTrackingCaseSummary,cancelTrackingCase} from "@/app/followup-actions";
 import {kinds,kindLabels,progressOptions,progressNames,defaults,standardWorkContents,supplyLabels,type WorkItem} from "@/lib/followup";
 import {formatNumber,localInputNow} from "@/lib/domain";
 import {AsyncForm} from "./async-form";
 type Material={id:string;code:string;name:string;unit:string};
 type Usage={id:string;material_id:string;quantity:number;supply_state:"planned"|"borrowed"|"issued";is_installed:boolean;installation_position:string};
 type Followup={case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number};
+export function CaseActions({caseId,summary,canCancel}:{caseId:string;summary:string;canCancel:boolean}){
+ const router=useRouter();
+ return <section className="panel case-actions no-print"><div className="section-heading"><div><p className="eyebrow">TÁC VỤ VỤ VIỆC</p><h2>Chỉnh sửa hoặc hủy có lưu dấu vết</h2></div></div>
+  <div className="case-action-grid"><details><summary>Chỉnh sửa nội dung khái quát</summary><AsyncForm action={saveTrackingCaseSummary} onSuccess={()=>router.refresh()} label="Lưu nội dung mới"><input type="hidden" name="case" value={caseId}/><input type="hidden" name="expected" value={summary}/><label>Nội dung khái quát<textarea name="summary" defaultValue={summary} rows={3} maxLength={8000} required/></label><p className="muted">Ngày thực hiện và nội dung chi tiết trong lý lịch được sửa tại từng hạng mục bên dưới.</p></AsyncForm></details>
+  {canCancel?<details className="danger-zone"><summary>Hủy vụ việc</summary><AsyncForm action={cancelTrackingCase} onSuccess={()=>router.refresh()} label="Xác nhận hủy vụ việc"><input type="hidden" name="case" value={caseId}/><label>Lý do hủy<textarea name="reason" rows={3} minLength={5} maxLength={500} required placeholder="Ví dụ: nhập nhầm phương tiện; tạo trùng hồ sơ…"/></label><label><input type="checkbox" name="confirmed" required/> Tôi xác nhận hủy; hệ thống giữ nguyên dữ liệu để tra cứu và kiểm toán.</label></AsyncForm></details>:<p className="muted">Chỉ trưởng bộ phận kỹ thuật được hủy vụ việc. Người có quyền kỹ thuật vẫn có thể chỉnh nội dung khi hồ sơ đang hoạt động.</p>}</div>
+ </section>;
+}
 export function CaseEntry({equipment}:{equipment:{id:string;code:string;name:string}[]}){
  const router=useRouter();
  return <section className="panel"><h2>Tạo vụ việc</h2><p>Mã tự sinh theo thời điểm nhập. Chọn nội dung chuẩn trước, chỉ ghi phần chi tiết riêng của phương tiện để tránh một công việc có nhiều cách viết.</p>
@@ -66,5 +73,11 @@ export function MaterialLimit({material}:{material:{id:string;code:string;name:s
  <AsyncForm action={saveMaterialCatalogue} onSuccess={()=>router.refresh()} label="Lưu định mức"><input name="material" type="hidden" value={material.id}/>
  <label>Định mức giờ (để trống nếu không áp dụng)<input name="limit" type="number" min="0.01" step="0.01" defaultValue={material.service_limit_hours??""}/></label>
  <label>Cảnh báo trước (giờ)<input name="warning" type="number" min="0" step="0.01" defaultValue={material.service_warning_hours} required/></label></AsyncForm></details>;
+}
+export function MaterialStandard({workspace,today,material,current}:{workspace:string;today:string;material:{id:string;code:string;name:string;service_limit_hours:number|null;service_warning_hours:number};current?:{effective_from:string;limit_hours:number;warning_hours:number;source_document:string}}){
+ const router=useRouter();
+ return <details className="material-standard"><summary><strong>{material.code} · {material.name}</strong>{current?<span>Hiệu lực {current.effective_from} · {formatNumber(current.limit_hours)} h</span>:<span>Định mức cũ · {formatNumber(material.service_limit_hours)} h</span>}</summary>
+  <AsyncForm action={saveMaterialStandard} onSuccess={()=>router.refresh()} label="Lưu phiên bản định mức mới"><input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="material" value={material.id}/><div className="standard-form-grid"><label>Ngày bắt đầu hiệu lực<input type="date" name="effective_from" defaultValue={today} required/></label><label>Định mức giờ<input name="limit" type="number" min="0.01" step="0.01" defaultValue={current?.limit_hours??material.service_limit_hours??""} required/></label><label>Cảnh báo trước (giờ)<input name="warning" type="number" min="0" step="0.01" defaultValue={current?.warning_hours??material.service_warning_hours} required/></label><label>Nguồn / số văn bản<input name="source_document" maxLength={300} placeholder="Quyết định, định mức Cảng Hải Phòng…" required/></label></div><label>Ghi chú thay đổi<input name="notes" maxLength={1000}/></label><p className="muted">Không sửa đè bản đã ban hành. Khi thay đổi, tạo phiên bản với ngày hiệu lực mới.</p></AsyncForm>
+ </details>;
 }
 

@@ -18,13 +18,14 @@ export interface Database {
    case_documents:Table<CaseDocument>;
    workspaces:Table<Workspace>;
    work_cases:Table<{id:string;equipment_id:string;kind:"repair"|"maintenance"|"cleaning"|"inspection";code:string;summary:string;created_at:string;tracking_only:boolean;actual_started_at:string}>;
-   repair_orders:Table<{id:string;equipment_id:string;case_id:string|null;code:string;title:string;closed_at:string|null;cancelled_at:string|null}>;
+   repair_orders:Table<{id:string;equipment_id:string;case_id:string|null;code:string;title:string;closed_at:string|null;cancelled_at:string|null;cancel_reason:string|null;cancelled_by:string|null}>;
    repair_work_items:Table<WorkItem>;
    repair_material_usages:Table<{id:string;repair_work_item_id:string;material_id:string;quantity:number;supply_state:"planned"|"borrowed"|"issued";is_installed:boolean;installation_position:string;installed_at:string|null}>;
    materials:Table<{id:string;workspace_id:string;code:string;name:string;unit:string;equipment_category:string|null;service_limit_hours:number|null;service_warning_hours:number}>;
    case_material_followups:Table<{case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number}>;
    maintenance_requisition_runs:Table<SavedRequisitionPlan&{document_day:string;voucher_kind:"planned"|"supplemental";supplement_note:string|null;fingerprint:string;source_filename:string|null;source_sha256:string|null}>;
    contractor_materials:Table<{id:string;workspace_id:string;equipment_id:string;material_name:string;unit:string;quantity:number;contractor_name:string;signed_on:string;warranty_months:number;warranty_ends_on:string;notes:string;request_key:string;created_by:string;updated_by:string;created_at:string;updated_at:string}>;
+   material_limit_versions:Table<{id:string;workspace_id:string;material_id:string;effective_from:string;limit_hours:number;warning_hours:number;source_document:string;notes:string;request_key:string;created_by:string;created_at:string}>;
    equipment_history_entries:Table<{id:string;workspace_id:string;equipment_id:string;performed_on:string;content:string;notes:string;source_file_id:string;source_sheet:string;source_row:number;source_key:string;imported_at:string}>;
    sheet_sources:Table<{id:string;workspace_id:string;name:string;spreadsheet_id:string;tab_name:string;a1_range:string;equipment_aliases:Json;source_kind:"container"|"hours";start_month:string|null;created_by:string;created_at:string}>;
    sheet_sync_runs:Table<{id:string;source_id:string;workspace_id:string;request_key:string;actor_id:string;fingerprint:string;accepted_rows:Json;row_count:number;created_at:string}>;
@@ -68,6 +69,8 @@ export interface Database {
    add_tracking_material:{Args:{p_item:string;p_material:string;p_quantity:number;p_supply:string;p_installed:boolean;p_position:string;p_key:string};Returns:string};
    update_tracking_material:{Args:{p_usage:string;p_supply:string;p_installed:boolean};Returns:undefined};
    set_material_return:{Args:{p_case:string;p_status:string;p_completed:string|null;p_version:number;p_notes:string};Returns:undefined};
+   save_tracking_case_summary:{Args:{p_case:string;p_expected:string;p_summary:string};Returns:undefined};
+   cancel_tracking_case:{Args:{p_case:string;p_reason:string};Returns:undefined};
    save_maintenance_requisition_v2:{Args:{p_workspace:string;p_day:string;p_grouping:string;p_rows:Json;p_print:Json;p_source_filename:string;p_source_sha256:string;p_key:string};Returns:string};
    save_maintenance_requisition_v3:{Args:{p_workspace:string;p_planned_day:string;p_document_day:string;p_voucher_kind:"planned"|"supplemental";p_supplement_note:string|null;p_grouping:string;p_rows:Json;p_print:Json;p_source_filename:string;p_source_sha256:string;p_key:string};Returns:string};
    sync_hours_source:{Args:{p_source:string;p_rows:Json;p_key:string};Returns:number};

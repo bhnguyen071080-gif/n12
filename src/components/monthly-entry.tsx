@@ -14,8 +14,8 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
    {...base,cargo_code:String(data.get("cargo_code")),quantity:n("quantity")};
   data.set("rows",JSON.stringify([row]));
  }
- return <div className="grid gap-6 lg:grid-cols-2">
-  <section className="panel"><h2>Nhập một tháng</h2>
+ return <div className="monthly-entry-grid">
+  <section className="panel monthly-entry-compact"><h2>Nhập một tháng</h2>
    <AsyncForm action={saveMonthly} prepare={prepare}><input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="kind" value={kind}/>
     <label>Phương tiện<select name="equipment_code" required>{codes.map(c=><option key={c}>{c}</option>)}</select></label>
     <label>Tháng<input type="month" name="month" required/></label>
@@ -26,7 +26,7 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
      <label>Số lượng theo đơn vị loại hàng<input name="quantity" type="number" step="0.001" min="0" required/></label></>}
    </AsyncForm>
   </section>
-  <section className="panel"><h2>Nhập CSV theo cấu trúc cũ</h2><p>Mẫu Excel tiếng Việt và bước đối chiếu dữ liệu có tại nút Nhập số liệu tháng từ tệp phía trên. Biểu mẫu cũ này thay giá trị tháng đã có.</p><p>Dấu chấm thập phân, không phân tách hàng nghìn. Tiêu đề cột: <code>{header}</code>. Tối đa 1000 dòng/lô.</p>
+  <section className="panel monthly-entry-legacy"><details><summary>Nhập CSV theo cấu trúc cũ</summary><div className="space-y-3"><p>Mẫu Excel tiếng Việt và bước đối chiếu dữ liệu có tại nút Nhập số liệu tháng từ tệp phía trên. Biểu mẫu cũ này thay giá trị tháng đã có.</p><p>Dấu chấm thập phân, không phân tách hàng nghìn. Tiêu đề cột: <code>{header}</code>. Tối đa 1000 dòng/lô.</p>
    <label>Chọn CSV<input type="file" accept=".csv,text/csv" onChange={async e=>{
     const file=e.target.files?.[0];if(!file)return;if(file.size>262144){setError("File tối đa 256 KiB");return;}setCsv(await file.text());setPreview("");setError("");
    }}/></label>
@@ -36,6 +36,7 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
     prepare={data=>data.set("rows",JSON.stringify(monthlyCsv(csv,kind)))} label="Xác nhận cập nhật toàn lô">
     <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="kind" value={kind}/>
    </AsyncForm></>}
-  </section>
+  </div></details></section>
  </div>;
 }
+

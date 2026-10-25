@@ -45,6 +45,17 @@ export async function setMaterialReturn(data:FormData):Promise<ActionResult>{
  p_version:z.coerce.number().int().positive().parse(field(data,"version")),p_notes:z.string().max(4000).parse(field(data,"notes"))});
  if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật trả phiếu chung; ngày thay không thay đổi."};}catch{return fail();}
 }
+export async function saveTrackingCaseSummary(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const r=await client.rpc("save_tracking_case_summary",{p_case:uuid.parse(field(data,"case")),p_expected:z.string().max(8000).parse(field(data,"expected")),p_summary:z.string().trim().min(1).max(8000).parse(field(data,"summary"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật nội dung khái quát. Nội dung hạng mục và lý lịch vẫn chỉnh riêng bên dưới."};}catch{return fail();}
+}
+export async function cancelTrackingCase(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{if(data.get("confirmed")!=="on")return {ok:false,message:"Cần xác nhận hủy vụ việc."};
+ const r=await client.rpc("cancel_tracking_case",{p_case:uuid.parse(field(data,"case")),p_reason:z.string().trim().min(5).max(500).parse(field(data,"reason"))});
+ if(r.error){if(r.error.code==="42501")return {ok:false,message:"Chỉ trưởng bộ phận kỹ thuật được hủy vụ việc."};return fail(r.error.code);}refresh();return {ok:true,message:"Đã hủy vụ việc và lưu lý do trong nhật ký; dữ liệu không bị xóa mất."};}catch{return {ok:false,message:"Cần ghi rõ lý do hủy từ 5 đến 500 ký tự."};}
+}
 export async function saveMaterialCatalogue(data:FormData):Promise<ActionResult>{
  const {client}=await session();
  try{const limit=field(data,"limit"),id=field(data,"material"),values={service_limit_hours:limit?z.coerce.number().finite().positive().parse(limit):null,
@@ -54,3 +65,10 @@ export async function saveMaterialCatalogue(data:FormData):Promise<ActionResult>
  name:z.string().trim().min(1).max(200).parse(field(data,"name")),unit:z.string().trim().min(1).max(40).parse(field(data,"unit"))}).select("id").single();
  if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã lưu danh mục/định mức; không phải nhập tồn kho."};}catch{return fail();}
 }
+export async function saveMaterialStandard(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const limit=z.coerce.number().finite().positive().parse(field(data,"limit")),warning=z.coerce.number().finite().nonnegative().parse(field(data,"warning"));if(warning>=limit)return {ok:false,message:"Mốc cảnh báo phải nhỏ hơn định mức giờ."};
+ const row={workspace_id:uuid.parse(field(data,"workspace")),material_id:uuid.parse(field(data,"material")),effective_from:actualDay(field(data,"effective_from")),limit_hours:limit,warning_hours:warning,source_document:z.string().trim().min(1).max(300).parse(field(data,"source_document")),notes:z.string().trim().max(1000).parse(field(data,"notes")),request_key:uuid.parse(field(data,"request_key"))};
+ const r=await client.from("material_limit_versions").insert(row).select("id").single();if(r.error){if(r.error.code==="23505")return {ok:false,message:"Vật tư này đã có một định mức bắt đầu cùng ngày hiệu lực."};if(r.error.code==="42501")return {ok:false,message:"Bạn chưa có quyền ban hành phiên bản định mức."};return fail(r.error.code);}refresh();return {ok:true,message:"Đã lưu phiên bản định mức mới; bản cũ được giữ để tra cứu."};}catch{return {ok:false,message:"Kiểm tra ngày hiệu lực, số giờ, nguồn văn bản và quyền cập nhật."};}
+}
+

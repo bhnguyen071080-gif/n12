@@ -62,6 +62,10 @@ jobs:
 
       - name: Verify personal follow-up, common returns and inclusive hour reports
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/personal_followup.sql
+      - name: Verify dated material standards and immutable versions
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/material_standards.sql
+      - name: Verify case corrections, cancellation reason and audit evidence
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/case_corrections.sql
       - name: Verify concurrent material retries and shared return reopening
         run: python3 tests/followup_concurrency.py
       - name: Verify immutable print snapshots, Drive leases and role boundaries
