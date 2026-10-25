@@ -9,6 +9,8 @@ import {OperatingBaseline} from "@/components/operating-baseline";
 import {cargoUnitLabels} from "@/lib/table-import";
 import {canImportTable} from "@/lib/import-placement";
 import {TableImportPanel} from "@/components/table-import-panel";
+import {MonthlyOverview} from "@/components/monthly-overview";
+import type {MonthlyActivity} from "@/lib/monthly-overview";
 export const dynamic="force-dynamic";
 export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string;group?:string;import?:string}>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
@@ -34,13 +36,13 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
   if(r.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(r.data);
  }
  const summary=summarizeHours(hours);
- let overview:{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}[]=[];
+ let overview:{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}[]=[],activityRows:MonthlyActivity[]=[];
  const selectedGroup=p.group??"";
  if(kind==="hours"&&selected){
-  const bounds=inclusiveRange(from,to),activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).limit(5000);
-  if(activity.error)throw new Error("Không đọc được bảng tổng thể.");const byId=new Map(eq.data?.map(row=>[row.id,row]));
+  const bounds=inclusiveRange(from,to);for(let offset=0;;offset+=1000){const activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).order("equipment_code").order("month").range(offset,offset+999);if(activity.error)throw new Error("Không đọc được bảng tổng thể.");const page=activity.data??[];activityRows.push(...page.map(row=>({...row,operating_hours:row.operating_hours===null?null:Number(row.operating_hours),boxes:row.boxes===null?null:Number(row.boxes)})));if(page.length<1000)break;}
+  const byId=new Map(eq.data?.map(row=>[row.id,row]));
   const grouped=new Map<string,{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}>();
-  for(const row of activity.data??[]){const item=byId.get(row.equipment_id);if(!item||(selectedGroup&&item.category!==selectedGroup))continue;const prior=grouped.get(row.equipment_id)??{equipment_id:row.equipment_id,equipment_code:row.equipment_code,category:item.category,hours:0,boxes:0,months:0};prior.hours+=Number(row.operating_hours??0);prior.boxes+=Number(row.boxes??0);if(row.operating_hours!==null)prior.months+=1;grouped.set(row.equipment_id,prior);}
+  for(const row of activityRows){const item=byId.get(row.equipment_id);if(!item||(selectedGroup&&item.category!==selectedGroup))continue;const prior=grouped.get(row.equipment_id)??{equipment_id:row.equipment_id,equipment_code:row.equipment_code,category:item.category,hours:0,boxes:0,months:0};prior.hours+=Number(row.operating_hours??0);prior.boxes+=Number(row.boxes??0);if(row.operating_hours!==null)prior.months+=1;grouped.set(row.equipment_id,prior);}
   overview=[...grouped.values()].sort((a,b)=>a.equipment_code.localeCompare(b.equipment_code,"vi"));
  }
  const rows=(metrics.data??[]).filter(r=>(!month||r.month===month) && (kind==="hours"?r.operating_hours!==null:r.boxes!==null));
@@ -65,6 +67,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
    <div className="flex flex-wrap gap-4"><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"xlsx"})}>Xuất Excel .xlsx</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"pdf"})}>Xuất PDF</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"csv"})}>Tải CSV để mở bằng Google Sheets</Link></div>
    <div className="overflow-x-auto"><table><thead><tr><th>Nhóm</th><th>Phương tiện</th><th>Giờ chạy</th><th>Số tháng có dữ liệu</th><th>Container (chiếc)</th></tr></thead><tbody>{overview.map(row=><tr key={row.equipment_id}><td>{row.category}</td><td>{row.equipment_code}</td><td>{formatNumber(row.hours)} h</td><td>{row.months}</td><td>{formatNumber(row.boxes,0)}</td></tr>)}</tbody></table></div>
   </section>}
+  {kind==="hours"&&selected&&<MonthlyOverview equipment={(eq.data??[]).filter(row=>!selectedGroup||row.category===selectedGroup)} activity={activityRows} from={from} to={to}/>} 
   {eq.data?.length?<MonthlyEntry workspace={w} kind={kind} codes={eq.data.map(e=>e.code)} cargoCodes={(cargo.data??[]).map(r=>r.code)}/>:<section className="panel"><h2>Chưa có phương tiện</h2><p>Khai báo phương tiện trước, sau đó đối chiếu giờ gốc và ghi nhận giờ chạy tại đây.</p><Link className="button" href={"/catalog?workspace="+w}>Mở danh mục phương tiện</Link></section>}
   {kind!=="other" && <Link className="button" href={"/sheets?workspace="+w}>Cập nhật từ Google Sheets · TH</Link>}
   <section className="panel"><h2>Dữ liệu hiện có (tối đa 500 dòng gần nhất)</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="hours"?<th>Tổng giờ chạy</th>:kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>
@@ -73,3 +76,4 @@ export default async function Monthly({searchParams}:{searchParams:Promise<{work
   </tbody></table></div></section>
  </>;
 }
+

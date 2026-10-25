@@ -22,6 +22,7 @@ type MaterialOption={id:string;code:string;name:string;unit:string};
 type VoucherKind="planned"|"supplemental";
 export function RequisitionPlanForm({workspace,equipment,materials,today,saveAction}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string;saveAction:(data:FormData)=>Promise<ActionResult>}){
  const [groups,setGroups]=useState<PlanGroup[]>(allGroups);
+ const [selectedEquipment,setSelectedEquipment]=useState<string[]>(()=>octoberMaintenancePlan.map(row=>row.equipmentCode));
  const [grouping,setGrouping]=useState<VoucherGrouping>("group");
  const [plannedDay,setPlannedDay]=useState("2026-10-21");
  const [documentDay,setDocumentDay]=useState(today);
@@ -37,7 +38,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
  const [savedRun,setSavedRun]=useState("");
  const [saving,setSaving]=useState(false);
  const available=useMemo(()=>new Map(equipment.map(item=>[item.code,item])),[equipment]);
- const plannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)),[groups]);
+ const plannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)&&selectedEquipment.includes(row.equipmentCode)),[groups,selectedEquipment]);
  const supplementBase=octoberMaintenancePlan.find(row=>row.equipmentCode===supplementEquipment);
  const rows=useMemo(()=>voucherKind==="planned"?plannedRows:supplementBase&&supplementLines.length?[{...supplementBase,materials:supplementLines}]:[],[voucherKind,plannedRows,supplementBase,supplementLines]);
  const previewGroups=useMemo(()=>voucherKind==="planned"?groups:supplementBase?[supplementBase.group]:[],[voucherKind,groups,supplementBase]);
@@ -57,8 +58,8 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
 
  function toggleGroup(group:PlanGroup){
   setGroups(current=>current.includes(group)?current.filter(value=>value!==group):[...current,group]);
-  setShowPreview(false);
  }
+ function toggleEquipment(code:string){setSelectedEquipment(current=>current.includes(code)?current.filter(value=>value!==code):[...current,code]);}
 
  function addSupplementLine(){
   const item=materials.find(material=>material.id===supplementMaterial),quantity=Number(supplementQuantity);
@@ -110,6 +111,9 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
     {voucherKind==="planned"?<fieldset className="plan-choice"><legend>Nhóm phương tiện</legend>
      {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({octoberMaintenancePlan.filter(row=>row.group===group).length})</small></label>)}
     </fieldset>:null}
+    {voucherKind==="planned"?<fieldset className="plan-choice plan-equipment-choice"><legend>Chọn phương tiện đưa vào phiếu</legend>
+     {octoberMaintenancePlan.filter(row=>groups.includes(row.group)).map(row=><label key={row.equipmentCode}><input type="checkbox" checked={selectedEquipment.includes(row.equipmentCode)} onChange={()=>toggleEquipment(row.equipmentCode)}/>{row.sourceLabel}</label>)}
+    </fieldset>:null}
     <div className="plan-source-note"><strong>Hệ thống luôn tách thành hai nguồn:</strong><span>Vật tư kho vật tư</span><span>Nguyên liệu, nhiên liệu bảo dưỡng</span></div>
     <button type="submit" disabled={!rows.length||!plannedDay||!documentDay||(voucherKind==="supplemental"&&(!supplementNote.trim()||!supplementEquipment||!supplementLines.length))}>Tính và xem trước phiếu</button>
    </form>
@@ -139,7 +143,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
     const sourceVouchers=previews.filter(voucher=>voucher.source===source);
     if(!sourceVouchers.length)return null;
     return <section className="voucher-source" key={source}><h3>{supplySourceLabels[source]} <span>{sourceVouchers.length} phiếu</span></h3><div className="voucher-preview-grid">
-     {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>{voucherKind==="supplemental"?"Phiếu bổ sung khi thực hiện":"Phiếu theo kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày kế hoạch: {formatPlannedDay(plannedDay)} · Ngày phiếu lĩnh: {formatPlannedDay(documentDay)}</p>{voucherKind==="supplemental"?<><p><strong>Phát hiện khi thực hiện:</strong> {supplementNote}</p><p className="muted">Phiếu chỉ gồm phần thiếu/phát sinh, không thay thế danh sách kế hoạch ban đầu.</p></>:null}<p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
+     {sourceVouchers.map((voucher,index)=><article className={`voucher-preview voucher-a4-simulation ${voucher.lines.length>4?"voucher-overflow-risk":""}`} key={voucher.id}><div className="voucher-copy"><header><span>{voucherKind==="supplemental"?"Phiếu bổ sung":"Phiếu kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày kế hoạch: {formatPlannedDay(plannedDay)} · Ngày phiếu lĩnh: {formatPlannedDay(documentDay)}</p><p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>ĐVT</th><th>SL</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></div><div className="voucher-copy voucher-copy-second" aria-label="Liên thứ hai giống liên thứ nhất"><strong>Liên 2 giống liên 1</strong><span>{voucher.equipmentCodes.join(", ")} · {voucher.lines.length} dòng vật tư</span></div>{voucher.lines.length>4&&<p className="voucher-fit-warning">Nguy cơ vượt nửa trang A5; hãy bớt phương tiện hoặc tách phiếu rồi kiểm tra PDF.</p>}</article>)}
     </div></section>;
    })}
    <div className="plan-next-step"><strong>Kiểm soát trước khi nhập</strong><span>Chỉ các dòng đã khớp đúng phương tiện mới được xác nhận.</span></div>
@@ -154,4 +158,5 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
   </section>:null}
  </fieldset>;
 }
+
 
