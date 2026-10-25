@@ -7,8 +7,9 @@ export type EquipmentHistoryRow={
  content:string;
 };
 
-export function equipmentHistoryTitle(code:string):string{
- return `${equipmentHistoryHeading} ${code}`;
+export function equipmentHistoryTitle(equipment:{code:string;name:string}):string{
+ const suffix=equipment.name.trim().toLocaleUpperCase("vi-VN");
+ return `${equipmentHistoryHeading} ${suffix}${equipment.name.trim().toLocaleLowerCase("vi-VN")===equipment.code.trim().toLocaleLowerCase("vi-VN")?"":` (MÃ ${equipment.code})`}`;
 }
 
 export function groupEquipmentHistory(rows:EquipmentHistoryRow[],equipment:{id:string;code:string;name:string}[]){
