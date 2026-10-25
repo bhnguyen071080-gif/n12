@@ -18,10 +18,11 @@ export async function saveMaterial(data:FormData):Promise<ActionResult>{
   if(r.error){
    if(r.error.code==="40001")return {ok:false,message:"Vật tư đã thay đổi sau khi mở biểu mẫu. Tải lại danh sách trước khi sửa; chưa ghi đè dữ liệu."};
    if(r.error.code==="42501")return {ok:false,message:"Bạn chưa có quyền thêm hoặc sửa vật tư trong khu vực này."};
-   if(r.error.code==="23505")return {ok:false,message:"Mã vật tư đã có. Hãy chọn Sửa tại dòng đó."};
+   if(r.error.code==="23505")return {ok:false,message:r.error.message?.includes("materials_workspace_group_identity_uidx")?"Trong cùng nhóm phương tiện đã có vật tư trùng tên và đơn vị. Hãy chỉnh sửa mã chuẩn đang có.":"Mã vật tư đã có. Hãy chọn Chỉnh sửa tại dòng đó."};
    return {ok:false,message:r.error.code==="22023"&&r.error.message?.startsWith("TVEAM:")?r.error.message.slice(7,307):"Chưa lưu được vật tư. Kiểm tra mã, đơn vị và kết nối; không tự đổi đơn vị của mã đã có."};
   }
   revalidatePath("/materials");revalidatePath("/cases");revalidatePath("/life");revalidatePath("/imports");
   return {ok:true,message:expected?"Đã cập nhật vật tư. Tồn kho và định mức giữ nguyên.":"Đã thêm vật tư vào danh mục. Chưa tạo tồn kho hoặc phiếu kho."};
  }catch{return {ok:false,message:"Kiểm tra mã, tên, đơn vị và loại phương tiện trước khi lưu. Chưa có xác nhận ghi dữ liệu."};}
 }
+
