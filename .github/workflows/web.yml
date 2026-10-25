@@ -7,7 +7,8 @@ permissions:
   contents: read
 jobs:
   web:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 chưa hỗ trợ image ubuntu-26 mà ubuntu-latest vừa chuyển sang.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,3 +28,4 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Public shell and mobile login smoke tests
         run: npm run test:browser
+
