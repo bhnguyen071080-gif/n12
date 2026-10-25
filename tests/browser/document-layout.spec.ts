@@ -58,6 +58,38 @@ test("A4 minutes keep a compact title, borderless people and aligned name-only s
  expect(metrics.underline).toBe("solid");
 });
 
+test("equipment history prints a complete grid with rows fitted to their content",async({page})=>{
+ await page.goto("/login");
+ const styles=await page.locator('link[rel="stylesheet"]').evaluateAll(links=>links.map(link=>(link as HTMLLinkElement).href));
+ await page.setContent(`<!doctype html><html lang="vi"><head>${styles.map(href=>`<link rel="stylesheet" href="${href}">`).join("")}</head><body>
+ <main class="app-main"><section class="panel history-sheet"><header><h2>SỬA CHỮA, THAY THẾ, CẢI TẠO CÁC BỘ PHẬN CƠ CẤU CỦA MÁY TRỤC RTG06</h2></header>
+ <div class="overflow-x-auto"><table class="history-table"><thead><tr><th>Ngày, tháng, năm</th><th>Nội dung sửa chữa thay thế cải tạo</th><th>Chữ ký của người chịu trách nhiệm về hoạt động và an toàn máy trục</th></tr></thead><tbody>
+ <tr data-row="short"><td>10/01/2022</td><td><p>Kiểm tra vi AVR</p></td><td><span class="signature-space" aria-label="Ô chữ ký"></span></td></tr>
+ <tr data-row="long"><td>11/01/2022</td><td><p>Tháo cuộn kích từ, kiểm tra toàn bộ cụm phát điện và thay thế chi tiết hư hỏng. Nội dung dài được tự động xuống dòng để chiều cao ô chỉ tăng theo phần chữ thực tế cần hiển thị.</p></td><td><span class="signature-space" aria-label="Ô chữ ký"></span></td></tr>
+ </tbody></table></div></section></main></body></html>`,{waitUntil:"networkidle"});
+ await page.emulateMedia({media:"print"});
+ const metrics=await page.evaluate(()=>{
+  const table=document.querySelector<HTMLElement>('.history-table')!;
+  const shortRow=document.querySelector<HTMLElement>('[data-row="short"]')!;
+  const longRow=document.querySelector<HTMLElement>('[data-row="long"]')!;
+  const cells=[...document.querySelectorAll<HTMLElement>('.history-table th,.history-table td')];
+  return {
+   collapse:getComputedStyle(table).borderCollapse,
+   shortHeight:shortRow.getBoundingClientRect().height,
+   longHeight:longRow.getBoundingClientRect().height,
+   borders:cells.map(cell=>({top:getComputedStyle(cell).borderTopStyle,right:getComputedStyle(cell).borderRightStyle,bottom:getComputedStyle(cell).borderBottomStyle,left:getComputedStyle(cell).borderLeftStyle,width:parseFloat(getComputedStyle(cell).borderLeftWidth)})),
+   vertical:cells.map(cell=>getComputedStyle(cell).verticalAlign),
+   signatureMinHeight:getComputedStyle(document.querySelector('.signature-space')!).minHeight
+  };
+ });
+ expect(metrics.collapse).toBe("collapse");
+ expect(metrics.borders.every(border=>border.top==="solid"&&border.right==="solid"&&border.bottom==="solid"&&border.left==="solid"&&border.width>0)).toBe(true);
+ expect(metrics.vertical.every(value=>value==="middle")).toBe(true);
+ expect(metrics.signatureMinHeight).toBe("0px");
+ expect(metrics.shortHeight).toBeLessThan(metrics.longHeight);
+ expect(metrics.shortHeight).toBeLessThan(45);
+});
+
 test("multi-page A4 minutes move every signature element together, with or without signer names",async({page},testInfo)=>{
  await page.goto("/login");
  const styles=await page.locator('link[rel="stylesheet"]').evaluateAll(links=>links.map(link=>(link as HTMLLinkElement).href));
