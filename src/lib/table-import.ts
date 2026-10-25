@@ -1,7 +1,7 @@
 import {z} from "zod";
 import {parseCatalogForm,categoryLabels,baseStatusLabels} from "./equipment-catalog";
 import {hoursRows,containerRows,otherRows,monthStart,equipmentCode} from "./domain";
-import {parseMaterialCategory,materialCategoryLabels} from "./material-catalog";
+import {parseMaterialCategory,materialCategoryLabels,materialIdentityKey} from "./material-catalog";
 export const importKinds=["equipment","materials","cargo","container","hours","other"] as const;
 export type ImportKind=typeof importKinds[number];
 export const cargoUnitLabels:Record<string,string>={TONNE:"tấn",M3:"m³",ITEM:"chiếc",TRIP:"chuyến"};
@@ -24,7 +24,7 @@ export function parseImportGrid(grid:(string|number|null)[][],kind:ImportKind):{
  const spec=importSpecs[kind],headers=(grid[0]??[]).map(v=>String(v??"").trim());
  const legacyMaterials=kind==="materials"&&headers.join("\u001f")===spec.headers.slice(0,3).join("\u001f");
  if(!legacyMaterials&&headers.join("\u001f")!==spec.headers.join("\u001f"))return {rows:[],issues:[{line:1,column:"Tiêu đề cột",message:"Giữ đúng các cột của mẫu: "+spec.headers.join("; ")}]};
- const rows:ImportRow[]=[],issues:ImportIssue[]=[],seen=new Set<string>();
+ const rows:ImportRow[]=[],issues:ImportIssue[]=[],seen=new Set<string>(),seenMaterialIdentities=new Set<string>();
  const data=grid.slice(1).map((row,i)=>({row,i})).filter(({row})=>row.some(v=>v!==null&&String(v).trim()!==""));
  if(!data.length)return {rows:[],issues:[{line:2,column:"Dữ liệu",message:"Tệp chưa có dòng dữ liệu."}]};
  if(data.length>500)return {rows:[],issues:[{line:2,column:"Dữ liệu",message:"Tối đa 500 dòng mỗi lần nhập; hãy tách tệp."}]};
@@ -49,6 +49,10 @@ export function parseImportGrid(grid:(string|number|null)[][],kind:ImportKind):{
     else if(kind==="container"){const n=cell(2);if(!/^\d+$/.test(n))throw Error("Số container phải là số nguyên không âm, không để trống.");r=containerRows.parse([{equipment_code,month:m,boxes:Number(n)}])[0];}
     else r=otherRows.parse([{equipment_code,month:m,cargo_code:code(cell(2)),quantity:number(cell(3),3)}])[0];
    }
+   if(kind==="materials"){
+    const identity=materialIdentityKey({code:String(r.code),name:String(r.name),unit:String(r.unit),equipment_category:r.equipment_category===null||typeof r.equipment_category==="string"?r.equipment_category:null});
+    if(seenMaterialIdentities.has(identity))throw Error("Trùng tên, đơn vị và nhóm phương tiện với một dòng trước trong tệp.");seenMaterialIdentities.add(identity);
+   }
    const key=String(r.code??r.equipment_code)+"|"+String(r.month??"")+"|"+String(r.cargo_code??"");
    if(seen.has(key))throw Error("Trùng khóa dữ liệu với một dòng trước trong tệp; không tự cộng hai dòng.");seen.add(key);rows.push(r);
   }catch(error){
@@ -62,3 +66,4 @@ export function rowCells(row:ImportRow,kind:ImportKind):(string|number|null)[]{
  const fields=kind==="equipment"?["code","name","category","base_status","serial","year","aliases","notes"]:kind==="materials"?["code","name","unit","equipment_category"]:kind==="cargo"?["code","name","unit"]:kind==="hours"?["equipment_code","month","operating_hours"]:kind==="container"?["equipment_code","month","boxes"]:["equipment_code","month","cargo_code","quantity"];
  return fields.map(k=>{const v=row[k];if(k==="equipment_category")return v===null||v===undefined?null:materialCategoryLabels[String(v)]??String(v);if(k==="category")return categoryLabels[String(v) as keyof typeof categoryLabels]??String(v);if(k==="base_status")return baseStatusLabels[String(v) as keyof typeof baseStatusLabels]??String(v);if(k==="unit"&&kind==="cargo")return cargoUnitLabels[String(v)]??String(v);return Array.isArray(v)?v.join("; "):v??null;});
 }
+

@@ -7,6 +7,11 @@ export function filterEquipment(equipment:EquipmentCard[],query:string,status:st
  const term=searchable(query.trim());
  return equipment.filter(e=>(!status || e.status===status) && (!term || searchable(e.code+" "+e.name).includes(term)));
 }
+export function equipmentLabel(equipment:Pick<EquipmentCard,"code"|"name">){
+ const name=equipment.name.trim(),code=equipment.code.trim();
+ return searchable(name)===searchable(code)?name:`${name} (mã ${code})`;
+}
 export function equipmentCounts(equipment:EquipmentCard[]){
  return {total:equipment.length,available:equipment.filter(e=>e.status==="available").length,repair:equipment.filter(e=>e.status==="in_repair" || e.status==="maintenance").length};
 }
+

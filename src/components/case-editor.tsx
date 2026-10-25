@@ -7,11 +7,11 @@ import {AsyncForm} from "./async-form";
 type Material={id:string;code:string;name:string;unit:string};
 type Usage={id:string;material_id:string;quantity:number;supply_state:"planned"|"borrowed"|"issued";is_installed:boolean;installation_position:string};
 type Followup={case_id:string;return_status:"pending"|"completed";completed_at:string|null;notes:string;version_no:number};
-export function CaseEntry({equipment}:{equipment:{id:string;code:string}[]}){
+export function CaseEntry({equipment}:{equipment:{id:string;code:string;name:string}[]}){
  const router=useRouter();
  return <section className="panel"><h2>Tạo vụ việc</h2><p>Mã tự sinh theo thời điểm nhập. Chọn nội dung chuẩn trước, chỉ ghi phần chi tiết riêng của phương tiện để tránh một công việc có nhiều cách viết.</p>
  <AsyncForm action={createTrackingCase} onSuccess={r=>{if(r.id)router.push("/cases/"+r.id);}} label="Tạo vụ việc">
- <label>Phương tiện<select name="equipment" required>{equipment.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>
+ <label>Phương tiện<select name="equipment" required>{equipment.map(e=><option key={e.id} value={e.id}>{e.name===e.code?e.name:`${e.name} (mã ${e.code})`}</option>)}</select></label>
  <label>Loại việc<select name="kind">{kinds.map(k=><option key={k} value={k}>{kindLabels[k]}</option>)}</select></label>
  <label>Ngày thực hiện<input name="performed_on" type="date" defaultValue={localInputNow().slice(0,10)} required/></label>
  <label>Nội dung công việc chuẩn<select name="standard_summary" required><option value="">Chọn nội dung chuẩn</option>{kinds.map(kind=><optgroup key={kind} label={kindLabels[kind]}>{standardWorkContents[kind].map(value=><option key={value} value={value}>{value}</option>)}</optgroup>)}</select></label>
@@ -67,3 +67,4 @@ export function MaterialLimit({material}:{material:{id:string;code:string;name:s
  <label>Định mức giờ (để trống nếu không áp dụng)<input name="limit" type="number" min="0.01" step="0.01" defaultValue={material.service_limit_hours??""}/></label>
  <label>Cảnh báo trước (giờ)<input name="warning" type="number" min="0" step="0.01" defaultValue={material.service_warning_hours} required/></label></AsyncForm></details>;
 }
+

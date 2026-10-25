@@ -18,17 +18,17 @@ export function EquipmentList({equipment}:{equipment:EquipmentCard[]}){
   </div>
   {equipment.length>0?<>
    <div className="equipment-filters">
-    <label className="search-field">Tìm phương tiện<div><Icon name="search"/><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Mã hoặc tên phương tiện"/></div></label>
+    <label className="search-field">Tìm phương tiện<div><Icon name="search"/><input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tên phương tiện hoặc mã gõ tắt"/></div></label>
     <label>Trạng thái<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Tất cả trạng thái</option>{Object.entries(statusLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
    </div>
    <p className="muted equipment-result-count" role="status">Hiển thị {visible.length} / {equipment.length} phương tiện</p>
    {visible.length?<div className="panel equipment-table-scroll">
     <table className="equipment-table">
-     <thead><tr><th scope="col">STT</th><th scope="col">Mã phương tiện</th><th scope="col">Tên phương tiện</th><th scope="col">Loại / nhóm</th><th scope="col">Số chế tạo</th><th scope="col">Năm SX</th><th scope="col">Giờ lũy kế</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
+     <thead><tr><th scope="col">STT</th><th scope="col">Tên phương tiện</th><th scope="col">Mã gõ tắt</th><th scope="col">Loại / nhóm</th><th scope="col">Số chế tạo</th><th scope="col">Năm SX</th><th scope="col">Giờ lũy kế</th><th scope="col">Trạng thái</th><th scope="col">Thao tác</th></tr></thead>
      <tbody>{visible.map((e,index)=><tr key={e.id}>
       <td>{index+1}</td>
-      <th scope="row"><Link href={"/equipment/"+e.code+"?workspace="+e.workspace_id}>{e.code}</Link></th>
-      <td>{e.name}</td>
+      <th scope="row"><Link href={"/equipment/"+e.code+"?workspace="+e.workspace_id}>{e.name}</Link></th>
+      <td>{e.code}</td>
       <td>{categoryLabels[e.category as keyof typeof categoryLabels]??e.category??"Chưa phân loại"}</td>
       <td>{e.serial_number??"—"}</td>
       <td>{e.manufacture_year??"—"}</td>
@@ -45,3 +45,4 @@ export function EquipmentList({equipment}:{equipment:EquipmentCard[]}){
   </>:<div className="panel empty-catalog"><span className="empty-symbol"><Icon name="crane" width="48" height="48"/></span><div><h3>Sẵn sàng cho những phương tiện đầu tiên</h3><p>Chưa có thiết bị; cần nhập danh mục trước khi đồng bộ sản lượng.</p><p className="muted">Chuẩn bị mã phương tiện, tên và loại thiết bị. Sau khi nhập danh mục, hồ sơ và trạng thái sẽ xuất hiện tại đây.</p></div></div>}
  </section>;
 }
+

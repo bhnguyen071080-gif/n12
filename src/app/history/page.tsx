@@ -5,6 +5,7 @@ import {localInputNow} from "@/lib/domain";
 import {WorkspaceSelect} from "@/components/workspace-select";
 import {DocumentPrintButton} from "@/components/document-print-button";
 import {equipmentHistoryHeading,equipmentHistoryTitle,groupEquipmentHistory,type EquipmentHistoryRow} from "@/lib/equipment-history";
+import {equipmentLabel} from "@/lib/equipment-display";
 
 export const dynamic="force-dynamic";
 
@@ -45,11 +46,11 @@ export default async function EquipmentHistory({searchParams}:{searchParams:Prom
  const groups=groupEquipmentHistory(rows,selected?[selected]:equipment.data);
  return <><div className="history-screen-heading no-print"><div><p className="eyebrow">LÝ LỊCH PHƯƠNG TIỆN</p><h1>{equipmentHistoryHeading}</h1></div><WorkspaceSelect workspaces={c.workspaces} selected={w}/></div>
   <section className="panel no-print"><h2>Chọn phạm vi lý lịch</h2><form method="get" className="history-filters"><input type="hidden" name="workspace" value={w}/>
-   <label>Tên phương tiện<select name="equipment" defaultValue={selected?.id??""}><option value="">Tất cả phương tiện</option>{equipment.data.map(row=><option key={row.id} value={row.id}>{row.code} · {row.name}</option>)}</select></label>
+   <label>Tên phương tiện<select name="equipment" defaultValue={selected?.id??""}><option value="">Tất cả phương tiện</option>{equipment.data.map(row=><option key={row.id} value={row.id}>{equipmentLabel(row)}</option>)}</select></label>
    <label>Từ ngày<input type="date" name="from" defaultValue={from} required/></label><label>Đến ngày<input type="date" name="to" defaultValue={to} required/></label>
    <button type="submit">Xác nhận lựa chọn</button>
   </form><DocumentPrintButton/><p className="muted">Không chọn phương tiện nghĩa là lấy tất cả. Dữ liệu lấy trực tiếp từ ngày thực hiện và nội dung đã ghi trong vụ việc.</p></section>
-  {groups.map(group=><section className="panel history-sheet" key={group.equipment.id}><header><h2>{equipmentHistoryTitle(group.equipment.code)}</h2></header>
+  {groups.map(group=><section className="panel history-sheet" key={group.equipment.id}><header><h2>{equipmentHistoryTitle(group.equipment)}</h2></header>
    <div className="overflow-x-auto"><table className="history-table"><thead><tr><th>Ngày, tháng, năm</th><th>Nội dung sửa chữa thay thế cải tạo</th><th>Chữ ký của người chịu trách nhiệm về hoạt động và an toàn máy trục</th></tr></thead><tbody>
     {group.rows.map(row=><tr key={row.key}><td>{displayDay(row.day)}</td><td><p>{row.content||"Chưa ghi nội dung chi tiết"}</p></td><td><span className="signature-space" aria-label="Ô chữ ký"/></td></tr>)}
    </tbody></table></div>

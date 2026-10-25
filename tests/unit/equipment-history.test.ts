@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {equipmentHistoryTitle,groupEquipmentHistory} from "../../src/lib/equipment-history";
 
-test("vehicle code is part of the required history title",()=>{
- assert.equal(equipmentHistoryTitle("RTG06"),"SỬA CHỮA, THAY THẾ, CẢI TẠO CÁC BỘ PHẬN CƠ CẤU CỦA MÁY TRỤC RTG06");
+test("vehicle name is primary and a distinct code remains a secondary reference",()=>{
+ assert.equal(equipmentHistoryTitle({code:"RTG06",name:"Cẩu RTG số 06"}),"SỬA CHỮA, THAY THẾ, CẢI TẠO CÁC BỘ PHẬN CƠ CẤU CỦA MÁY TRỤC CẨU RTG SỐ 06 (MÃ RTG06)");
+ assert.equal(equipmentHistoryTitle({code:"RTG06",name:"RTG06"}),"SỬA CHỮA, THAY THẾ, CẢI TẠO CÁC BỘ PHẬN CƠ CẤU CỦA MÁY TRỤC RTG06");
 });
 
 test("all-equipment output becomes one history sheet per vehicle",()=>{
