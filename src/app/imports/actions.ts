@@ -6,9 +6,11 @@ import {importKinds,importSpecs,parseImportGrid,rowCells,type ImportPlan,type Im
 import {uuid} from "@/lib/domain";
 import type {Json} from "@/lib/database";
 import type {ActionResult} from "@/app/actions";
+import {materialIdentityKey,type MaterialIdentityRow} from "@/lib/material-catalog";
 function failure(error:{code?:string;message?:string}){
  if(error.code==="42501")return "Bạn không có quyền nhập nhóm dữ liệu này trong khu vực đã chọn.";
  if(error.code==="40001")return "Dữ liệu đã thay đổi sau khi xem trước. Hãy kiểm tra lại tệp để không ghi đè bản mới.";
+ if(error.code==="23505"&&error.message?.includes("materials_workspace_group_identity_uidx"))return "Trong cùng nhóm phương tiện đã có vật tư trùng tên và đơn vị. Giữ một mã chuẩn hoặc đổi tên để phân biệt đúng danh điểm.";
  return error.code==="22023"&&error.message?.startsWith("TVEAM:")?error.message.slice(7,307):"Không nhập được. Kiểm tra mã, tháng, số liệu và kết nối. Chưa có dòng nào trong lô này được ghi.";
 }
 function validateRows(kind:typeof importKinds[number],raw:unknown):ImportRow[]{
@@ -27,6 +29,13 @@ export async function previewTable(data:FormData):Promise<ActionResult & {plan?:
   const rows=validateRows(kind,JSON.parse(z.string().max(250000).parse(data.get("rows"))));
   const r=await client.rpc("preview_import_table",{p_workspace:workspace,p_kind:kind,p_rows:rows as Json});
   if(r.error)return {ok:false,message:failure(r.error)};
+  if(kind==="materials"){
+   const existing=await client.from("materials").select("code,name,unit,equipment_category").eq("workspace_id",workspace);
+   if(existing.error)return {ok:false,message:"Không đọc được danh mục hiện có để đối chiếu trùng."};
+   const byIdentity=new Map((existing.data as MaterialIdentityRow[]).map(row=>[materialIdentityKey(row),row.code]));
+   const duplicate=rows.find(row=>{const code=String(row.code),prior=byIdentity.get(materialIdentityKey({code,name:String(row.name),unit:String(row.unit),equipment_category:row.equipment_category===null||typeof row.equipment_category==="string"?row.equipment_category:null}));return prior!==undefined&&prior!==code;});
+   if(duplicate)return {ok:false,message:"Trong cùng nhóm phương tiện đã có vật tư trùng tên và đơn vị nhưng khác mã. Hãy giữ một mã chuẩn trước khi nhập."};
+  }
   return {ok:true,message:"Đã kiểm tra với dữ liệu hiện có. Chưa lưu dòng nào.",plan:r.data as unknown as ImportPlan[]};
  }catch{return {ok:false,message:"Tệp có dữ liệu không hợp lệ hoặc quá lớn. Kiểm tra lại trước khi nhập."};}
 }
@@ -46,3 +55,4 @@ export async function commitTable(data:FormData):Promise<ActionResult>{
   return {ok:true,message:"Đã nhập "+r.data+" dòng. Dòng không có trong tệp được giữ nguyên; gửi lại cùng yêu cầu không tạo bản sao hoặc cộng lại giờ."};
  }catch{return {ok:false,message:"Không nhập được lô dữ liệu. Hãy kiểm tra lại tệp và kết nối; chưa có xác nhận lưu."};}
 }
+
