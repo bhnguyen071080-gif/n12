@@ -4,6 +4,7 @@ import {PDFDocument,PDFPage,PDFFont,rgb} from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import {snapshotSchema,issuedAmount,knownTotal,type DocumentSnapshot,type DocumentLine} from "./documents";
 import {planVoucherPayloadSchema} from "./saved-requisition-plan";
+import {chooseVoucherPrintLayout} from "./voucher-print-layout";
 type PrintableSnapshot={payload:DocumentSnapshot["payload"];source:{case_code:string}};
 import {parseRepresentatives,representativeLabel,structuredRepresentatives} from "./document-people";
 
@@ -142,7 +143,7 @@ export function voucherSignatureMetrics(titleLines:number,nameLines:number){
  const nameOffset=captionOffset+3+blankHeight+10;
  return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
 }
-function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number):PDFPage[]{
+function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pageHeight=A5,forcedChunks?:readonly (readonly number[])[]):PDFPage[]{
  const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,widths=[.04,.30,.10,.06,.09,.09,.10,.12].map(v=>v*width/(modern?.9:1)),size=8.5;
  const head=mergedHeader(f.bold,size,widths,["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"],"Số lượng");
  const headHeight=head.height;
@@ -158,20 +159,26 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number):P
  // Sum row (23 pt), amount in words, gap, then the complete signing area.
  // All wrapped header/name lines participate in the A5 height budget.
  const footerSpace=modern?23+words.length*11.5+4+sigHeight:words.length*11.5+sigHeight+32;
- const rowBudget=A5-20*MM-headerSpace-headHeight-footerSpace;
- if(rowBudget<(modern?size+3+8:25))throw new Error("Phần đầu/ghi chú quá dài cho A5. Rút gọn nội dung trước khi xuất.");
- const chunks:VoucherChunk[]=[];let chunk:VoucherChunk={rows:[]},remaining=rowBudget;
- d.lines.forEach((line,index)=>{
+ const rowBudget=pageHeight-20*MM-headerSpace-headHeight-footerSpace;
+ if(rowBudget<(modern?size+3+8:25))throw new Error("Phần đầu/ghi chú quá dài cho trang in. Rút gọn nội dung trước khi xuất.");
+ const prepared=d.lines.map((line,index)=>{
   const values=[String(index+1),[line.name,line.specification].filter(Boolean).join("\n"),line.catalogue_code,line.unit,number(line.requested),number(line.issued),number(line.unit_price),number(issuedAmount(line))];
   const cells=values.map((t,i)=>({lines:cellLines(t,f.regular,size,widths[i]),align:([0,3,4,5,6,7].includes(i)?"center":"left") as "left"|"center"}));
   const height=Math.max(...cells.map(c=>c.lines.length))*(size+3)+8;
-  if(height>rowBudget)throw new Error("Một dòng vật tư quá dài cho A5. Rút gọn tên/quy cách hoặc chia nội dung.");
-  if(height>remaining&&chunk.rows.length){chunks.push(chunk);chunk={rows:[]};remaining=rowBudget;}
-  chunk.rows.push({line,index,cells,height});remaining-=height;
- });if(chunk.rows.length)chunks.push(chunk);
+  if(height>rowBudget)throw new Error("Một dòng vật tư quá dài cho trang in. Rút gọn tên/quy cách hoặc chia nội dung.");
+  return {line,index,cells,height};
+ });
+ const requested=forcedChunks?.map(indexes=>({rows:indexes.map(index=>prepared[index]).filter(Boolean)})).filter(chunk=>chunk.rows.length);
+ const chunks:VoucherChunk[]=[];
+ if(requested?.length&&requested.every(chunk=>chunk.rows.reduce((sum,row)=>sum+row.height,0)<=rowBudget))chunks.push(...requested);
+ else{
+  let chunk:VoucherChunk={rows:[]},remaining=rowBudget;
+  prepared.forEach(row=>{if(row.height>remaining&&chunk.rows.length){chunks.push(chunk);chunk={rows:[]};remaining=rowBudget;}chunk.rows.push(row);remaining-=row.height;});
+  if(chunk.rows.length)chunks.push(chunk);
+ }
  return chunks.map((ch,part)=>{
-  const page=doc.addPage([W,A5]);let y=A5-10*MM;
-  if(d.form_code&&!modern)drawText(page,d.form_code,x+width-f.bold.widthOfTextAtSize(d.form_code,8),A5-15,8,f.bold);
+  const page=doc.addPage([W,pageHeight]);let y=pageHeight-10*MM;
+  if(d.form_code&&!modern)drawText(page,d.form_code,x+width-f.bold.widthOfTextAtSize(d.form_code,8),pageHeight-15,8,f.bold);
   const paragraph=(lines:string[],font:PDFFont,size=9)=>{lines.forEach(line=>{drawText(page,line,x,y-size,size,font);y-=size+3;});};
   paragraph(unitLines,f.bold);y-=2;centered(page,"PHIẾU LĨNH VẬT TƯ",y-14,14,f.bold,x,width);y-=22;
   if(modern){centered(page,voucherDate,y-9,9,f.regular,x,width*.76);drawText(page,voucherNumber,x+width-f.regular.widthOfTextAtSize(voucherNumber,9),y-9,9,f.regular);y-=15;}
@@ -180,7 +187,7 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number):P
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
   const total=knownTotal(ch.rows.map(r=>r.line));tableRow(page,x,y,widths,[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}],18,size,f.regular);y-=23;
   paragraph(words,f.regular,8.5);y-=4;
-  if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn A5; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
+  if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn trang in; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
   const titleHeight=Math.max(...sigCols.map(c=>c.title.length))*11;
   sigCols.forEach((c,i)=>{const col=width/signatures.length; c.title.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.bold.widthOfTextAtSize(line,8))/2,y-8-j*11,8,f.bold));
    centered(page,modern&&i===3?"(Ký, họ tên, đóng dấu)":"(Ký, ghi rõ họ tên)",y-titleHeight-8,7.5,f.regular,x+i*col,col);
@@ -204,17 +211,29 @@ async function renderPrintable(s:PrintableSnapshot,revision:number,createdAt:str
  for(const ch of JSON.stringify(s.payload)){const cp=ch.codePointAt(0);if(cp!==undefined&&!charset.has(cp))throw new Error("Ký tự không được font PDF hỗ trợ; thay ký tự đặc biệt trước khi xuất.");}
  if(s.payload.kind==="condition_minutes")minutes(doc,f,s,revision);
  else{
-  vouchers(doc,f,s,revision);const out=await PDFDocument.create();metadata(out,s,createdAt);
+  const layout=chooseVoucherPrintLayout({lineLabels:s.payload.lines.map(line=>[line.name,line.specification,line.catalogue_code].filter(Boolean).join(" ")),equipmentLabels:[s.payload.equipment_label],contextText:s.payload.reason});
+  const copyHeight=layout.format==="two-up-a5"?A5:H;
+  vouchers(doc,f,s,revision,copyHeight,layout.chunks);const out=await PDFDocument.create();metadata(out,s,createdAt);
   // Finalize and reopen the A5 source before embedding. This preserves every
   // page resource when a voucher continues beyond the first A4 sheet.
   const sourceBytes=await doc.save();
-  for(let i=0;i<doc.getPageCount();i++){
-   // Load each source page independently so font/resource dictionaries from
-   // continuation pages cannot overwrite the preceding embedded page.
-   const [p]=await out.embedPdf(sourceBytes,[i]);
-   const page=out.addPage([W,H]);page.drawPage(p,{x:0,y:A5,width:W,height:A5});page.drawPage(p,{x:0,y:0,width:W,height:A5});page.drawLine({start:{x:10*MM,y:A5},end:{x:W-10*MM,y:A5},thickness:.35,dashArray:[3,3],color:BLACK});
+  if(layout.format==="two-up-a5"){
+   for(let i=0;i<doc.getPageCount();i++){
+    // Load each source page independently so font/resource dictionaries from
+    // continuation pages cannot overwrite the preceding embedded page.
+    const [p]=await out.embedPdf(sourceBytes,[i]);
+    const page=out.addPage([W,H]);page.drawPage(p,{x:0,y:A5,width:W,height:A5});page.drawPage(p,{x:0,y:0,width:W,height:A5});page.drawLine({start:{x:10*MM,y:A5},end:{x:W-10*MM,y:A5},thickness:.35,dashArray:[3,3],color:BLACK});
+   }
+  }else{
+   // Nội dung dài: giữ nguyên mẫu BM.08.06 nhưng cho mỗi liên toàn bộ khổ A4.
+   // Sao chép trọn chuỗi trang hai lần để mỗi liên luôn hoàn chỉnh.
+   for(let copy=0;copy<2;copy++)for(let i=0;i<doc.getPageCount();i++){
+    const [p]=await out.embedPdf(sourceBytes,[i]);
+    const page=out.addPage([W,H]);page.drawPage(p,{x:0,y:0,width:W,height:H});
+   }
   }
   return out.save();
  }
  return doc.save();
 }
+

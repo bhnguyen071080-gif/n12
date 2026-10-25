@@ -15,10 +15,21 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   const pdf=await PDFDocument.create();pdf.addPage();
   await page.getByLabel("Tệp kế hoạch sửa chữa, bảo dưỡng tháng (.pdf)").setInputFiles({name:"fixture.pdf",mimeType:"application/pdf",buffer:Buffer.from(await pdf.save())});
   await expect(page.getByText("Đã chọn tệp:")).toBeVisible();
-  await page.getByRole("button",{name:"Tính và xem trước phiếu"}).click();
   await expect(page.locator(".voucher-preview")).toHaveCount(5);
   await expect(page.locator(".voucher-preview").first()).toContainText("Ngày kế hoạch: 21/10/2026 · Ngày phiếu lĩnh: 23/10/2026");
-  const save=page.getByRole("button",{name:"Xác nhận nhập dữ liệu & tạo vụ việc"});
+  await expect(page.getByText("2 liên A5 · 1 tờ A4").first()).toBeVisible();
+  await expect(page.getByText(/2 liên A4 · \d+ trang in/).first()).toBeVisible();
+  const firstOil=page.getByRole("checkbox",{name:/P554004 · Lọc dầu máy: 1 chiếc/}).first();
+  await firstOil.uncheck();
+  await expect(page.locator(".voucher-preview").first().locator("tr",{hasText:"Lọc dầu máy"})).toContainText("2");
+  await firstOil.check();
+  await page.getByLabel("Ngày lập phiếu lĩnh thực tế").fill("2026-10-24");
+  await expect(page.locator(".voucher-preview").first()).toContainText("Ngày phiếu lĩnh: 24/10/2026");
+  await page.getByRole("checkbox",{name:"RTG 06",exact:true}).uncheck();
+  await expect(page.locator(".voucher-preview").first()).not.toContainText("RTG06");
+  await page.getByRole("checkbox",{name:"RTG 06",exact:true}).check();
+  await page.getByLabel("Ngày lập phiếu lĩnh thực tế").fill("2026-10-23");
+  const save=page.getByRole("button",{name:"Xác nhận bố cục, lưu & tạo vụ việc"});
   await save.click();expect(await page.evaluate(()=>((window as unknown as {requests:unknown[]}).requests).length)).toBe(0);
   await page.getByRole("checkbox",{name:"Tôi đã đối chiếu tệp nguồn, phương tiện và số lượng xin lĩnh."}).check();
   await save.click();await expect(page.getByText("Mất xác nhận, hãy gửi lại")).toBeVisible();await save.click();
@@ -29,3 +40,4 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await expect(page.getByLabel("Ngày lập phiếu lĩnh thực tế")).toBeDisabled();
  });
 });}
+
