@@ -188,7 +188,7 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pa
   paragraph(place,f.regular);paragraph(reason,f.regular);paragraph(warehouse,f.regular);y-=3;
   drawMergedHeader(page,x,y,widths,head,size,f.bold);y-=headHeight;
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
-  const total=knownTotal(ch.rows.map(r=>r.line)),sumCells=modern?[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"},{lines:[""]}]:[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}];tableRow(page,x,y,widths,sumCells,18,size,f.regular);y-=23;
+  const total=knownTotal(ch.rows.map(r=>r.line)),sumCells:Cell[]=modern?[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"},{lines:[""]}]:[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}];tableRow(page,x,y,widths,sumCells,18,size,f.regular);y-=23;
   paragraph(words,f.regular,8.5);y-=4;
   if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn trang in; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
   const titleHeight=Math.max(...sigCols.map(c=>c.title.length))*11;
