@@ -28,11 +28,19 @@ test("all group subsets and grouping modes preserve quantities and source separa
    for(const voucher of previews){
     assert.ok(voucher.lines.every(line=>line.source===voucher.source));
     assert.equal(new Set(voucher.equipmentCodes).size,voucher.equipmentCodes.length);
+    assert.equal(voucher.equipmentLabels.length,voucher.equipmentCodes.length);
     if(grouping==="equipment")assert.equal(voucher.equipmentCodes.length,1);
    }
   }
  }
  assert.deepEqual(octoberMaintenancePlan,original);
+});
+
+test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{
+ const frame=octoberMaintenancePlan.find(row=>row.equipmentCode==="KHUNG57")!;
+ const vouchers=buildVoucherPreviews([{...frame,equipmentCode:"N57",equipmentName:"No57"}],groups,"equipment");
+ assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);
+ assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);
 });
 
 test("October plan contains the four requested groups and excludes rags",()=>{
@@ -74,4 +82,5 @@ test("same-day preview combines all selected equipment but keeps sources separat
  assert.equal(vouchers.every(voucher=>voucher.scopeLabel==="Ngày 21/10/2026"),true);
  assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.equipmentCodes.length,54);
 });
+
 
