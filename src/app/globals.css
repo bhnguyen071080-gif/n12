@@ -29,7 +29,7 @@ p { margin-bottom:.65rem; }
 .skip-link { position:fixed; top:0; left:1rem; padding:1rem; background:white; z-index:50; transform:translateY(-120%); }
 .skip-link:focus { transform:translateY(0); }
 .app-shell { display:flex; min-height:100dvh; }
-.sidebar { width:242px; flex-shrink:0; position:sticky; top:0; height:100dvh; display:flex; flex-direction:column; padding:1.3rem .8rem; background:linear-gradient(165deg,#173b53,#10283d); border-right:1px solid #4b6b80; box-shadow:5px 0 14px #102c4314,inset -1px 0 0 #081b2d; color:#dbe9f3; }
+.sidebar { width:76px; flex-shrink:0; position:sticky; top:0; z-index:30; height:100dvh; display:flex; flex-direction:column; padding:1.3rem .6rem; overflow-x:hidden; background:linear-gradient(165deg,#173b53,#10283d); border-right:1px solid #4b6b80; box-shadow:5px 0 14px #102c4314,inset -1px 0 0 #081b2d; color:#dbe9f3; transition:width .22s ease,margin-right .22s ease,box-shadow .22s ease; }
 .brand { display:flex; align-items:center; gap:.7rem; color:white; text-decoration:none; margin:0 .45rem 1.4rem; }
 .brand strong { display:block; font-size:1.45rem; letter-spacing:.02em; }
 .brand small,.login-brand small { display:block; font-size:.6rem; letter-spacing:.18em; margin-top:.15rem; color:#b9d0df; }
@@ -47,6 +47,19 @@ p { margin-bottom:.65rem; }
 .sidebar-note small { display:block; color:#91aabc; margin-top:.5rem; line-height:1.6; }
 .mobile-nav { display:none; }
 .sidebar { overflow-y:auto; }
+@media(min-width:801px) {
+ .sidebar:hover,.sidebar:focus-within { width:242px; margin-right:-166px; box-shadow:10px 0 24px #071b2d59,inset -1px 0 0 #081b2d; }
+ .sidebar .brand { justify-content:center; margin-left:0; margin-right:0; }
+ .sidebar .brand>span:last-child,.sidebar .nav-caption,.sidebar .desktop-nav a span,.sidebar .sidebar-note p { max-width:0; opacity:0; overflow:hidden; white-space:nowrap; pointer-events:none; transition:max-width .18s ease,opacity .12s ease; }
+ .sidebar:hover .brand,.sidebar:focus-within .brand { justify-content:flex-start; margin-left:.45rem; margin-right:.45rem; }
+ .sidebar:hover .brand>span:last-child,.sidebar:focus-within .brand>span:last-child,.sidebar:hover .nav-caption,.sidebar:focus-within .nav-caption,.sidebar:hover .desktop-nav a span,.sidebar:focus-within .desktop-nav a span,.sidebar:hover .sidebar-note p,.sidebar:focus-within .sidebar-note p { max-width:190px; opacity:1; pointer-events:auto; transition-delay:.06s; }
+ .sidebar .desktop-nav { padding:.35rem; }
+ .sidebar .desktop-nav a { justify-content:center; padding:.55rem; }
+ .sidebar:hover .desktop-nav a,.sidebar:focus-within .desktop-nav a { justify-content:flex-start; padding:.55rem .65rem; }
+ .sidebar .desktop-nav a[aria-current=page] { border-left-width:3px; }
+ .sidebar .sidebar-note { justify-content:center; margin-left:0; margin-right:0; }
+ .sidebar:hover .sidebar-note,.sidebar:focus-within .sidebar-note { justify-content:flex-start; margin-left:.5rem; margin-right:.5rem; }
+}
 .catalog-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
 .catalog-heading h1 { margin-bottom:.5rem; }
 .catalog-heading-actions { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
@@ -197,7 +210,7 @@ p { margin-bottom:.65rem; }
 @media(max-width:800px){.case-action-grid,.case-readonly{grid-template-columns:1fr}}
 .login-bottom { color:var(--muted); font-size:.65rem; margin:3rem 0 0; }
 @media(min-width:1600px) { .app-main { padding:2rem 3rem; } .dashboard-hero { min-height:270px; } }
-@media(max-width:1200px) { .sidebar { width:220px; } .app-main { padding:1.5rem; } .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .equipment-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .quick-links { gap:.6rem; } .quick-links a { padding:.85rem; } .login-scene { padding:2rem; } }
+@media(max-width:1200px) { .app-main { padding:1.5rem; } .stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .equipment-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .quick-links { gap:.6rem; } .quick-links a { padding:.85rem; } .login-scene { padding:2rem; } }
 @media(max-width:800px) {
  .catalog-fields { grid-template-columns:1fr; }
  .sidebar { width:176px; padding:1.25rem .65rem; } .sidebar nav { padding:.4rem; gap:.5rem; } .sidebar nav a { padding:.65rem .5rem; font-size:.78rem; } .brand { gap:.45rem; padding:0 .25rem; } .brand strong { font-size:1.15rem; } .brand-mark { width:36px; height:36px; }
