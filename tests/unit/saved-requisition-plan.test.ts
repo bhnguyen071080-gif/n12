@@ -19,6 +19,13 @@ test("saved plan refuses missing or duplicate equipment, supports explicit catal
  assert.equal(mapped[0].equipmentCode,"TUKAN_05");assert.equal(mapped[0].sourceLabel,"Tukan 05");
  assert.equal(savePlanInputSchema.safeParse({...input,plannedDay:"2026-10-32"}).success,false);
 });
+test("saved plan automatically resolves the four frame names to their shorthand catalog codes",()=>{
+ const aliases=new Map([["KHUNG57",["N57","No57"]],["KHUNG60",["N60","No60"]],["KHUNG64",["N64","No64"]],["KHUNG66",["N66","No66"]]]),catalog=equipment.map(item=>{
+  const alias=aliases.get(item.code);return alias?{...item,code:alias[0],name:alias[1]}:item;
+ });
+ const resolved=resolvePlanRows(input,catalog);
+ for(const [source,[code,name]] of aliases){const row=resolved.find(item=>item.sourceLabel===`Khung cẩu ${name}`);assert.equal(row?.equipmentCode,code);assert.equal(row?.equipmentName,name,source);}
+});
 test("plan vouchers preserve allocations and requested quantities without inventing case sources or actual issue",()=>{
  const p=plan(),vouchers=savedPlanVouchers(p);assert.equal(p.snapshot.rows.length,54);assert.equal(vouchers.length,2);
  for(const v of vouchers){const d=planVoucherPayload(p,v);
