@@ -552,7 +552,14 @@ p { margin-bottom:.65rem; }
 .contractor-active { background:#e4f4ea; color:#17613d; }
 .contractor-due_soon { background:#fff0bd; color:#765000; }
 .contractor-expired { background:#fbd7d7; color:#8b2424; }
+.warranty-legend { display:flex; flex-wrap:wrap; gap:.55rem; margin:-.2rem 0 .85rem; }
+.contractor-stat-active { border-left:5px solid #27935b; }
+.contractor-stat-due { border-left:5px solid #c58a00; }
+.contractor-stat-expired { border-left:5px solid #b72f2f; }
+.contractor-alert-active td:first-child { border-left:5px solid #27935b; }
+.contractor-alert-due_soon td { background:#fffaf0; }
 .contractor-alert-due_soon td:first-child { border-left:5px solid #c58a00; }
+.contractor-alert-expired td { background:#fff3f3; }
 .contractor-alert-expired td:first-child { border-left:5px solid #b72f2f; }
 .table-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; }
 .table-actions .button { white-space:nowrap; }
