@@ -13,12 +13,12 @@ export default async function SavedPlanPage({params}:{params:Promise<{id:string}
  const plan=r.data,vouchers=savedPlanVouchers(plan);
  return <div className="space-y-5">
   <section className="panel"><Link href={`/requisitions?workspace=${plan.workspace_id}`}>← Danh sách kế hoạch</Link><h1>Kế hoạch đã lưu · {formatPlannedDay(plan.planned_day)}</h1>
-   <p>{plan.snapshot.rows.length} phương tiện · {vouchers.length} phiếu. Số xin lĩnh được cộng từ từng dòng kế hoạch.</p>
+   <p>{plan.snapshot.rows.length} phương tiện · {vouchers.length} phiếu. Mỗi dòng vật tư giữ riêng theo phương tiện; hệ thống không cộng gộp số lượng.</p>
    <p className="muted">Đây là bản đã lưu cố định. Thay đổi phạm vi hoặc số lượng phải lập bản mới. Ngày kế hoạch chưa phải ngày thực hiện; thực phát và hoàn thành chưa được ghi nhận.</p>
   </section>
   <section className="panel"><h2>Phiếu lĩnh BM.08.06</h2><p>Mỗi phiếu in hai liên A5 trên một tờ A4. Số phiếu, thực phát và đơn giá để trống.</p>
    {vouchers.map((v,i)=><article className="voucher-preview" key={v.id}><h3>{v.scopeLabel} · {supplySourceLabels[v.source]}</h3><p>{v.equipmentCodes.join(", ")}</p>
-    <table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>Xin lĩnh</th></tr></thead><tbody>{v.lines.map(l=><tr key={`${l.key}:${l.unit}:${l.catalogueCode??""}`}><td>{l.name}</td><td>{l.catalogueCode??"—"}</td><td>{l.unit}</td><td>{l.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table>
+    <table><thead><tr><th>STT</th><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>Xin lĩnh</th><th>Ghi chú</th></tr></thead><tbody>{v.lines.map((l,lineIndex)=><tr key={`${l.equipmentCode??""}:${l.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{l.name}</td><td>{l.catalogueCode??l.name}</td><td>{l.unit}</td><td>{l.quantity.toLocaleString("vi-VN")}</td><td>{l.equipmentLabel??l.equipmentCode??""}</td></tr>)}</tbody></table>
     <a href={`/api/requisition-plans/${id}/pdf?voucher=${i}`} target="_blank" rel="noreferrer">Mở / in phiếu {i+1} (PDF)</a></article>)}
   </section>
   <section className="panel"><h2>Vụ việc và phân bổ theo phương tiện</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện nguồn</th><th>Danh mục đã ghép</th><th>Vụ việc</th><th>Số lượng kế hoạch</th></tr></thead><tbody>
