@@ -30,6 +30,10 @@ export type VoucherPreview={
  lines:PlannedMaterial[];
 };
 
+// Ngày ký/phát hành ghi trên đầu tệp PDF kế hoạch tháng 10/2026.
+// Đây là ngày nguồn của kế hoạch, không phải ngày lập từng phiếu lĩnh.
+export const octoberPlanDocumentDay="2026-10-01";
+
 export const planGroupLabels:Record<PlanGroup,string>={
  TUKAN:"TUKAN",
  QC:"QC",
