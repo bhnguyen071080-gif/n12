@@ -14,6 +14,7 @@ export type PlannedMaterial={
 export type MaintenancePlanRow={
  sourceLabel:string;
  equipmentCode:string;
+ equipmentName?:string;
  group:PlanGroup;
  maintenanceLevel:"I - theo giờ"|"I - theo tháng"|"II";
  operatingReading?:string;
@@ -25,6 +26,7 @@ export type VoucherPreview={
  source:SupplySource;
  scopeLabel:string;
  equipmentCodes:string[];
+ equipmentLabels:string[];
  lines:PlannedMaterial[];
 };
 
@@ -119,15 +121,15 @@ export function formatPlannedDay(day:string):string{
 }
 
 export function buildVoucherPreviews(rows:readonly MaintenancePlanRow[],groups:readonly PlanGroup[],grouping:VoucherGrouping,plannedDay?:string):VoucherPreview[]{
- const selected=new Set(groups),buckets=new Map<string,{source:SupplySource;scopeLabel:string;equipmentCodes:Set<string>;lines:Map<string,PlannedMaterial>}>();
+ const selected=new Set(groups),buckets=new Map<string,{source:SupplySource;scopeLabel:string;equipment:Map<string,string>;lines:Map<string,PlannedMaterial>}>();
  for(const plan of rows){
   if(!selected.has(plan.group))continue;
   for(const item of plan.materials){
    const scope=grouping==="date"?`date:${plannedDay??"same-day"}`:grouping==="group"?plan.group:plan.equipmentCode;
    const scopeLabel=grouping==="date"?(plannedDay?`Ngày ${formatPlannedDay(plannedDay)}`:"Cùng ngày thực hiện"):grouping==="group"?planGroupLabels[plan.group]:plan.sourceLabel;
    const id=`${scope}:${item.source}`;
-   const bucket=buckets.get(id)??{source:item.source,scopeLabel,equipmentCodes:new Set<string>(),lines:new Map<string,PlannedMaterial>()};
-   bucket.equipmentCodes.add(plan.equipmentCode);
+   const bucket=buckets.get(id)??{source:item.source,scopeLabel,equipment:new Map<string,string>(),lines:new Map<string,PlannedMaterial>()};
+   bucket.equipment.set(plan.equipmentCode,plan.equipmentName?.trim()||plan.sourceLabel);
    const lineKey=`${item.key}:${item.unit}:${item.catalogueCode??""}`;
    const prior=bucket.lines.get(lineKey);
    bucket.lines.set(lineKey,prior?{...prior,quantity:prior.quantity+item.quantity}:{...item});
@@ -135,7 +137,7 @@ export function buildVoucherPreviews(rows:readonly MaintenancePlanRow[],groups:r
   }
  }
  const sourceOrder:Record<SupplySource,number>={warehouse:0,maintenance_consumable:1};
- return [...buckets.entries()].map(([id,b])=>({id,source:b.source,scopeLabel:b.scopeLabel,equipmentCodes:[...b.equipmentCodes],lines:[...b.lines.values()]}))
+ return [...buckets.entries()].map(([id,b])=>({id,source:b.source,scopeLabel:b.scopeLabel,equipmentCodes:[...b.equipment.keys()],equipmentLabels:[...b.equipment.values()],lines:[...b.lines.values()]}))
   .sort((a,b)=>sourceOrder[a.source]-sourceOrder[b.source]||a.scopeLabel.localeCompare(b.scopeLabel,"vi"));
 }
 
@@ -143,4 +145,5 @@ export function previewCaseCode(equipmentCode:string,day:string){
  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
  return match?`BD-${equipmentCode}-${match[3]}${match[2]}${match[1]}-HHmm-0001`:`BD-${equipmentCode}-chọn-ngày`;
 }
+
 
