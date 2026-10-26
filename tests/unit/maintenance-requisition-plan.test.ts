@@ -1,8 +1,39 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {buildVoucherPreviews,octoberMaintenancePlan,type PlanGroup} from "../../src/lib/maintenance-requisition-plan";
+import {buildVoucherPreviews,formatPlannedDay,octoberMaintenancePlan,type PlanGroup,type PlannedMaterial} from "../../src/lib/maintenance-requisition-plan";
 
 const groups:PlanGroup[]=["TUKAN","QC","RTG","KHUNG_CAU"];
+
+test("planned calendar dates retain their day, including month/year boundaries",()=>{
+ assert.equal(formatPlannedDay("2026-10-21"),"21/10/2026");
+ assert.equal(formatPlannedDay("2027-01-01"),"01/01/2027");
+ assert.equal(formatPlannedDay("2028-02-29"),"29/02/2028");
+ assert.equal(formatPlannedDay(""),"");
+});
+
+test("all group subsets and grouping modes preserve quantities and source separation",()=>{
+ const original=structuredClone(octoberMaintenancePlan);
+ const totals=(lines:readonly PlannedMaterial[])=>{
+  const result:Record<string,number>={};
+  for(const line of lines){const key=[line.source,line.key,line.unit,line.catalogueCode??""].join("|");result[key]=(result[key]??0)+line.quantity;}
+  return result;
+ };
+ for(let mask=0;mask<16;mask++){
+  const selected=groups.filter((_,index)=>mask&(1<<index));
+  const expected=totals(octoberMaintenancePlan.filter(row=>selected.includes(row.group)).flatMap(row=>row.materials));
+  for(const grouping of ["equipment","group","date"] as const){
+   const previews=buildVoucherPreviews(octoberMaintenancePlan,selected,grouping,"2026-10-21");
+   assert.deepEqual(totals(previews.flatMap(v=>v.lines)),expected);
+   assert.equal(new Set(previews.map(v=>v.id)).size,previews.length);
+   for(const voucher of previews){
+    assert.ok(voucher.lines.every(line=>line.source===voucher.source));
+    assert.equal(new Set(voucher.equipmentCodes).size,voucher.equipmentCodes.length);
+    if(grouping==="equipment")assert.equal(voucher.equipmentCodes.length,1);
+   }
+  }
+ }
+ assert.deepEqual(octoberMaintenancePlan,original);
+});
 
 test("October plan contains the four requested groups and excludes rags",()=>{
  assert.equal(octoberMaintenancePlan.length,54);
