@@ -45,5 +45,5 @@ export function planVoucherPayload(plan:SavedRequisitionPlan,voucher:VoucherPrev
  unit:"",location:"",form_code:"BM.08.06",document_number:"",document_at:p.documentDay+"T08:00",equipment_label:voucher.scopeLabel,
  inspection_subject:"",reason:`${p.voucherKind==="supplemental"?"Bổ sung phát sinh: "+p.supplementNote+". ":""}Bảo dưỡng theo kế hoạch ${plan.planned_day.slice(0,7)}, ngày ${plan.planned_day}. ${voucher.scopeLabel}. Phương tiện: ${scope}`,
  warehouse:voucher.source==="warehouse"?p.warehouse:p.consumableWarehouse,participants:[],cause:"",solution:"",signer_names:["","",p.recipient,"",""],amount_words:"",
- lines:voucher.lines.map(l=>({usage_id:null,name:l.name,specification:"",catalogue_code:l.catalogueCode??"",unit:l.unit,requested:l.quantity,issued:null,unit_price:null,limit_text:"",used_text:"",condition:"",notes:""}))});
+ lines:voucher.lines.map(l=>({usage_id:null,name:l.name,specification:"",catalogue_code:l.catalogueCode??"",unit:l.unit,requested:l.quantity,issued:null,unit_price:null,limit_text:"",used_text:"",condition:"",notes:l.equipmentLabel??l.equipmentCode??""}))});
 }
