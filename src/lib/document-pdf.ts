@@ -62,7 +62,7 @@ function tableRow(page:PDFPage,x:number,y:number,widths:number[],cells:Cell[],he
 }
 function number(n:number|null):string{return n===null?"":new Intl.NumberFormat("vi-VN",{maximumFractionDigits:3}).format(n);}
 function day(value:string):string{return `ngày ${value.slice(8,10)} tháng ${value.slice(5,7)} năm ${value.slice(0,4)}`;}
-export function voucherHeaderFields(documentAt:string,documentNumber:string){return {date:`Hải Phòng, ${day(documentAt)}`,number:`Số: ${documentNumber||"....."}`};}
+export function voucherHeaderFields(documentAt:string,documentNumber:string){const text=day(documentAt);return {date:text.charAt(0).toUpperCase()+text.slice(1),number:`Số phiếu: ${documentNumber||"........................"}`};}
 async function fonts(doc:PDFDocument):Promise<Fonts>{
  doc.registerFontkit(fontkit);
  const [regular,bold]=await Promise.all([readFile(join(process.cwd(),"assets/fonts/NotoSerif-Regular.ttf")),readFile(join(process.cwd(),"assets/fonts/NotoSerif-Bold.ttf"))]);
@@ -144,13 +144,15 @@ export function voucherSignatureMetrics(titleLines:number,nameLines:number){
  return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
 }
 function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pageHeight=A5,forcedChunks?:readonly (readonly number[])[]):PDFPage[]{
- const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,widths=[.04,.30,.10,.06,.09,.09,.10,.12].map(v=>v*width/(modern?.9:1)),size=8.5;
- const head=mergedHeader(f.bold,size,widths,["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"],"Số lượng");
+ const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,size=8.2;
+ const widths=(modern?[.04,.27,.09,.07,.08,.08,.09,.11,.17]:[.04,.30,.10,.06,.09,.09,.10,.12]).map(v=>v*width/(modern?1:.9));
+ const headings=modern?["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","Đơn vị tính","Xin lĩnh","Thực phát","Đơn giá","Thành tiền","Ghi chú"]:["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"];
+ const head=mergedHeader(f.bold,size,widths,headings,"Số lượng");
  const headHeight=head.height;
  const reason=wrapPdfText("Lý do xuất kho: "+d.reason,f.regular,9,width),warehouse=wrapPdfText("Lĩnh tại kho: "+d.warehouse,f.regular,9,width);
- const unitLines=modern?[...wrapPdfText(d.company,f.bold,9,width),...wrapPdfText(d.department,f.bold,9,width)]:wrapPdfText("Đơn vị: "+d.unit,f.bold,9,width),place=wrapPdfText(modern?"Họ và tên người nhận hàng: "+d.signer_names[2]:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,9,width);
+ const unitLines=modern?wrapPdfText("Đơn vị: "+d.company,f.bold,9,width-60):wrapPdfText("Đơn vị: "+d.unit,f.bold,9,width),place=wrapPdfText(modern?"Tên đơn vị lĩnh: "+d.department:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,9,width);
  const headerFields=voucherHeaderFields(d.document_at,d.document_number),voucherDate=modern?headerFields.date:"",voucherNumber=modern?headerFields.number:"";
- const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?42:38);
+ const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?58:38);
  const words=wrapPdfText("Cộng thành tiền (viết bằng chữ): "+(d.amount_words||"........................"),f.regular,8.5,width);
  const signatures=modern?["Phòng TCKT","Thủ kho","Người nhận","Lãnh đạo Phòng"]:["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"];
  const sigCols=signatures.map((label,i)=>({title:wrapPdfText(label,f.bold,8,width/signatures.length-6),name:wrapPdfText(d.signer_names[i],f.regular,8,width/signatures.length-6)}));
@@ -162,7 +164,7 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pa
  const rowBudget=pageHeight-20*MM-headerSpace-headHeight-footerSpace;
  if(rowBudget<(modern?size+3+8:25))throw new Error("Phần đầu/ghi chú quá dài cho trang in. Rút gọn nội dung trước khi xuất.");
  const prepared=d.lines.map((line,index)=>{
-  const values=[String(index+1),[line.name,line.specification].filter(Boolean).join("\n"),line.catalogue_code,line.unit,number(line.requested),number(line.issued),number(line.unit_price),number(issuedAmount(line))];
+  const values=[String(index+1),[line.name,line.specification].filter(Boolean).join("\n"),line.catalogue_code,line.unit,number(line.requested),number(line.issued),number(line.unit_price),number(issuedAmount(line)),...(modern?[line.notes]:[])];
   const cells=values.map((t,i)=>({lines:cellLines(t,f.regular,size,widths[i]),align:([0,3,4,5,6,7].includes(i)?"center":"left") as "left"|"center"}));
   const height=Math.max(...cells.map(c=>c.lines.length))*(size+3)+8;
   if(height>rowBudget)throw new Error("Một dòng vật tư quá dài cho trang in. Rút gọn tên/quy cách hoặc chia nội dung.");
@@ -180,12 +182,13 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pa
   const page=doc.addPage([W,pageHeight]);let y=pageHeight-10*MM;
   if(d.form_code&&!modern)drawText(page,d.form_code,x+width-f.bold.widthOfTextAtSize(d.form_code,8),pageHeight-15,8,f.bold);
   const paragraph=(lines:string[],font:PDFFont,size=9)=>{lines.forEach(line=>{drawText(page,line,x,y-size,size,font);y-=size+3;});};
+  if(modern){const boxWidth=52,boxHeight=14;page.drawRectangle({x:x+width-boxWidth,y:y-boxHeight,width:boxWidth,height:boxHeight,borderWidth:.7,borderColor:BLACK});centered(page,d.form_code||"BM.08.06",y-10,8,f.bold,x+width-boxWidth,boxWidth);}
   paragraph(unitLines,f.bold);y-=2;centered(page,"PHIẾU LĨNH VẬT TƯ",y-14,14,f.bold,x,width);y-=22;
-  if(modern){centered(page,voucherDate,y-9,9,f.regular,x,width*.76);drawText(page,voucherNumber,x+width-f.regular.widthOfTextAtSize(voucherNumber,9),y-9,9,f.regular);y-=15;}
+  if(modern){centered(page,voucherNumber,y-9,9,f.bold,x,width);y-=13;centered(page,voucherDate,y-9,9,f.regular,x,width);y-=15;}
   paragraph(place,f.regular);paragraph(reason,f.regular);paragraph(warehouse,f.regular);y-=3;
   drawMergedHeader(page,x,y,widths,head,size,f.bold);y-=headHeight;
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
-  const total=knownTotal(ch.rows.map(r=>r.line));tableRow(page,x,y,widths,[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}],18,size,f.regular);y-=23;
+  const total=knownTotal(ch.rows.map(r=>r.line)),sumCells=modern?[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"},{lines:[""]}]:[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}];tableRow(page,x,y,widths,sumCells,18,size,f.regular);y-=23;
   paragraph(words,f.regular,8.5);y-=4;
   if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn trang in; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
   const titleHeight=Math.max(...sigCols.map(c=>c.title.length))*11;
