@@ -9,6 +9,8 @@ export type PlannedMaterial={
  quantity:number;
  source:SupplySource;
  catalogueCode?:string;
+ equipmentCode?:string;
+ equipmentLabel?:string;
 };
 
 export type MaintenancePlanRow={
@@ -112,30 +114,25 @@ const frameRows:MaintenancePlanRow[]=[
 // so it cannot enter totals, previews or a later saved requisition.
 export const octoberMaintenancePlan:readonly MaintenancePlanRow[]=[...tukanRows,...qcRows,...rtgRows,...frameRows];
 
-// Calendar dates have no time zone. Do not turn them into local Date instants.
-export function formatPlannedDay(day:string):string{
- const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
- return match?`${match[3]}/${match[2]}/${match[1]}`:"";
-}
-
 export function buildVoucherPreviews(rows:readonly MaintenancePlanRow[],groups:readonly PlanGroup[],grouping:VoucherGrouping,plannedDay?:string):VoucherPreview[]{
- const selected=new Set(groups),buckets=new Map<string,{source:SupplySource;scopeLabel:string;equipmentCodes:Set<string>;lines:Map<string,PlannedMaterial>}>();
+ const selected=new Set(groups),buckets=new Map<string,{source:SupplySource;scopeLabel:string;equipmentCodes:Set<string>;lines:PlannedMaterial[]}>();
  for(const plan of rows){
   if(!selected.has(plan.group))continue;
-  for(const item of plan.materials){
+  for(const [materialIndex,item] of plan.materials.entries()){
    const scope=grouping==="date"?`date:${plannedDay??"same-day"}`:grouping==="group"?plan.group:plan.equipmentCode;
-   const scopeLabel=grouping==="date"?(plannedDay?`Ngày ${formatPlannedDay(plannedDay)}`:"Cùng ngày thực hiện"):grouping==="group"?planGroupLabels[plan.group]:plan.sourceLabel;
+   const scopeLabel=grouping==="date"?(plannedDay?`Ngày ${plannedDay.slice(8,10)}/${plannedDay.slice(5,7)}/${plannedDay.slice(0,4)}`:"Cùng ngày thực hiện"):grouping==="group"?planGroupLabels[plan.group]:plan.sourceLabel;
    const id=`${scope}:${item.source}`;
-   const bucket=buckets.get(id)??{source:item.source,scopeLabel,equipmentCodes:new Set<string>(),lines:new Map<string,PlannedMaterial>()};
+   const bucket=buckets.get(id)??{source:item.source,scopeLabel,equipmentCodes:new Set<string>(),lines:[]};
    bucket.equipmentCodes.add(plan.equipmentCode);
-   const lineKey=`${item.key}:${item.unit}:${item.catalogueCode??""}`;
-   const prior=bucket.lines.get(lineKey);
-   bucket.lines.set(lineKey,prior?{...prior,quantity:prior.quantity+item.quantity}:{...item});
+   // Giữ riêng từng nhu cầu vật tư theo phương tiện như mẫu BM.08.06.
+   // Có thể gom nhiều phương tiện trên một phiếu, nhưng không cộng dồn
+   // các dòng trùng tên vật tư của nhiều phương tiện.
+   bucket.lines.push({...item,key:`${plan.equipmentCode}:${item.key}:${materialIndex}`,equipmentCode:plan.equipmentCode,equipmentLabel:plan.sourceLabel});
    buckets.set(id,bucket);
   }
  }
  const sourceOrder:Record<SupplySource,number>={warehouse:0,maintenance_consumable:1};
- return [...buckets.entries()].map(([id,b])=>({id,source:b.source,scopeLabel:b.scopeLabel,equipmentCodes:[...b.equipmentCodes],lines:[...b.lines.values()]}))
+ return [...buckets.entries()].map(([id,b])=>({id,source:b.source,scopeLabel:b.scopeLabel,equipmentCodes:[...b.equipmentCodes],lines:b.lines}))
   .sort((a,b)=>sourceOrder[a.source]-sourceOrder[b.source]||a.scopeLabel.localeCompare(b.scopeLabel,"vi"));
 }
 
