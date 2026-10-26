@@ -62,6 +62,7 @@ export interface Database {
    report_operating_hours:{Args:{p_equipment:string;p_from:string;p_to:string};Returns:{month:string;operating_hours:number|null}[]};
    report_material_hours:{Args:{p_equipment:string;p_to:string};Returns:MaterialHours[]};
    report_workspace_material_hours:{Args:{p_workspace:string;p_to:string};Returns:(MaterialHours&{equipment_id:string;equipment_code:string})[]};
+   report_material_replacements:{Args:{p_workspace:string;p_from:string;p_to:string;p_equipment:string|null;p_query:string;p_limit:number};Returns:{equipment_id:string;equipment_code:string;equipment_name:string;material_id:string;material_code:string;material_name:string;unit:string;usage_id:string;quantity:number;position:string;replaced_on:string;previous_replaced_on:string|null;days_since_previous:number|null;case_id:string|null;case_code:string|null;order_code:string;item_id:string;total_count:number}[]};
    create_tracking_case:{Args:{p_equipment:string;p_kind:"repair"|"maintenance"|"cleaning"|"inspection";p_day:string;p_summary:string;p_key:string};Returns:string};
    save_tracking_item:{Args:{p_order:string;p_item:string|null;p_version:number|null;p_data:Json;p_key:string};Returns:string};
    save_tracking_item_v2:{Args:{p_order:string;p_item:string|null;p_version:number|null;p_data:Json;p_minutes:number;p_key:string};Returns:string};
