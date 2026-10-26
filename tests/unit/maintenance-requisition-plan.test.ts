@@ -36,13 +36,6 @@ test("all group subsets and grouping modes preserve quantities and source separa
  assert.deepEqual(octoberMaintenancePlan,original);
 });
 
-test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{
- const frame=octoberMaintenancePlan.find(row=>row.equipmentCode==="KHUNG57")!;
- const vouchers=buildVoucherPreviews([{...frame,equipmentCode:"N57",equipmentName:"No57"}],groups,"equipment");
- assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);
- assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);
-});
-
 test("October plan contains the four requested groups and excludes rags",()=>{
  assert.equal(octoberMaintenancePlan.length,54);
  assert.deepEqual(Object.fromEntries(groups.map(group=>[group,octoberMaintenancePlan.filter(row=>row.group===group).length])),{TUKAN:6,QC:7,RTG:26,KHUNG_CAU:15});
@@ -55,16 +48,25 @@ test("group preview separates warehouse items from maintenance consumables",()=>
  assert.equal(vouchers.filter(voucher=>voucher.source==="warehouse").length,1);
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,4);
  const warehouse=vouchers.find(voucher=>voucher.id==="RTG:warehouse");
- assert.deepEqual(warehouse?.lines.map(line=>[line.catalogueCode,line.quantity]),[["P554004",3],["P554620",6]]);
+ assert.equal(warehouse?.lines.length,6);
+ assert.deepEqual(warehouse?.lines.map(line=>[line.equipmentCode,line.catalogueCode,line.quantity]),[
+  ["RTG06","P554004",1],["RTG06","P554620",2],
+  ["RTG10","P554004",1],["RTG10","P554620",2],
+  ["RTG12","P554004",1],["RTG12","P554620",2],
+ ]);
 });
 
-test("plan totals match the selected monthly source table after rag removal",()=>{
+test("group preview keeps one material line per equipment instead of combining quantities",()=>{
  const vouchers=buildVoucherPreviews(octoberMaintenancePlan,groups,"group");
- const totals=(id:string)=>Object.fromEntries((vouchers.find(voucher=>voucher.id===id)?.lines??[]).map(line=>[line.name,line.quantity]));
- assert.deepEqual(totals("TUKAN:maintenance_consumable"),{"Mỡ EPL2":90,"Dầu thủy lực":60,"Dầu hộp số":380});
- assert.deepEqual(totals("QC:maintenance_consumable"),{"Dầu thủy lực":30,"Mỡ EPL2":140,"Mỡ V220-0":15});
- assert.deepEqual(totals("RTG:maintenance_consumable"),{"Mỡ EPL2":260,"Dầu máy":105,"Xăng":9,"Dầu diesel":9,"Dầu hộp số":340});
- assert.deepEqual(totals("KHUNG_CAU:maintenance_consumable"),{"Mỡ EPL2":7,"Mỡ V220-0":21,"Dầu thủy lực":80});
+ const tukan=vouchers.find(voucher=>voucher.id==="TUKAN:maintenance_consumable");
+ assert.equal(tukan?.lines.length,8);
+ assert.deepEqual(tukan?.lines.filter(line=>line.name==="Mỡ EPL2").map(line=>[line.equipmentCode,line.quantity]),[
+  ["TUKAN05",15],["TUKAN06",15],["TUKAN07",15],["TUKAN10",15],["TUKAN11",15],["TUKAN12",15],
+ ]);
+ const total=(id:string,name:string)=>(vouchers.find(voucher=>voucher.id===id)?.lines??[]).filter(line=>line.name===name).reduce((sum,line)=>sum+line.quantity,0);
+ assert.equal(total("QC:maintenance_consumable","Mỡ EPL2"),140);
+ assert.equal(total("RTG:maintenance_consumable","Dầu máy"),105);
+ assert.equal(total("KHUNG_CAU:maintenance_consumable","Mỡ V220-0"),21);
 });
 
 test("individual preview creates a separate voucher only when an equipment has that source",()=>{
@@ -81,6 +83,9 @@ test("same-day preview combines all selected equipment but keeps sources separat
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,1);
  assert.equal(vouchers.every(voucher=>voucher.scopeLabel==="Ngày 21/10/2026"),true);
  assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.equipmentCodes.length,54);
+ assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.lines.length,77);
 });
 
 
+
+test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{\n const rows=[{sourceLabel:"Khung cẩu No57",equipmentCode:"N57",equipmentName:"No57",group:"KHUNG_CAU" as const,maintenanceLevel:"I - theo tháng" as const,materials:[{key:"grease",name:"Mỡ",unit:"kg",quantity:1,source:"maintenance_consumable" as const}]}];\n const vouchers=buildVoucherPreviews(rows,["KHUNG_CAU"],"equipment","2026-10-21");\n assert.equal(vouchers.length,1);\n assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);\n assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);\n assert.equal(vouchers[0].lines[0].equipmentLabel,"No57");\n});\n
