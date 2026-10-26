@@ -19,20 +19,14 @@ test("saved plan refuses missing or duplicate equipment, supports explicit catal
  assert.equal(mapped[0].equipmentCode,"TUKAN_05");assert.equal(mapped[0].sourceLabel,"Tukan 05");
  assert.equal(savePlanInputSchema.safeParse({...input,plannedDay:"2026-10-32"}).success,false);
 });
-test("saved plan automatically resolves the four frame names to their shorthand catalog codes",()=>{
- const aliases=new Map([["KHUNG57",["N57","No57"]],["KHUNG60",["N60","No60"]],["KHUNG64",["N64","No64"]],["KHUNG66",["N66","No66"]]]),catalog=equipment.map(item=>{
-  const alias=aliases.get(item.code);return alias?{...item,code:alias[0],name:alias[1]}:item;
- });
- const resolved=resolvePlanRows(input,catalog);
- for(const [source,[code,name]] of aliases){const row=resolved.find(item=>item.sourceLabel===`Khung cẩu ${name}`);assert.equal(row?.equipmentCode,code);assert.equal(row?.equipmentName,name,source);}
-});
-test("plan vouchers preserve allocations and requested quantities without inventing case sources or actual issue",()=>{
+\ntest("saved plan automatically resolves the four frame names to their shorthand catalog codes",()=>{\n const aliases=new Map([["KHUNG57",["N57","No57"]],["KHUNG60",["N60","No60"]],["KHUNG64",["N64","No64"]],["KHUNG66",["N66","No66"]]]),catalog=equipment.map(item=>{\n  const alias=aliases.get(item.code);return alias?{...item,code:alias[0],name:alias[1]}:item;\n });\n const resolved=resolvePlanRows(input,catalog);\n for(const [oldCode,[code,name]] of aliases){const row=resolved.find(item=>item.sourceLabel===`Khung cẩu ${name}`);assert.ok(row,oldCode);assert.equal(row.equipmentCode,code);assert.equal(row.equipmentName,name);}\n});\ntest("plan vouchers preserve allocations and requested quantities without inventing case sources or actual issue",()=>{
  const p=plan(),vouchers=savedPlanVouchers(p);assert.equal(p.snapshot.rows.length,54);assert.equal(vouchers.length,2);
  for(const v of vouchers){const d=planVoucherPayload(p,v);
   assert.ok(d.lines.every(l=>l.issued===null&&l.unit_price===null&&l.usage_id===null));
   assert.equal(d.document_number,"");assert.equal(d.basis_document_id,undefined);
   assert.equal(documentPayloadSchema.safeParse(d).success,false,"case-document rules still require a real basis");
-  for(const line of v.lines){const total=p.snapshot.rows.flatMap(r=>r.materials).filter(m=>m.key===line.key&&m.source===v.source).reduce((n,m)=>n+m.quantity,0);assert.equal(line.quantity,total);}
+  assert.equal(v.lines.length,p.snapshot.rows.flatMap(row=>row.materials).filter(material=>material.source===v.source).length);
+  for(const line of v.lines){const sourceRow=p.snapshot.rows.find(row=>row.equipmentCode===line.equipmentCode),sourceLine=sourceRow?.materials.find(material=>material.key===line.key&&material.source===v.source);assert.ok(sourceLine);assert.equal(line.quantity,sourceLine.quantity);}
  }
  assert.equal(savedPlanVouchers({...p,grouping_mode:"group"}).length,5);
  assert.equal(savedPlanVouchers({...p,grouping_mode:"equipment"}).length,57);
