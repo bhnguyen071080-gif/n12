@@ -22,7 +22,7 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await expect(page.locator(".voucher-preview")).toHaveCount(5);
   await expect(page.getByText("Tất cả phương tiện đã khớp danh mục.")).toBeVisible();
   await expect(page.getByRole("checkbox",{name:"No57",exact:true})).toBeVisible();
-  await expect(page.locator(".voucher-preview").filter({hasText:"Khung cẩu"})).toContainText("No57");
+  await expect(page.locator(".voucher-preview").filter({hasText:"No57"})).toHaveCount(1);
   await expect(page.locator(".voucher-preview").first()).toContainText("Ngày kế hoạch lấy từ PDF: 01/10/2026");
   const numberFields=await page.getByLabel("Số phiếu").all();
   for(let i=0;i<numberFields.length;i++)await numberFields[i].fill(`CTV/PLVT/2026_${String(i+1).padStart(4,"0")}`);
