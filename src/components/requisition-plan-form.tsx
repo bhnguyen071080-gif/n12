@@ -83,11 +83,12 @@ export function RequisitionPlanForm({workspaceName,equipmentCodes}:{workspaceNam
     const sourceVouchers=previews.filter(voucher=>voucher.source===source);
     if(!sourceVouchers.length)return null;
     return <section className="voucher-source" key={source}><h3>{supplySourceLabels[source]} <span>{sourceVouchers.length} phiếu</span></h3><div className="voucher-preview-grid">
-     {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>Phiếu {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày dự kiến: {formatPlannedDay(plannedDay)}</p><p><strong>Phương tiện:</strong> {voucher.equipmentCodes.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
+     {sourceVouchers.map((voucher,index)=><article className="voucher-preview" key={voucher.id}><header><span>Phiếu {String(index+1).padStart(2,"0")}</span><strong>{voucher.scopeLabel}</strong></header><p className="muted">Ngày dự kiến: {formatPlannedDay(plannedDay)}</p><p><strong>Phương tiện:</strong> {voucher.equipmentLabels.join(", ")}</p><table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>SL xin lĩnh</th></tr></thead><tbody>{voucher.lines.map(line=><tr key={line.key}><td>{line.name}</td><td>{line.catalogueCode??"—"}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table></article>)}
     </div></section>;
    })}
    <div className="plan-next-step"><strong>Bản chạy thử chỉ xem trước.</strong><span>Bước tiếp theo sẽ lưu phiên bản kế hoạch, tạo mã vụ việc thật và chuyển từng phiếu sang mẫu BM.08.06 để in.</span></div>
   </section>:null}
  </div>;
 }
+
 
