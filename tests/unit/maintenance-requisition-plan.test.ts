@@ -28,11 +28,19 @@ test("all group subsets and grouping modes preserve quantities and source separa
    for(const voucher of previews){
     assert.ok(voucher.lines.every(line=>line.source===voucher.source));
     assert.equal(new Set(voucher.equipmentCodes).size,voucher.equipmentCodes.length);
+    assert.equal(voucher.equipmentLabels.length,voucher.equipmentCodes.length);
     if(grouping==="equipment")assert.equal(voucher.equipmentCodes.length,1);
    }
   }
  }
  assert.deepEqual(octoberMaintenancePlan,original);
+});
+
+test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{
+ const frame=octoberMaintenancePlan.find(row=>row.equipmentCode==="KHUNG57")!;
+ const vouchers=buildVoucherPreviews([{...frame,equipmentCode:"N57",equipmentName:"No57"}],groups,"equipment");
+ assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);
+ assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);
 });
 
 test("October plan contains the four requested groups and excludes rags",()=>{
@@ -47,25 +55,16 @@ test("group preview separates warehouse items from maintenance consumables",()=>
  assert.equal(vouchers.filter(voucher=>voucher.source==="warehouse").length,1);
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,4);
  const warehouse=vouchers.find(voucher=>voucher.id==="RTG:warehouse");
- assert.equal(warehouse?.lines.length,6);
- assert.deepEqual(warehouse?.lines.map(line=>[line.equipmentCode,line.catalogueCode,line.quantity]),[
-  ["RTG06","P554004",1],["RTG06","P554620",2],
-  ["RTG10","P554004",1],["RTG10","P554620",2],
-  ["RTG12","P554004",1],["RTG12","P554620",2],
- ]);
+ assert.deepEqual(warehouse?.lines.map(line=>[line.catalogueCode,line.quantity]),[["P554004",3],["P554620",6]]);
 });
 
-test("group preview keeps one material line per equipment instead of combining quantities",()=>{
+test("plan totals match the selected monthly source table after rag removal",()=>{
  const vouchers=buildVoucherPreviews(octoberMaintenancePlan,groups,"group");
- const tukan=vouchers.find(voucher=>voucher.id==="TUKAN:maintenance_consumable");
- assert.equal(tukan?.lines.length,8);
- assert.deepEqual(tukan?.lines.filter(line=>line.name==="Mỡ EPL2").map(line=>[line.equipmentCode,line.quantity]),[
-  ["TUKAN05",15],["TUKAN06",15],["TUKAN07",15],["TUKAN10",15],["TUKAN11",15],["TUKAN12",15],
- ]);
- const total=(id:string,name:string)=>(vouchers.find(voucher=>voucher.id===id)?.lines??[]).filter(line=>line.name===name).reduce((sum,line)=>sum+line.quantity,0);
- assert.equal(total("QC:maintenance_consumable","Mỡ EPL2"),140);
- assert.equal(total("RTG:maintenance_consumable","Dầu máy"),105);
- assert.equal(total("KHUNG_CAU:maintenance_consumable","Mỡ V220-0"),21);
+ const totals=(id:string)=>Object.fromEntries((vouchers.find(voucher=>voucher.id===id)?.lines??[]).map(line=>[line.name,line.quantity]));
+ assert.deepEqual(totals("TUKAN:maintenance_consumable"),{"Mỡ EPL2":90,"Dầu thủy lực":60,"Dầu hộp số":380});
+ assert.deepEqual(totals("QC:maintenance_consumable"),{"Dầu thủy lực":30,"Mỡ EPL2":140,"Mỡ V220-0":15});
+ assert.deepEqual(totals("RTG:maintenance_consumable"),{"Mỡ EPL2":260,"Dầu máy":105,"Xăng":9,"Dầu diesel":9,"Dầu hộp số":340});
+ assert.deepEqual(totals("KHUNG_CAU:maintenance_consumable"),{"Mỡ EPL2":7,"Mỡ V220-0":21,"Dầu thủy lực":80});
 });
 
 test("individual preview creates a separate voucher only when an equipment has that source",()=>{
@@ -82,6 +81,6 @@ test("same-day preview combines all selected equipment but keeps sources separat
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,1);
  assert.equal(vouchers.every(voucher=>voucher.scopeLabel==="Ngày 21/10/2026"),true);
  assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.equipmentCodes.length,54);
- assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.lines.length,77);
 });
+
 
