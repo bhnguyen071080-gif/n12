@@ -11,5 +11,8 @@ test("monthly matrix preserves missing values instead of treating them as zero",
  assert.equal(result.rows[1].cells[0].hours,null);
  assert.equal(result.totals[0].hours,12);
  assert.equal(result.totals[0].missing,1);
+ assert.equal(result.rows[0].totalHours,12);
+ assert.equal(result.rows[0].totalBoxes,3);
+ assert.equal(result.rows[1].missing,1);
 });
 
