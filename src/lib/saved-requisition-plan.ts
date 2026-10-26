@@ -2,6 +2,7 @@ import {z} from "zod";
 import {uuid} from "./domain";
 import {documentPayloadFields} from "./documents";
 import {buildVoucherPreviews,octoberMaintenancePlan,planGroupLabels,type MaintenancePlanRow,type VoucherPreview} from "./maintenance-requisition-plan";
+import {createEquipmentIdentityMatcher} from "./equipment-display";
 
 const short=z.string().trim().max(200).refine(s=>!/[\u0000-\u001f]/.test(s),"Ký tự không hợp lệ");
 const day=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s=>{const d=new Date(s+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;},"Ngày không hợp lệ");
@@ -18,10 +19,10 @@ export type SavedPlanRow=MaintenancePlanRow&{equipmentId:string;equipmentName:st
 export type SavedRequisitionPlan={id:string;workspace_id:string;planned_day:string;grouping_mode:SavePlanInput["grouping"];snapshot:{version:1;rows:SavedPlanRow[];print:z.infer<typeof planPrintSchema>};created_at:string;created_by:string};
 
 export function resolvePlanRows(input:SavePlanInput,equipment:PlanEquipment[]){
- const used=new Set<string>();
+ const used=new Set<string>(),matchIdentity=createEquipmentIdentityMatcher(equipment);
  return octoberMaintenancePlan.filter(row=>input.groups.includes(row.group)).map(row=>{
   const selected=input.mappings[row.equipmentCode];
-  const found=selected?equipment.find(e=>e.id===selected):equipment.find(e=>e.code===row.equipmentCode);
+  const found=selected?equipment.find(e=>e.id===selected):matchIdentity(row.equipmentCode,row.sourceLabel);
   if(!found)throw new Error(`Chưa ghép phương tiện: ${row.sourceLabel}`);
   if(used.has(found.id))throw new Error("Hai dòng kế hoạch không được ghép cùng một phương tiện");
   used.add(found.id);
@@ -41,7 +42,7 @@ export const planVoucherPayloadSchema=documentPayloadFields.extend({
 });
 export function planVoucherPayload(plan:SavedRequisitionPlan,voucher:VoucherPreview){
  const p=planPrintSchema.parse(plan.snapshot.print),detail=p.voucherDetails?.find(item=>item.id===voucher.id);
- const codes=voucher.equipmentCodes.join(", "),scope=codes.length<=500?codes:`${voucher.equipmentCodes.length} phương tiện (xem phân bổ trong kế hoạch ${plan.id})`;
+ const labels=voucher.equipmentLabels.join(", "),scope=labels.length<=500?labels:`${voucher.equipmentLabels.length} phương tiện (xem phân bổ trong kế hoạch ${plan.id})`;
  return planVoucherPayloadSchema.parse({schema_version:1,kind:"material_requisition",voucher_template:"bm0806",company:p.company,department:p.department,
  unit:"",location:"",form_code:"BM.08.06",document_number:detail?.documentNumber??"",document_at:(detail?.documentDay??p.documentDay)+"T08:00",equipment_label:voucher.scopeLabel,
  inspection_subject:"",reason:`${p.voucherKind==="supplemental"?"Bổ sung phát sinh: "+p.supplementNote+". ":""}Phục vụ bảo dưỡng theo Kế hoạch sửa chữa, bảo dưỡng tháng 10/2026 ngày 01/10/2026. ${voucher.scopeLabel}. Phương tiện: ${scope}`,

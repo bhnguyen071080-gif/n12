@@ -17,7 +17,7 @@ export default async function SavedPlanPage({params}:{params:Promise<{id:string}
    <p className="muted">Đây là bản đã xác nhận. Số phiếu và ngày phiếu được lưu riêng theo từng phiếu; ngày kế hoạch 01/10/2026 vẫn giữ nguyên theo PDF nguồn.</p>
   </section>
   <section className="panel"><h2>Phiếu lĩnh BM.08.06</h2><p>Mỗi phiếu in hai liên A5 trên một tờ A4. Thực phát và đơn giá để trống để kho ghi nhận.</p>
-   {vouchers.map((v,i)=>{const payload=planVoucherPayload(plan,v);return <article className="voucher-preview" key={v.id}><h3>{v.scopeLabel} · {supplySourceLabels[v.source]}</h3><p><strong>Số phiếu:</strong> {payload.document_number||"Chưa có (bản cũ)"} · <strong>Ngày phiếu:</strong> {formatPlannedDay(payload.document_at.slice(0,10))}</p><p>{v.equipmentCodes.join(", ")}</p>
+   {vouchers.map((v,i)=>{const payload=planVoucherPayload(plan,v);return <article className="voucher-preview" key={v.id}><h3>{v.scopeLabel} · {supplySourceLabels[v.source]}</h3><p><strong>Số phiếu:</strong> {payload.document_number||"Chưa có (bản cũ)"} · <strong>Ngày phiếu:</strong> {formatPlannedDay(payload.document_at.slice(0,10))}</p><p>{v.equipmentLabels.join(", ")}</p>
     <table><thead><tr><th>STT</th><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>Xin lĩnh</th><th>Ghi chú</th></tr></thead><tbody>{v.lines.map((l,lineIndex)=><tr key={`${l.equipmentCode??""}:${l.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{l.name}</td><td>{l.catalogueCode??l.name}</td><td>{l.unit}</td><td>{l.quantity.toLocaleString("vi-VN")}</td><td>{l.equipmentLabel??l.equipmentCode??""}</td></tr>)}</tbody></table>
     <a href={`/api/requisition-plans/${id}/pdf?voucher=${i}`} target="_blank" rel="noreferrer">Mở / in phiếu {i+1} (PDF)</a></article>;})}
   </section>

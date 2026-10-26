@@ -17,6 +17,7 @@ import {
  type VoucherGrouping,
 } from "@/lib/maintenance-requisition-plan";
 import {chooseVoucherPrintLayout} from "@/lib/voucher-print-layout";
+import {createEquipmentIdentityMatcher} from "@/lib/equipment-display";
 
 const allGroups=Object.keys(planGroupLabels) as PlanGroup[];
 
@@ -42,7 +43,7 @@ function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDa
   <p className="voucher-number">Số phiếu: {documentNumber||"........................"}</p>
   <p className="voucher-date">{vietnameseDate(documentDay)}</p>
   <p><strong>Tên đơn vị lĩnh:</strong> {department}</p>
-  <p><strong>Lý do xuất kho:</strong> {reason} ({voucher.equipmentCodes.join(", ")})</p>
+  <p><strong>Lý do xuất kho:</strong> {reason} ({voucher.equipmentLabels.join(", ")})</p>
   <p><strong>Lĩnh tại kho:</strong> {warehouse}</p>
   <table><thead><tr><th rowSpan={2}>STT</th><th rowSpan={2}>Tên, nhãn hiệu, quy cách vật tư, dụng cụ</th><th rowSpan={2}>Danh điểm</th><th rowSpan={2}>Đơn vị tính</th><th colSpan={2}>Số lượng</th><th rowSpan={2}>Đơn giá</th><th rowSpan={2}>Thành tiền</th><th rowSpan={2}>Ghi chú</th></tr><tr><th>Xin lĩnh</th><th>Thực phát</th></tr></thead><tbody>{lines.map((line,lineIndex)=><tr key={`${line.equipmentCode??""}:${line.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{line.name}</td><td>{line.catalogueCode??""}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td><td></td><td></td><td></td><td>{line.equipmentLabel??line.equipmentCode??""}</td></tr>)}<tr><td></td><td><strong>Cộng</strong></td><td colSpan={7}></td></tr></tbody></table>
   <p className="voucher-amount">Cộng thành tiền (viết bằng chữ): ...........................................................................................................</p>
@@ -52,10 +53,10 @@ function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDa
 }
 
 function VoucherLivePreview({voucher,index,kind,plannedDay,detail,onDetailChange,company,department,warehouse}:{voucher:VoucherPreview;index:number;kind:VoucherKind;plannedDay:string;detail:VoucherDetail;onDetailChange:(detail:VoucherDetail)=>void;company:string;department:string;warehouse:string}){
- const layout=chooseVoucherPrintLayout({lineLabels:voucher.lines.map(line=>[line.name,line.catalogueCode,line.equipmentLabel].filter(Boolean).join(" ")),equipmentLabels:voucher.equipmentCodes,contextText:voucher.scopeLabel});
+ const layout=chooseVoucherPrintLayout({lineLabels:voucher.lines.map(line=>[line.name,line.catalogueCode,line.equipmentLabel].filter(Boolean).join(" ")),equipmentLabels:voucher.equipmentLabels,contextText:voucher.scopeLabel});
  const chunks=layout.chunks.map(indexes=>indexes.map(lineIndex=>voucher.lines[lineIndex]));
  return <article className="voucher-preview" data-print-format={layout.format}>
-  <div className="voucher-preview-heading"><span>{kind==="supplemental"?"Phiếu bổ sung":"Phiếu kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{layout.label}</strong><small>{voucher.lines.length} dòng vật tư · {voucher.equipmentCodes.length} phương tiện</small></div>
+  <div className="voucher-preview-heading"><span>{kind==="supplemental"?"Phiếu bổ sung":"Phiếu kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{layout.label}</strong><small>{voucher.lines.length} dòng vật tư · {voucher.equipmentLabels.length} phương tiện</small></div>
   <div className="voucher-meta-editor" aria-label={`Sửa thông tin phiếu ${index+1}`}>
    <label>Số phiếu<input value={detail.documentNumber} maxLength={100} placeholder="CTV/PLVT/2026_...." required onChange={event=>onDetailChange({...detail,documentNumber:event.target.value})}/></label>
    <label>Ngày phiếu (anh chọn)<input type="date" required value={detail.documentDay} onChange={event=>onDetailChange({...detail,documentDay:event.target.value})}/></label>
@@ -94,20 +95,22 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
  const [source,setSource]=useState<{name:string;sha256:string}|null>(null),[sourceError,setSourceError]=useState("");
  const [savedRun,setSavedRun]=useState("");
  const [saving,setSaving]=useState(false);
- const available=useMemo(()=>new Map(equipment.map(item=>[item.code,item])),[equipment]);
+ const matchEquipment=useMemo(()=>createEquipmentIdentityMatcher(equipment),[equipment]);
  const completedSet=useMemo(()=>new Set(completedEquipmentCodes),[completedEquipmentCodes]);
- const selectablePlannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>!completedSet.has(row.equipmentCode)),[completedSet]);
+ const selectablePlannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>{const match=matchEquipment(row.equipmentCode,row.sourceLabel);return !completedSet.has(row.equipmentCode)&&(!match||!completedSet.has(match.code));}),[completedSet,matchEquipment]);
  const selectedMaterialSet=useMemo(()=>new Set(selectedMaterials),[selectedMaterials]);
  const visiblePlanRows=useMemo(()=>selectablePlannedRows.filter(row=>groups.includes(row.group)&&selectedEquipment.includes(row.equipmentCode)),[selectablePlannedRows,groups,selectedEquipment]);
  const plannedRows=useMemo(()=>visiblePlanRows.map(row=>({...row,materials:row.materials.filter(item=>selectedMaterialSet.has(materialSelectionKey(row.equipmentCode,item)))})).filter(row=>row.materials.length>0),[visiblePlanRows,selectedMaterialSet]);
  const supplementBase=octoberMaintenancePlan.find(row=>row.equipmentCode===supplementEquipment);
  const rows=useMemo(()=>voucherKind==="planned"?plannedRows:supplementBase&&supplementLines.length?[{...supplementBase,materials:supplementLines}]:[],[voucherKind,plannedRows,supplementBase,supplementLines]);
+ const resolvedRows=useMemo(()=>rows.map(row=>({row,match:matchEquipment(row.equipmentCode,row.sourceLabel)})),[rows,matchEquipment]);
+ const previewRows=useMemo(()=>resolvedRows.map(({row,match})=>match?{...row,equipmentCode:match.code,equipmentName:match.name}:row),[resolvedRows]);
  const previewGroups=useMemo(()=>voucherKind==="planned"?groups:supplementBase?[supplementBase.group]:[],[voucherKind,groups,supplementBase]);
- const previews=useMemo(()=>buildVoucherPreviews(rows,previewGroups,grouping,plannedDay),[rows,previewGroups,grouping,plannedDay]);
+ const previews=useMemo(()=>buildVoucherPreviews(previewRows,previewGroups,grouping,plannedDay),[previewRows,previewGroups,grouping,plannedDay]);
  const currentVoucherDetails=useMemo(()=>previews.map(voucher=>voucherDetails[voucher.id]??{id:voucher.id,documentNumber:"",documentDay:today}),[previews,voucherDetails,today]);
  const voucherMetadataReady=currentVoucherDetails.every(detail=>detail.documentNumber.trim().length>0&&detail.documentDay.length===10);
- const unresolved=rows.filter(row=>!available.has(row.equipmentCode));
- const saveRows=rows.flatMap(row=>{const match=available.get(row.equipmentCode);return match?[{...row,equipmentId:match.id,equipmentName:match.name}]:[];});
+ const unresolved=resolvedRows.filter(item=>!item.match).map(item=>item.row);
+ const saveRows=resolvedRows.flatMap(({row,match})=>match?[{...row,equipmentId:match.id,equipmentCode:match.code,equipmentName:match.name}]:[]);
 
  async function checkPdf(file?:File){
   setSource(null);setSourceError("");
@@ -164,7 +167,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
      <p className="plan-warning"><strong>Chỉ nhập phần thiếu/phát sinh phát hiện khi làm thực tế.</strong> Phiếu này không thay thế và không lập lại toàn bộ vật tư trong kế hoạch ban đầu.</p>
      <label>Nội dung phát hiện khi thực hiện<input value={supplementNote} required maxLength={500} placeholder="Ví dụ: khi tháo kiểm tra phát hiện thiếu thêm 01 lọc dầu" onChange={event=>setSupplementNote(event.target.value)}/></label>
      <div className="plan-form-grid">
-      <label>Phương tiện liên quan<select value={supplementEquipment} required onChange={event=>setSupplementEquipment(event.target.value)}><option value="">Chọn phương tiện trong kế hoạch</option>{octoberMaintenancePlan.filter(row=>available.has(row.equipmentCode)).map(row=><option key={row.equipmentCode} value={row.equipmentCode}>{row.sourceLabel} · {row.maintenanceLevel}</option>)}</select></label>
+      <label>Phương tiện liên quan<select value={supplementEquipment} required onChange={event=>setSupplementEquipment(event.target.value)}><option value="">Chọn phương tiện trong kế hoạch</option>{octoberMaintenancePlan.flatMap(row=>{const match=matchEquipment(row.equipmentCode,row.sourceLabel);return match?[<option key={row.equipmentCode} value={row.equipmentCode}>{match.name} · {row.maintenanceLevel}</option>]:[];})}</select></label>
       <label>Vật tư chuẩn trong danh mục<select value={supplementMaterial} onChange={event=>setSupplementMaterial(event.target.value)}><option value="">Chọn vật tư</option>{materials.map(item=><option key={item.id} value={item.id}>{item.code} · {item.name} ({item.unit})</option>)}</select></label>
       <label>Nguồn lĩnh<select value={supplementSource} onChange={event=>setSupplementSource(event.target.value as SupplySource)}><option value="warehouse">Kho vật tư</option><option value="maintenance_consumable">Nguyên liệu, nhiên liệu bảo dưỡng</option></select></label>
       <label>Số lượng<input type="number" min="0.001" step="0.001" value={supplementQuantity} onChange={event=>setSupplementQuantity(event.target.value)}/></label>
@@ -182,7 +185,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
     </fieldset>:null}
     {voucherKind==="planned"?<fieldset className="plan-choice plan-equipment-choice"><legend>Chọn phương tiện đưa vào phiếu</legend>
      <div className="plan-choice-actions"><button type="button" className="button button-secondary" onClick={()=>setSelectedEquipment(current=>[...new Set([...current,...selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode)])])}>Chọn tất cả đang hiển thị</button><button type="button" className="button button-secondary" onClick={()=>{const visible=new Set(selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode));setSelectedEquipment(current=>current.filter(code=>!visible.has(code)));}}>Bỏ chọn đang hiển thị</button></div>
-     {selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=><label key={row.equipmentCode}><input type="checkbox" checked={selectedEquipment.includes(row.equipmentCode)} onChange={()=>toggleEquipment(row.equipmentCode)}/>{row.sourceLabel}</label>)}
+     {selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=>{const match=matchEquipment(row.equipmentCode,row.sourceLabel);return <label key={row.equipmentCode}><input type="checkbox" checked={selectedEquipment.includes(row.equipmentCode)} onChange={()=>toggleEquipment(row.equipmentCode)}/>{match?.name??row.sourceLabel}</label>;})}
     </fieldset>:null}
     <div className="plan-source-note"><strong>Hệ thống luôn tách thành hai nguồn:</strong><span>Vật tư kho vật tư</span><span>Nguyên liệu, nhiên liệu bảo dưỡng</span></div>
     <p className="plan-ok plan-live-note" role="status">Bản xem trước bên dưới tự cập nhật ngay khi chọn phương tiện, vật tư, ngày hoặc cách gom phiếu.</p>
@@ -201,9 +204,10 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
    {unresolved.length?<p className="plan-warning" role="status"><strong>{unresolved.length} dòng chưa khớp mã danh mục:</strong> {unresolved.map(row=>row.sourceLabel).join(", ")}. Cần ghép đúng mã phương tiện trước khi xác nhận.</p>:<p className="plan-ok" role="status">Tất cả phương tiện đã khớp danh mục.</p>}
    <div className="overflow-x-auto"><table className="plan-table"><thead><tr><th>Nhóm</th><th>Phương tiện</th><th>Cấp bảo dưỡng</th><th>Vật tư kho</th><th>Nguyên liệu, nhiên liệu</th><th>Vụ việc</th></tr></thead><tbody>
     {visiblePlanRows.map(plan=>{
+     const match=matchEquipment(plan.equipmentCode,plan.sourceLabel);
      const warehouse=plan.materials.filter(item=>item.source==="warehouse"),consumables=plan.materials.filter(item=>item.source==="maintenance_consumable");
      const materialToggle=(item:PlannedMaterial)=><label className="material-line material-toggle" key={item.key}><input type="checkbox" checked={selectedMaterialSet.has(materialSelectionKey(plan.equipmentCode,item))} onChange={()=>toggleMaterial(materialSelectionKey(plan.equipmentCode,item))}/><span>{item.catalogueCode?`${item.catalogueCode} · `:""}{item.name}: {item.quantity} {item.unit}</span></label>;
-     return <tr key={`${plan.group}:${plan.equipmentCode}`}><td>{planGroupLabels[plan.group]}</td><td><strong>{plan.sourceLabel}</strong><small className={available.has(plan.equipmentCode)?"matched-code":"unmatched-code"}>{available.has(plan.equipmentCode)?`Đã khớp ${plan.equipmentCode}`:`Chưa khớp ${plan.equipmentCode}`}</small></td><td>{plan.maintenanceLevel}</td><td>{warehouse.length?warehouse.map(materialToggle):<span className="muted">Không phát sinh</span>}</td><td>{consumables.length?consumables.map(materialToggle):<span className="muted">Không phát sinh</span>}</td><td><code>Sinh khi lưu</code></td></tr>;
+     return <tr key={`${plan.group}:${plan.equipmentCode}`}><td>{planGroupLabels[plan.group]}</td><td><strong>{match?.name??plan.sourceLabel}</strong><small className={match?"matched-code":"unmatched-code"}>{match?(match.name===match.code?`Đã ghép ${match.name}`:`Đã ghép theo tên/mã: ${match.name} · mã gõ tắt ${match.code}`):`Chưa ghép ${plan.sourceLabel}`}</small></td><td>{plan.maintenanceLevel}</td><td>{warehouse.length?warehouse.map(materialToggle):<span className="muted">Không phát sinh</span>}</td><td>{consumables.length?consumables.map(materialToggle):<span className="muted">Không phát sinh</span>}</td><td><code>Sinh khi lưu</code></td></tr>;
     })}
    </tbody></table></div>
   </section>
