@@ -10,70 +10,74 @@ import {cargoUnitLabels} from "@/lib/table-import";
 import {canImportTable} from "@/lib/import-placement";
 import {TableImportPanel} from "@/components/table-import-panel";
 import {MonthlyOverview} from "@/components/monthly-overview";
+import {SheetEntry} from "@/components/sheet-entry";
 import type {MonthlyActivity} from "@/lib/monthly-overview";
+
 export const dynamic="force-dynamic";
-export default async function Monthly({searchParams}:{searchParams:Promise<{workspace?:string;kind?:string;month?:string;equipment?:string;from?:string;to?:string;group?:string;import?:string}>}){
+type Params={workspace?:string;kind?:string;equipment?:string;from?:string;to?:string;group?:string;import?:string;editEquipment?:string;editMonth?:string;editValue?:string};
+type SheetSource={id:string;name:string;source_kind:"container"|"hours"};
+
+export default async function Monthly({searchParams}:{searchParams:Promise<Params>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
- const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours";
- const w=c.workspace.id;let month:string|undefined;try{month=p.month?monthStart(p.month):undefined;}catch{return <p>Tháng không hợp lệ.</p>;}
+ const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours",w=c.workspace.id;
  const [eq,cargo,metrics,other,memberships]=await Promise.all([
- c.client.from("equipment").select("id,code,category,initial_hours,accumulated_hours,hours_start_month").eq("workspace_id",w).order("code"),
- c.client.from("cargo_types").select("code,name,unit").eq("workspace_id",w),
- c.client.from("vw_monthly_activity").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
- c.client.from("vw_other_cargo_monthly").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
- c.client.from("workspace_memberships").select("role").eq("workspace_id",w).eq("user_id",c.user.id).eq("active",true)]);
- if(eq.error || cargo.error || metrics.error || other.error || memberships.error)throw new Error("Không đọc được bảng tháng");
- const canConfirm=memberships.data.some(r=>r.role==="TRUONG_BO_PHAN_KY_THUAT");
- const selected=eq.data?.find(e=>e.id===p.equipment)??(!p.equipment?eq.data?.[0]:undefined);
- if(p.equipment&&!selected)return <p>Phương tiện không hợp lệ hoặc chưa có quyền.</p>;
- let from="",to="",hours:z.infer<typeof hourRow>[]=[];
+  c.client.from("equipment").select("id,code,category,initial_hours,accumulated_hours,hours_start_month").eq("workspace_id",w).order("code"),
+  c.client.from("cargo_types").select("code,name,unit").eq("workspace_id",w),
+  c.client.from("vw_monthly_activity").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
+  c.client.from("vw_other_cargo_monthly").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
+  c.client.from("workspace_memberships").select("role").eq("workspace_id",w).eq("user_id",c.user.id).eq("active",true)
+ ]);
+ if(eq.error||cargo.error||metrics.error||other.error||memberships.error)throw new Error("Không đọc được bảng theo dõi tháng");
+ const canConfirm=memberships.data.some(row=>row.role==="TRUONG_BO_PHAN_KY_THUAT"),roles=memberships.data.map(row=>row.role),selectedGroup=p.group??"";
+ const filteredEquipment=(eq.data??[]).filter(row=>!selectedGroup||row.category===selectedGroup);
+ const selected=filteredEquipment.find(row=>row.id===p.equipment)??filteredEquipment[0]??eq.data?.[0];
+ if(p.equipment&&!(eq.data??[]).some(row=>row.id===p.equipment))return <p>Phương tiện không hợp lệ hoặc chưa có quyền.</p>;
+
+ let from=localInputNow().slice(0,4)+"-01",to=localInputNow().slice(0,7),hours:z.infer<typeof hourRow>[]=[],activityRows:MonthlyActivity[]=[];
  if(kind==="hours"&&selected){
   const current=await c.client.from("monthly_operating_hours").select("id").eq("equipment_id",selected.id).eq("month",monthStart(localInputNow().slice(0,7))).maybeSingle();
   if(current.error)throw new Error("Không đọc được giờ tháng hiện tại.");
-  to=p.to??defaultEndMonth(Boolean(current.data));from=p.from??(selected.hours_start_month && selected.hours_start_month.slice(0,7)<=to?selected.hours_start_month.slice(0,7):to.slice(0,4)+"-01");
+  to=p.to??defaultEndMonth(Boolean(current.data));from=p.from??(selected.hours_start_month&&selected.hours_start_month.slice(0,7)<=to?selected.hours_start_month.slice(0,7):to.slice(0,4)+"-01");
   let bounds;try{bounds=inclusiveRange(from,to);}catch{return <p>Khoảng tháng không hợp lệ.</p>;}
-  const r=await c.client.rpc("report_operating_hours",{p_equipment:selected.id,p_from:bounds.from,p_to:bounds.to});
-  if(r.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(r.data);
+  const detail=await c.client.rpc("report_operating_hours",{p_equipment:selected.id,p_from:bounds.from,p_to:bounds.to});
+  if(detail.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(detail.data);
+  for(let offset=0;;offset+=1000){
+   const activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).order("equipment_code").order("month").range(offset,offset+999);
+   if(activity.error)throw new Error("Không đọc được bảng tổng thể.");
+   const page=activity.data??[];activityRows.push(...page.map(row=>({...row,operating_hours:row.operating_hours===null?null:Number(row.operating_hours),boxes:row.boxes===null?null:Number(row.boxes)})));if(page.length<1000)break;
+  }
  }
  const summary=summarizeHours(hours);
- let overview:{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}[]=[],activityRows:MonthlyActivity[]=[];
- const selectedGroup=p.group??"";
- if(kind==="hours"&&selected){
-  const bounds=inclusiveRange(from,to);for(let offset=0;;offset+=1000){const activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).order("equipment_code").order("month").range(offset,offset+999);if(activity.error)throw new Error("Không đọc được bảng tổng thể.");const page=activity.data??[];activityRows.push(...page.map(row=>({...row,operating_hours:row.operating_hours===null?null:Number(row.operating_hours),boxes:row.boxes===null?null:Number(row.boxes)})));if(page.length<1000)break;}
-  const byId=new Map(eq.data?.map(row=>[row.id,row]));
-  const grouped=new Map<string,{equipment_id:string;equipment_code:string;category:string;hours:number;boxes:number;months:number}>();
-  for(const row of activityRows){const item=byId.get(row.equipment_id);if(!item||(selectedGroup&&item.category!==selectedGroup))continue;const prior=grouped.get(row.equipment_id)??{equipment_id:row.equipment_id,equipment_code:row.equipment_code,category:item.category,hours:0,boxes:0,months:0};prior.hours+=Number(row.operating_hours??0);prior.boxes+=Number(row.boxes??0);if(row.operating_hours!==null)prior.months+=1;grouped.set(row.equipment_id,prior);}
-  overview=[...grouped.values()].sort((a,b)=>a.equipment_code.localeCompare(b.equipment_code,"vi"));
+ let sheetSources:SheetSource[]=[],syncRuns:{id:string;source_id:string;row_count:number;created_at:string}[]=[];
+ if(kind!=="other"){
+  const [sources,runs]=await Promise.all([c.client.from("sheet_sources").select("id,name,source_kind").eq("workspace_id",w).eq("source_kind",kind),c.client.from("sheet_sync_runs").select("id,source_id,row_count,created_at").eq("workspace_id",w).order("created_at",{ascending:false}).limit(5)]);
+  if(!sources.error)sheetSources=(sources.data??[]).filter((row):row is SheetSource=>row.source_kind==="hours"||row.source_kind==="container");
+  if(!runs.error)syncRuns=runs.data??[];
  }
- const rows=(metrics.data??[]).filter(r=>(!month||r.month===month) && (kind==="hours"?r.operating_hours!==null:r.boxes!==null));
- const otherRows=(other.data??[]).filter(r=>!month||r.month===month);
- return <><h1>{kind==="hours"?"Giám sát giờ hoạt động":kind==="container"?"Sản lượng container hàng tháng":"Sản lượng hàng khác hàng tháng"}</h1>
-  <WorkspaceSelect workspaces={c.workspaces} selected={w}/><div className="flex flex-wrap gap-4">{(["hours","container","other"] as const).map(k=><Link className="button" key={k} href={"/monthly?workspace="+w+"&kind="+k}>{k==="hours"?"Giờ hoạt động":k==="container"?"Container (chiếc)":"Hàng khác"}</Link>)}</div>
-  <p>{kind==="hours"?"Chỉ nhập giờ máy thực chạy. Giờ này làm cơ sở theo dõi định mức cáp, búa khung cẩu và bảo dưỡng; không nhập giờ dừng/hư hỏng vào bảng này.":kind==="container"?"Chỉ ghi nhận số container (chiếc) của phương tiện trong tháng.":"Hàng khác giữ đơn vị từng loại hàng, không cộng tấn với m³/chuyến hoặc số container."}</p>
-  <TableImportPanel key={w+kind} workspace={w} kind={kind} canImport={canImportTable(memberships.data.map(m=>m.role),kind)} defaultOpen={p.import===kind}/>
-  {kind==="other"&&<TableImportPanel workspace={w} kind="cargo" canImport={canImportTable(memberships.data.map(m=>m.role),"cargo")} defaultOpen={p.import==="cargo"}/>}
-  {kind==="hours"&&selected&&<section className="panel"><h2>Lọc tổng giờ theo khoảng tháng</h2>
-   <form method="get" className="grid gap-3 sm:grid-cols-3"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
-   <label>Phương tiện<select name="equipment" defaultValue={selected.id}>{eq.data?.map(e=><option key={e.id} value={e.id}>{e.code}</option>)}</select></label>
-   <label>Từ tháng–năm<input name="from" type="month" defaultValue={from} required/></label><label>Đến tháng–năm<input name="to" type="month" defaultValue={to} required/></label><button type="submit">Lọc & tính tổng</button></form>
-   <p>Tính cả tháng đầu và cuối. Chọn đến tháng–năm thủ công; mặc định tháng hiện tại nếu phương tiện đã có dữ liệu, nếu chưa có thì tháng liền trước.</p></section>}
-  {kind==="hours"&&selected&&<OperatingBaseline key={selected.id+":"+(selected.hours_start_month??"pending")} equipment={selected.id} code={selected.code} hours={selected.initial_hours} start={selected.hours_start_month??null} accumulated={selected.accumulated_hours} canConfirm={canConfirm}/>}
-  {kind==="hours"&&selected&&<section className="panel"><h2>Giờ chạy theo khoảng đã chọn</h2>
-   <p className="text-xl font-bold">{selected.code} · {monthLabel(from)} → {monthLabel(to)}: {formatNumber(summary.total)} h đã ghi nhận</p>
-   {summary.missing.length>0&&<p role="alert" className="text-red-800">Thiếu {summary.missing.length} tháng: {summary.missing.map(monthLabel).join(", ")}. Tổng chưa đầy đủ; không coi tháng thiếu là 0 giờ.</p>}
-   <div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng–năm</th><th>Giờ hoạt động</th></tr></thead><tbody>{hours.map(r=><tr key={r.month}><td>{selected.code}</td><td>{monthLabel(r.month)}</td><td>{r.operating_hours===null?"Thiếu dữ liệu":formatNumber(r.operating_hours)+" h"}</td></tr>)}</tbody></table></div></section>}
-  {kind==="hours"&&selected&&<section className="panel"><div className="section-heading"><div><p className="eyebrow">BẢNG TỔNG THỂ</p><h2>Theo dõi theo nhóm hoặc tất cả phương tiện</h2></div><span className="count-chip">{overview.length} phương tiện</span></div>
-   <form method="get" className="flex flex-wrap items-end gap-4"><input type="hidden" name="workspace" value={w}/><input type="hidden" name="kind" value="hours"/><input type="hidden" name="equipment" value={selected.id}/><input type="hidden" name="from" value={from}/><input type="hidden" name="to" value={to}/><label>Nhóm phương tiện<select name="group" defaultValue={selectedGroup}><option value="">Tất cả phương tiện</option>{[...new Set((eq.data??[]).map(row=>row.category))].map(category=><option key={category} value={category}>{category}</option>)}</select></label><button type="submit">Xác nhận nhóm</button></form>
-   <div className="flex flex-wrap gap-4"><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"xlsx"})}>Xuất Excel .xlsx</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"pdf"})}>Xuất PDF</Link><Link className="button button-secondary" href={"/api/monthly/export?"+new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"csv"})}>Tải CSV để mở bằng Google Sheets</Link></div>
-   <div className="overflow-x-auto"><table><thead><tr><th>Nhóm</th><th>Phương tiện</th><th>Giờ chạy</th><th>Số tháng có dữ liệu</th><th>Container (chiếc)</th></tr></thead><tbody>{overview.map(row=><tr key={row.equipment_id}><td>{row.category}</td><td>{row.equipment_code}</td><td>{formatNumber(row.hours)} h</td><td>{row.months}</td><td>{formatNumber(row.boxes,0)}</td></tr>)}</tbody></table></div>
-  </section>}
-  {kind==="hours"&&selected&&<MonthlyOverview equipment={(eq.data??[]).filter(row=>!selectedGroup||row.category===selectedGroup)} activity={activityRows} from={from} to={to}/>} 
-  {eq.data?.length?<MonthlyEntry workspace={w} kind={kind} codes={eq.data.map(e=>e.code)} cargoCodes={(cargo.data??[]).map(r=>r.code)}/>:<section className="panel"><h2>Chưa có phương tiện</h2><p>Khai báo phương tiện trước, sau đó đối chiếu giờ gốc và ghi nhận giờ chạy tại đây.</p><Link className="button" href={"/catalog?workspace="+w}>Mở danh mục phương tiện</Link></section>}
-  {kind!=="other" && <Link className="button" href={"/sheets?workspace="+w}>Cập nhật từ Google Sheets · TH</Link>}
-  <section className="panel"><h2>Dữ liệu hiện có (tối đa 500 dòng gần nhất)</h2><div className="overflow-x-auto"><table><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="hours"?<th>Tổng giờ chạy</th>:kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>
-   {kind==="other"?otherRows.map((r,i)=><tr key={i}><td>{r.equipment_code}</td><td>{r.month.slice(0,7)}</td><td>{r.cargo_name}</td><td>{formatNumber(r.quantity,3)}</td><td>{cargoUnitLabels[r.unit]??r.unit}</td></tr>):
-    rows.map(r=><tr key={r.equipment_id+r.month}><td>{r.equipment_code}</td><td>{r.month.slice(0,7)}</td>{kind==="hours"?<td>{formatNumber(r.operating_hours)} h</td>:<td>{formatNumber(r.boxes,0)}</td>}</tr>)}
-  </tbody></table></div></section>
+ const editCode=(eq.data??[]).some(row=>row.code===p.editEquipment)?p.editEquipment:"",editMonth=/^\d{4}-\d{2}$/.test(p.editMonth??"")?p.editMonth:"",parsedValue=Number(p.editValue),editValue=p.editValue!==undefined&&Number.isFinite(parsedValue)&&parsedValue>=0?parsedValue:undefined;
+ const rows=(metrics.data??[]).filter(row=>kind==="hours"?row.operating_hours!==null:row.boxes!==null),otherRows=other.data??[];
+ const title=kind==="hours"?"Giờ hoạt động":kind==="container"?"Sản lượng container":"Sản lượng hàng khác";
+ return <>
+  <header className="monthly-header"><div><p className="eyebrow">DỮ LIỆU VẬN HÀNH</p><h1>Kiểm soát giờ hoạt động & sản lượng</h1><p>Tập trung tra cứu, bổ sung tháng còn thiếu, đồng bộ nguồn và xuất báo cáo trong một màn hình.</p></div><WorkspaceSelect workspaces={c.workspaces} selected={w}/></header>
+  <nav className="monthly-kind-tabs" aria-label="Loại dữ liệu tháng">{(["hours","container","other"] as const).map(value=><Link aria-current={kind===value?"page":undefined} key={value} href={`/monthly?${new URLSearchParams({workspace:w,kind:value})}`}>{value==="hours"?"Giờ hoạt động":value==="container"?"Container":"Hàng khác"}</Link>)}</nav>
+  <section className="panel monthly-filter-panel"><div className="section-heading"><div><p className="eyebrow">BỘ LỌC CHUNG</p><h2>{title}</h2></div><span className="count-chip">Không lưu ngày đầu/cuối riêng; hệ thống tự hiểu theo tháng</span></div>
+   {kind==="hours"&&selected?<form method="get" className="monthly-filter-grid"><input name="workspace" type="hidden" value={w}/><input name="kind" type="hidden" value="hours"/>
+    <label>Nhóm phương tiện<select name="group" defaultValue={selectedGroup}><option value="">Tất cả phương tiện</option>{[...new Set((eq.data??[]).map(row=>row.category))].map(category=><option key={category} value={category}>{category}</option>)}</select></label>
+    <label>Phương tiện đối chiếu<select name="equipment" defaultValue={selected.id}>{filteredEquipment.map(row=><option key={row.id} value={row.id}>{row.code}</option>)}</select></label>
+    <label>Từ tháng<input name="from" type="month" defaultValue={from} required/></label><label>Đến tháng<input name="to" type="month" defaultValue={to} required/></label><button type="submit">Áp dụng bộ lọc</button>
+   </form>:<p className="muted">Chọn loại dữ liệu phía trên; bảng chỉ hiển thị đúng đơn vị của từng loại, không cộng lẫn giờ, chiếc, tấn hay m³.</p>}
+   {kind==="hours"&&<div className="monthly-export-actions"><Link className="button button-secondary" href={`/api/monthly/export?${new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"xlsx"})}`}>Xuất Excel</Link><Link className="button button-secondary" href={`/api/monthly/export?${new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"pdf"})}`}>Xuất PDF</Link><Link className="button button-secondary" href={`/api/monthly/export?${new URLSearchParams({workspace:w,from,to,group:selectedGroup,format:"csv"})}`}>Mở bằng Google Sheets</Link></div>}
+  </section>
+  {kind==="hours"&&selected&&<MonthlyOverview workspace={w} equipment={filteredEquipment} activity={activityRows} from={from} to={to}/>} 
+  {kind==="hours"&&selected&&<details className="panel monthly-detail"><summary>Đối chiếu chi tiết {selected.code}: {monthLabel(from)} → {monthLabel(to)}</summary><p className="monthly-detail-total">Đã ghi nhận <strong>{formatNumber(summary.total)} h</strong>{summary.missing.length?` · thiếu ${summary.missing.length} tháng`:" · đủ dữ liệu trong kỳ"}</p><div className="overflow-x-auto"><table className="compact-table"><thead><tr><th>Phương tiện</th><th>Tháng</th><th>Giờ hoạt động</th><th>Tác vụ</th></tr></thead><tbody>{hours.map(row=><tr key={row.month}><td>{selected.code}</td><td>{monthLabel(row.month)}</td><td>{row.operating_hours===null?"Chưa nhập":formatNumber(row.operating_hours)+" h"}</td><td><Link href={`/monthly?${new URLSearchParams({workspace:w,kind:"hours",equipment:selected.id,from,to,group:selectedGroup,editEquipment:selected.code,editMonth:row.month.slice(0,7),...(row.operating_hours===null?{}:{editValue:String(row.operating_hours)})})}#cap-nhat-thang`}>{row.operating_hours===null?"Bổ sung":"Điều chỉnh"}</Link></td></tr>)}</tbody></table></div></details>}
+  <section className="panel monthly-tools" id="cong-cu-du-lieu"><div className="section-heading"><div><p className="eyebrow">CÔNG CỤ DỮ LIỆU</p><h2>Nhập, điều chỉnh và đồng bộ tại một nơi</h2></div><span className="count-chip">{title}</span></div>
+   {eq.data?.length?<MonthlyEntry workspace={w} kind={kind} codes={eq.data.map(row=>row.code)} cargoCodes={(cargo.data??[]).map(row=>row.code)} initialCode={editCode} initialMonth={editMonth} initialValue={editValue}/>:<p>Chưa có phương tiện. <Link href={`/catalog?workspace=${w}`}>Mở danh mục phương tiện</Link> để khai báo trước.</p>}
+   <div className="monthly-tool-accordions"><details open={p.import===kind}><summary>Nhập nhiều dòng từ Excel/CSV</summary><TableImportPanel workspace={w} kind={kind} canImport={canImportTable(roles,kind)} defaultOpen={p.import===kind}/></details>
+   {kind==="other"&&<details><summary>Cập nhật danh mục loại hàng</summary><TableImportPanel workspace={w} kind="cargo" canImport={canImportTable(roles,"cargo")}/></details>}
+   {kind!=="other"&&<details><summary>Đồng bộ Google Sheets</summary><SheetEntry workspace={w} sources={sheetSources}/>{syncRuns.length>0&&<div className="monthly-sync-history"><strong>5 lần cập nhật gần nhất</strong>{syncRuns.map(run=><span key={run.id}>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})} · {run.row_count} dòng</span>)}</div>}</details>}
+   {kind==="hours"&&selected&&<details><summary>Thiết lập giờ gốc của phương tiện</summary><OperatingBaseline key={selected.id+":"+(selected.hours_start_month??"pending")} equipment={selected.id} code={selected.code} hours={selected.initial_hours} start={selected.hours_start_month??null} accumulated={selected.accumulated_hours} canConfirm={canConfirm}/></details>}</div>
+  </section>
+  {kind!=="hours"&&<section className="panel"><div className="section-heading"><div><p className="eyebrow">DỮ LIỆU ĐÃ GHI</p><h2>{title}</h2></div><span className="count-chip">Tối đa 500 dòng gần nhất</span></div><div className="overflow-x-auto"><table className="compact-table"><thead><tr><th>Phương tiện</th><th>Tháng</th>{kind==="container"?<th>Container (chiếc)</th>:<><th>Loại hàng</th><th>Số lượng</th><th>Đơn vị</th></>}</tr></thead><tbody>{kind==="other"?otherRows.map((row,index)=><tr key={index}><td>{row.equipment_code}</td><td>{row.month.slice(0,7)}</td><td>{row.cargo_name}</td><td>{formatNumber(row.quantity,3)}</td><td>{cargoUnitLabels[row.unit]??row.unit}</td></tr>):rows.map(row=><tr key={row.equipment_id+row.month}><td>{row.equipment_code}</td><td>{row.month.slice(0,7)}</td><td>{formatNumber(row.boxes,0)}</td></tr>)}</tbody></table></div></section>}
  </>;
 }
 
