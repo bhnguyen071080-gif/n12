@@ -25,7 +25,7 @@ test("plan vouchers preserve allocations and requested quantities without invent
   assert.ok(d.lines.every(l=>l.issued===null&&l.unit_price===null&&l.usage_id===null));
   assert.equal(d.document_number,"");assert.equal(d.basis_document_id,undefined);
   assert.equal(documentPayloadSchema.safeParse(d).success,false,"case-document rules still require a real basis");
-  for(const line of v.lines){const total=p.snapshot.rows.flatMap(r=>r.materials).filter(m=>m.key===line.key&&m.source===v.source).reduce((n,m)=>n+m.quantity,0);assert.equal(line.quantity,total);}
+  assert.equal(v.lines.length,p.snapshot.rows.flatMap(row=>row.materials).filter(material=>material.source===v.source).length);\n  for(const line of v.lines){const sourceRow=p.snapshot.rows.find(row=>row.equipmentCode===line.equipmentCode),sourceLine=sourceRow?.materials.find(material=>material.key===line.key&&material.source===v.source);assert.ok(sourceLine);assert.equal(line.quantity,sourceLine.quantity);}
  }
  assert.equal(savedPlanVouchers({...p,grouping_mode:"group"}).length,5);
  assert.equal(savedPlanVouchers({...p,grouping_mode:"equipment"}).length,57);
