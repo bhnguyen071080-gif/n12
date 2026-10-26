@@ -1,4 +1,4 @@
-export const warrantyStateLabels={active:"Còn hạn",due_soon:"Gần tới",expired:"Hết hạn"} as const;
+export const warrantyStateLabels={active:"Còn hạn bảo hành",due_soon:"Sắp tới hạn",expired:"Hết hạn bảo hành"} as const;
 export type WarrantyState=keyof typeof warrantyStateLabels;
 
 function parseDate(value:string):[number,number,number]{
