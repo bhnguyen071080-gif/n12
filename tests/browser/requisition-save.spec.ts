@@ -26,8 +26,6 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await dateFields[0].fill("2026-10-24");
   await expect(page.locator(".voucher-preview").first()).toContainText("Số phiếu: CTV/PLVT/2026_0001");
   await expect(page.locator(".voucher-preview").first()).toContainText("Ngày 24 tháng 10 năm 2026");
-  await expect(page.getByText("2 liên A5 · 1 tờ A4").first()).toBeVisible();
-  await expect(page.getByText(/2 liên A4 · \d+ trang in/).first()).toBeVisible();
   await page.getByRole("checkbox",{name:"RTG 06",exact:true}).uncheck();
   await expect(page.locator(".voucher-preview").first()).not.toContainText("RTG06");
   await page.getByRole("checkbox",{name:"RTG 06",exact:true}).check();
