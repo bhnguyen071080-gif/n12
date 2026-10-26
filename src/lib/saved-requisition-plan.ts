@@ -5,7 +5,8 @@ import {buildVoucherPreviews,octoberMaintenancePlan,planGroupLabels,type Mainten
 
 const short=z.string().trim().max(200).refine(s=>!/[\u0000-\u001f]/.test(s),"Ký tự không hợp lệ");
 const day=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s=>{const d=new Date(s+"T00:00:00Z");return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;},"Ngày không hợp lệ");
-export const planPrintSchema=z.object({company:short.refine(s=>s.length>0),department:short.refine(s=>s.length>0),recipient:short.refine(s=>s.length<=100),warehouse:short,consumableWarehouse:short,documentDay:day.refine(s=>s>="2000-01-01"&&s<="2100-12-31"),voucherKind:z.enum(["planned","supplemental"]).optional(),supplementNote:z.string().trim().max(500).optional()}).strict();
+const voucherDetailSchema=z.object({id:z.string().min(1).max(200),documentNumber:short.refine(s=>s.length>0,"Chưa nhập số phiếu"),documentDay:day.refine(s=>s>="2000-01-01"&&s<="2100-12-31")}).strict();
+export const planPrintSchema=z.object({company:short.refine(s=>s.length>0),department:short.refine(s=>s.length>0),recipient:short.refine(s=>s.length<=100),warehouse:short,consumableWarehouse:short,documentDay:day.refine(s=>s>="2000-01-01"&&s<="2100-12-31"),voucherDetails:z.array(voucherDetailSchema).max(200).optional(),voucherKind:z.enum(["planned","supplemental"]).optional(),supplementNote:z.string().trim().max(500).optional()}).strict();
 export const savePlanInputSchema=z.object({
  plannedDay:day.refine(s=>s.startsWith("2026-10-"),"Chọn ngày trong tháng kế hoạch 10/2026"),
  grouping:z.enum(["equipment","group","date"]),groups:z.array(z.enum(["TUKAN","QC","RTG","KHUNG_CAU"])).min(1).max(4),
@@ -39,11 +40,11 @@ export const planVoucherPayloadSchema=documentPayloadFields.extend({
  if(!d.lines.length||d.lines.some(l=>l.usage_id!==null||l.issued!==null||l.unit_price!==null))c.addIssue({code:"custom",message:"Phiếu kế hoạch chỉ có số xin lĩnh"});
 });
 export function planVoucherPayload(plan:SavedRequisitionPlan,voucher:VoucherPreview){
- const p=planPrintSchema.parse(plan.snapshot.print);
+ const p=planPrintSchema.parse(plan.snapshot.print),detail=p.voucherDetails?.find(item=>item.id===voucher.id);
  const codes=voucher.equipmentCodes.join(", "),scope=codes.length<=500?codes:`${voucher.equipmentCodes.length} phương tiện (xem phân bổ trong kế hoạch ${plan.id})`;
  return planVoucherPayloadSchema.parse({schema_version:1,kind:"material_requisition",voucher_template:"bm0806",company:p.company,department:p.department,
- unit:"",location:"",form_code:"BM.08.06",document_number:"",document_at:p.documentDay+"T08:00",equipment_label:voucher.scopeLabel,
- inspection_subject:"",reason:`${p.voucherKind==="supplemental"?"Bổ sung phát sinh: "+p.supplementNote+". ":""}Bảo dưỡng theo kế hoạch ${plan.planned_day.slice(0,7)}, ngày ${plan.planned_day}. ${voucher.scopeLabel}. Phương tiện: ${scope}`,
+ unit:"",location:"",form_code:"BM.08.06",document_number:detail?.documentNumber??"",document_at:(detail?.documentDay??p.documentDay)+"T08:00",equipment_label:voucher.scopeLabel,
+ inspection_subject:"",reason:`${p.voucherKind==="supplemental"?"Bổ sung phát sinh: "+p.supplementNote+". ":""}Phục vụ bảo dưỡng theo Kế hoạch sửa chữa, bảo dưỡng tháng 10/2026 ngày 01/10/2026. ${voucher.scopeLabel}. Phương tiện: ${scope}`,
  warehouse:voucher.source==="warehouse"?p.warehouse:p.consumableWarehouse,participants:[],cause:"",solution:"",signer_names:["","",p.recipient,"",""],amount_words:"",
  lines:voucher.lines.map(l=>({usage_id:null,name:l.name,specification:"",catalogue_code:l.catalogueCode??"",unit:l.unit,requested:l.quantity,issued:null,unit_price:null,limit_text:"",used_text:"",condition:"",notes:l.equipmentLabel??l.equipmentCode??""}))});
 }
