@@ -23,10 +23,10 @@ export function AppShell({children}:{children:ReactNode}){
  const active=navigation.find(n=>n.href==="/"?path==="/" || path.startsWith("/equipment/"):path===n.href || path.startsWith(n.href+"/"));
  return <div className="app-shell">
   <a className="skip-link" href="#noi-dung">Chuyển đến nội dung</a>
-  <aside className="sidebar">
+  <aside className="sidebar" aria-label="Thanh điều hướng tự động mở rộng">
    <Link href="/" className="brand"><span className="brand-mark"><Icon name="crane"/></span><span><strong>TV-EAM</strong><small>CẢNG TÂN VŨ</small></span></Link>
    <p className="nav-caption">KHÔNG GIAN QUẢN LÝ</p>
-   <nav aria-label="Điều hướng chính" className="desktop-nav">{navigation.map(n=><Link key={n.href} href={n.href} aria-current={active?.href===n.href?"page":undefined}><Icon name={n.icon}/><span>{n.label}</span></Link>)}</nav>
+   <nav aria-label="Điều hướng chính" className="desktop-nav">{navigation.map(n=><Link key={n.href} href={n.href} title={n.label} aria-current={active?.href===n.href?"page":undefined}><Icon name={n.icon}/><span>{n.label}</span></Link>)}</nav>
    <details className="mobile-nav" key={path}><summary>Điều hướng</summary><nav aria-label="Điều hướng trên điện thoại">{navigation.map(n=><Link key={n.href} href={n.href} aria-current={active?.href===n.href?"page":undefined}><Icon name={n.icon}/>{n.label}</Link>)}</nav></details>
    <div className="sidebar-note"><Icon name="shield"/><p>Dữ liệu riêng theo quyền truy cập.<small>Mỗi phương tiện, một lịch sử rõ ràng.</small></p></div>
   </aside>
