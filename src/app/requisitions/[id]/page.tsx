@@ -17,7 +17,7 @@ export default async function SavedPlanPage({params}:{params:Promise<{id:string}
    <p className="muted">Đây là bản đã lưu cố định. Thay đổi phạm vi hoặc số lượng phải lập bản mới. Ngày kế hoạch chưa phải ngày thực hiện; thực phát và hoàn thành chưa được ghi nhận.</p>
   </section>
   <section className="panel"><h2>Phiếu lĩnh BM.08.06</h2><p>Mỗi phiếu in hai liên A5 trên một tờ A4. Số phiếu, thực phát và đơn giá để trống.</p>
-   {vouchers.map((v,i)=><article className="voucher-preview" key={v.id}><h3>{v.scopeLabel} · {supplySourceLabels[v.source]}</h3><p>{v.equipmentCodes.join(", ")}</p>
+   {vouchers.map((v,i)=><article className="voucher-preview" key={v.id}><h3>{v.scopeLabel} · {supplySourceLabels[v.source]}</h3><p>{v.equipmentLabels.join(", ")}</p>
     <table><thead><tr><th>Vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>Xin lĩnh</th></tr></thead><tbody>{v.lines.map(l=><tr key={`${l.key}:${l.unit}:${l.catalogueCode??""}`}><td>{l.name}</td><td>{l.catalogueCode??"—"}</td><td>{l.unit}</td><td>{l.quantity.toLocaleString("vi-VN")}</td></tr>)}</tbody></table>
     <a href={`/api/requisition-plans/${id}/pdf?voucher=${i}`} target="_blank" rel="noreferrer">Mở / in phiếu {i+1} (PDF)</a></article>)}
   </section>
@@ -26,3 +26,4 @@ export default async function SavedPlanPage({params}:{params:Promise<{id:string}
   </tbody></table></div></section>
  </div>;
 }
+
