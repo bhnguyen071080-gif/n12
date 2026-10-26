@@ -88,4 +88,11 @@ test("same-day preview combines all selected equipment but keeps sources separat
 
 
 
-test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{\n const rows=[{sourceLabel:"Khung cẩu No57",equipmentCode:"N57",equipmentName:"No57",group:"KHUNG_CAU" as const,maintenanceLevel:"I - theo tháng" as const,materials:[{key:"grease",name:"Mỡ",unit:"kg",quantity:1,source:"maintenance_consumable" as const}]}];\n const vouchers=buildVoucherPreviews(rows,["KHUNG_CAU"],"equipment","2026-10-21");\n assert.equal(vouchers.length,1);\n assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);\n assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);\n assert.equal(vouchers[0].lines[0].equipmentLabel,"No57");\n});\n
+test("voucher display uses canonical equipment names while retaining shorthand codes internally",()=>{
+ const rows=[{sourceLabel:"Khung cẩu No57",equipmentCode:"N57",equipmentName:"No57",group:"KHUNG_CAU" as const,maintenanceLevel:"I - theo tháng" as const,materials:[{key:"grease",name:"Mỡ",unit:"kg",quantity:1,source:"maintenance_consumable" as const}]}];
+ const vouchers=buildVoucherPreviews(rows,["KHUNG_CAU"],"equipment","2026-10-21");
+ assert.equal(vouchers.length,1);
+ assert.deepEqual(vouchers[0].equipmentCodes,["N57"]);
+ assert.deepEqual(vouchers[0].equipmentLabels,["No57"]);
+ assert.equal(vouchers[0].lines[0].equipmentLabel,"No57");
+});
