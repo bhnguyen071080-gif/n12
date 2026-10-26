@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {filterEquipment,equipmentCounts,equipmentLabel,type EquipmentCard} from "../../src/lib/equipment-display";
+import {createEquipmentIdentityMatcher,filterEquipment,equipmentCounts,equipmentLabel,type EquipmentCard} from "../../src/lib/equipment-display";
 const rows:EquipmentCard[]=[
  {id:"a",workspace_id:"test",code:"TEST_A",name:"Cần trục chân đế",status:"available"},
  {id:"b",workspace_id:"test",code:"TEST_B",name:"Khung cẩu tự động",status:"maintenance"},
@@ -22,5 +22,12 @@ test("dashboard counts only recorded statuses and keeps an empty catalog honest"
 test("equipment label puts the name first and keeps code only as a shorthand",()=>{
  assert.equal(equipmentLabel(rows[0]),"Cần trục chân đế (mã TEST_A)");
  assert.equal(equipmentLabel({code:"QC05",name:"QC05"}),"QC05");
+});
+test("equipment identity accepts either full name or shorthand without guessing collisions",()=>{
+ const frames=[57,60,64,66].map((number,index)=>({id:`frame-${index}`,code:`N${number}`,name:`No${number}`}));
+ const match=createEquipmentIdentityMatcher(frames);
+ for(const frame of frames){assert.equal(match(`KHUNG${frame.code.slice(1)}`,`Khung cẩu ${frame.name}`)?.id,frame.id);assert.equal(match(frame.code)?.name,frame.name);}
+ const ambiguous=createEquipmentIdentityMatcher([{id:"a",code:"A57",name:"No57"},{id:"b",code:"N57",name:"Khung cẩu số 57"}]);
+ assert.equal(ambiguous("Khung cẩu No57","N57"),undefined);
 });
 
