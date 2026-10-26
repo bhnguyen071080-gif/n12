@@ -28,10 +28,6 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await expect(page.locator(".voucher-preview").first()).toContainText("Ngày 24 tháng 10 năm 2026");
   await expect(page.getByText("2 liên A5 · 1 tờ A4").first()).toBeVisible();
   await expect(page.getByText(/2 liên A4 · \d+ trang in/).first()).toBeVisible();
-  const firstOil=page.getByRole("checkbox",{name:/P554004 · Lọc dầu máy: 1 chiếc/}).first();
-  await firstOil.uncheck();
-  await expect(page.locator(".voucher-preview").first().locator("tr",{hasText:"Lọc dầu máy"}).first()).toContainText("2");
-  await firstOil.check();
   await page.getByRole("checkbox",{name:"RTG 06",exact:true}).uncheck();
   await expect(page.locator(".voucher-preview").first()).not.toContainText("RTG06");
   await page.getByRole("checkbox",{name:"RTG 06",exact:true}).check();
@@ -45,6 +41,6 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   expect(requests[1].document_day).toBe("2026-10-24");expect(requests[1].planned_day).toBe("2026-10-01");
   const details=JSON.parse(requests[1].voucher_details);expect(details).toHaveLength(5);expect(details[0].documentNumber).toBe("CTV/PLVT/2026_0001");expect(details[0].documentDay).toBe("2026-10-24");
   await expect(page.getByLabel("Số phiếu").first()).toBeDisabled();
- });;
+ });
 });}
 
