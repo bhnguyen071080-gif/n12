@@ -47,7 +47,7 @@ begin
    and case when c.tracking_only then u.is_installed and i.performed_on is not null else u.installed_at is not null end
  ), with_previous as(
   select x.*,lag(x.replaced_on) over(
-   partition by x.equipment_id,x.material_id,lower(btrim(x."position")) order by x.replaced_on,x.usage_id
+   partition by x.equipment_id,x.material_id order by x.replaced_on,x.usage_id
   ) previous_replaced_on
   from raw_rows x
  ), filtered as(
