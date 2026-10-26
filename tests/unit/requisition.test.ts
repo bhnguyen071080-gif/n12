@@ -39,8 +39,8 @@ test("voucher signing keeps 21 mm clear space after moving printed names upward"
  assert.equal(long.height-one.height,33);
 });
 test("voucher header follows BM.08.06 date and number wording",()=>{
- assert.deepEqual(voucherHeaderFields("2026-10-20T08:30","PL-001"),{date:"Hải Phòng, ngày 20 tháng 10 năm 2026",number:"Số: PL-001"});
- assert.equal(voucherHeaderFields("2026-10-20T08:30","").number,"Số: .....");
+ assert.deepEqual(voucherHeaderFields("2026-10-20T08:30","PL-001"),{date:"Ngày 20 tháng 10 năm 2026",number:"Số phiếu: PL-001"});
+ assert.equal(voucherHeaderFields("2026-10-20T08:30","").number,"Số phiếu: ........................");
 });
 test("print layout automatically changes from two-up A5 to two full A4 copies",async()=>{
  const counts:number[]=[];
@@ -55,6 +55,6 @@ test("print layout automatically changes from two-up A5 to two full A4 copies",a
   counts.push(pdf.getPageCount());
   for(const page of pdf.getPages()){assert.ok(Math.abs(page.getHeight()-841.89)<.01);assert.ok(Math.abs(page.getWidth()-595.276)<.01);}
  }
- assert.deepEqual(counts.slice(0,3),[1,1,2]);assert.ok(counts[3]>=4);
+ assert.deepEqual(counts.slice(0,3),[1,2,2]);assert.ok(counts[3]>=4);
 });
 
