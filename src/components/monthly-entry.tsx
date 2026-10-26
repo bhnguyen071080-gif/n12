@@ -1,12 +1,8 @@
 "use client";
-import {useState} from "react";
 import {saveMonthly} from "@/app/actions";
 import {AsyncForm} from "./async-form";
-import {monthlyCsv} from "@/lib/csv";
 import {monthStart,type MonthlyKind} from "@/lib/domain";
-export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string;kind:MonthlyKind;codes:string[];cargoCodes:string[]}){
- const [csv,setCsv]=useState(""),[error,setError]=useState(""),[preview,setPreview]=useState("");
- const header=kind==="hours"?"equipment_code,month,operating_hours":kind==="container"?"equipment_code,month,boxes":"equipment_code,month,cargo_code,quantity";
+export function MonthlyEntry({workspace,kind,codes,cargoCodes,initialCode="",initialMonth="",initialValue}:{workspace:string;kind:MonthlyKind;codes:string[];cargoCodes:string[];initialCode?:string;initialMonth?:string;initialValue?:number|null}){
  function prepare(data:FormData){
   const base={equipment_code:String(data.get("equipment_code")),month:monthStart(String(data.get("month")))};
   const n=(field:string)=>{const s=String(data.get(field)??"");if(!/^\d+(\.\d+)?$/.test(s))throw new Error("Số không hợp lệ");return Number(s);};
@@ -15,28 +11,18 @@ export function MonthlyEntry({workspace,kind,codes,cargoCodes}:{workspace:string
   data.set("rows",JSON.stringify([row]));
  }
  return <div className="monthly-entry-grid">
-  <section className="panel monthly-entry-compact"><h2>Nhập một tháng</h2>
-   <AsyncForm action={saveMonthly} prepare={prepare}><input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="kind" value={kind}/>
-    <label>Phương tiện<select name="equipment_code" required>{codes.map(c=><option key={c}>{c}</option>)}</select></label>
-    <label>Tháng<input type="month" name="month" required/></label>
-    {kind==="hours"?<label>Tổng giờ hoạt động thực tế<input name="operating_hours" type="number" step="0.01" min="0" required/></label>:kind==="container"?<>
-     <label>Số container (chiếc / Boxes)<input name="boxes" type="number" step="1" min="0" required/></label>
+  <section className="panel monthly-entry-compact" id="cap-nhat-thang"><div className="section-heading"><div><p className="eyebrow">CẬP NHẬT DỮ LIỆU</p><h2>{initialMonth?"Điều chỉnh tháng đã ghi":"Nhập nhanh một tháng"}</h2></div>{initialMonth&&<span className="count-chip">Lưu sẽ thay số cũ</span>}</div>
+   <p className="muted">Mỗi phương tiện chỉ có một giá trị trong một tháng. Nhập lại cùng phương tiện và tháng sẽ cập nhật số liệu, không tạo dòng trùng.</p>
+   <AsyncForm action={saveMonthly} prepare={prepare} resetOnNew resetLabel="Nhập tháng khác"><input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="kind" value={kind}/>
+    <label>Phương tiện<select name="equipment_code" defaultValue={initialCode||codes[0]} required>{codes.map(c=><option key={c}>{c}</option>)}</select></label>
+    <label>Tháng<input type="month" name="month" defaultValue={initialMonth} required/></label>
+    {kind==="hours"?<label>Giờ hoạt động trong tháng<input name="operating_hours" defaultValue={initialValue??undefined} type="number" step="0.01" min="0" required/></label>:kind==="container"?<>
+     <label>Số container (chiếc / Boxes)<input name="boxes" defaultValue={initialValue??undefined} type="number" step="1" min="0" required/></label>
 </>:<>
      <label>Loại hàng<select name="cargo_code" required>{cargoCodes.map(c=><option key={c}>{c}</option>)}</select></label>
      <label>Số lượng theo đơn vị loại hàng<input name="quantity" type="number" step="0.001" min="0" required/></label></>}
    </AsyncForm>
   </section>
-  <section className="panel monthly-entry-legacy"><details><summary>Nhập CSV theo cấu trúc cũ</summary><div className="space-y-3"><p>Mẫu Excel tiếng Việt và bước đối chiếu dữ liệu có tại nút Nhập số liệu tháng từ tệp phía trên. Biểu mẫu cũ này thay giá trị tháng đã có.</p><p>Dấu chấm thập phân, không phân tách hàng nghìn. Tiêu đề cột: <code>{header}</code>. Tối đa 1000 dòng/lô.</p>
-   <label>Chọn CSV<input type="file" accept=".csv,text/csv" onChange={async e=>{
-    const file=e.target.files?.[0];if(!file)return;if(file.size>262144){setError("File tối đa 256 KiB");return;}setCsv(await file.text());setPreview("");setError("");
-   }}/></label>
-   <label>Dữ liệu CSV<textarea value={csv} onChange={e=>{setCsv(e.target.value);setPreview("");setError("");}} rows={6}/></label>
-   <button type="button" onClick={()=>{try{const rows=monthlyCsv(csv,kind);setPreview(JSON.stringify(rows.slice(0,5),null,2));setError("");}catch(e){setError(e instanceof Error?e.message:"CSV không hợp lệ");}}}>Kiểm tra và xem trước</button>
-   <p role="alert">{error}</p>{preview && <><pre className="overflow-x-auto text-xs">{preview}</pre><AsyncForm action={saveMonthly}
-    prepare={data=>data.set("rows",JSON.stringify(monthlyCsv(csv,kind)))} label="Xác nhận cập nhật toàn lô">
-    <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="kind" value={kind}/>
-   </AsyncForm></>}
-  </div></details></section>
  </div>;
 }
 
