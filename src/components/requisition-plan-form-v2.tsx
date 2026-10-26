@@ -6,6 +6,7 @@ import {AsyncForm} from "./async-form";
 import {
  buildVoucherPreviews,
  octoberMaintenancePlan,
+ octoberPlanDocumentDay,
  planGroupLabels,
  formatPlannedDay,
  supplySourceLabels,
@@ -25,37 +26,63 @@ type VoucherKind="planned"|"supplemental";
 
 const materialSelectionKey=(equipmentCode:string,item:PlannedMaterial)=>`${equipmentCode}:${item.key}:${item.source}`;
 
-function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDay,compact}:{voucher:VoucherPreview;lines:PlannedMaterial[];copy:1|2;page:number;pages:number;plannedDay:string;documentDay:string;compact:boolean}){
+function vietnameseDate(day:string){
+ const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+ return match?`Ngày ${Number(match[3])} tháng ${Number(match[2])} năm ${match[1]}`:"Ngày ... tháng ... năm ...";
+}
+
+type VoucherDetail={id:string;documentNumber:string;documentDay:string};
+
+function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDay,documentNumber,kind,company,department,warehouse,compact}:{voucher:VoucherPreview;lines:PlannedMaterial[];copy:1|2;page:number;pages:number;plannedDay:string;documentDay:string;documentNumber:string;kind:VoucherKind;company:string;department:string;warehouse:string;compact:boolean}){
+ const reason=kind==="supplemental"?"Bổ sung vật tư phát sinh khi bảo dưỡng":"Phục vụ bảo dưỡng theo kế hoạch";
  return <div className={compact?"voucher-copy voucher-copy-compact":"voucher-copy voucher-copy-a4"}>
-  <header><span>Liên {copy}/2{pages>1?` · Trang ${page}/${pages}`:""}</span><strong>{voucher.scopeLabel}</strong></header>
-  <p className="muted">Ngày kế hoạch: {formatPlannedDay(plannedDay)} · Ngày phiếu lĩnh: {formatPlannedDay(documentDay)}</p>
-  <p><strong>Lý do xuất kho:</strong> Phục vụ bảo dưỡng ({voucher.equipmentCodes.join(", ")})</p>
-  <table><thead><tr><th>STT</th><th>Tên, nhãn hiệu, quy cách vật tư</th><th>Danh điểm</th><th>ĐVT</th><th>Xin lĩnh</th><th>Ghi chú</th></tr></thead><tbody>{lines.map((line,lineIndex)=><tr key={`${line.equipmentCode??""}:${line.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{line.name}</td><td>{line.catalogueCode??line.name}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td><td>{line.equipmentLabel??line.equipmentCode??""}</td></tr>)}</tbody></table>
+  <div className="voucher-copy-meta">Liên {copy}/2{pages>1?` · Trang ${page}/${pages}`:""}</div>
+  <div className="voucher-form-top"><strong>Đơn vị: {company}</strong><strong>BM.08.06</strong></div>
+  <h4>PHIẾU LĨNH VẬT TƯ</h4>
+  <p className="voucher-number">Số phiếu: {documentNumber||"........................"}</p>
+  <p className="voucher-date">{vietnameseDate(documentDay)}</p>
+  <p><strong>Tên đơn vị lĩnh:</strong> {department}</p>
+  <p><strong>Lý do xuất kho:</strong> {reason} ({voucher.equipmentCodes.join(", ")})</p>
+  <p><strong>Lĩnh tại kho:</strong> {warehouse}</p>
+  <table><thead><tr><th rowSpan={2}>STT</th><th rowSpan={2}>Tên, nhãn hiệu, quy cách vật tư, dụng cụ</th><th rowSpan={2}>Danh điểm</th><th rowSpan={2}>Đơn vị tính</th><th colSpan={2}>Số lượng</th><th rowSpan={2}>Đơn giá</th><th rowSpan={2}>Thành tiền</th><th rowSpan={2}>Ghi chú</th></tr><tr><th>Xin lĩnh</th><th>Thực phát</th></tr></thead><tbody>{lines.map((line,lineIndex)=><tr key={`${line.equipmentCode??""}:${line.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{line.name}</td><td>{line.catalogueCode??""}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td><td></td><td></td><td></td><td>{line.equipmentLabel??line.equipmentCode??""}</td></tr>)}<tr><td></td><td><strong>Cộng</strong></td><td colSpan={7}></td></tr></tbody></table>
+  <p className="voucher-amount">Cộng thành tiền (viết bằng chữ): ...........................................................................................................</p>
+  <div className="voucher-signatures">{["PHÒNG TCKT","THỦ KHO","NGƯỜI NHẬN","LÃNH ĐẠO PHÒNG"].map((title,index)=><div key={title}><strong>{title}</strong><span>{index===3?"(Ký, họ tên, đóng dấu)":"(Ký, ghi rõ họ tên)"}</span></div>)}</div>
+  <p className="voucher-plan-source">Nguồn kế hoạch: {formatPlannedDay(plannedDay)}</p>
  </div>;
 }
 
-function VoucherLivePreview({voucher,index,kind,plannedDay,documentDay}:{voucher:VoucherPreview;index:number;kind:VoucherKind;plannedDay:string;documentDay:string}){
+function VoucherLivePreview({voucher,index,kind,plannedDay,detail,onDetailChange,company,department,warehouse}:{voucher:VoucherPreview;index:number;kind:VoucherKind;plannedDay:string;detail:VoucherDetail;onDetailChange:(detail:VoucherDetail)=>void;company:string;department:string;warehouse:string}){
  const layout=chooseVoucherPrintLayout({lineLabels:voucher.lines.map(line=>[line.name,line.catalogueCode,line.equipmentLabel].filter(Boolean).join(" ")),equipmentLabels:voucher.equipmentCodes,contextText:voucher.scopeLabel});
  const chunks=layout.chunks.map(indexes=>indexes.map(lineIndex=>voucher.lines[lineIndex]));
  return <article className="voucher-preview" data-print-format={layout.format}>
   <div className="voucher-preview-heading"><span>{kind==="supplemental"?"Phiếu bổ sung":"Phiếu kế hoạch"} {String(index+1).padStart(2,"0")}</span><strong>{layout.label}</strong><small>{voucher.lines.length} dòng vật tư · {voucher.equipmentCodes.length} phương tiện</small></div>
+  <div className="voucher-meta-editor" aria-label={`Sửa thông tin phiếu ${index+1}`}>
+   <label>Số phiếu<input value={detail.documentNumber} maxLength={100} placeholder="CTV/PLVT/2026_...." required onChange={event=>onDetailChange({...detail,documentNumber:event.target.value})}/></label>
+   <label>Ngày phiếu (anh chọn)<input type="date" required value={detail.documentDay} onChange={event=>onDetailChange({...detail,documentDay:event.target.value})}/></label>
+  </div>
+  <p className="muted">Ngày kế hoạch lấy từ PDF: {formatPlannedDay(plannedDay)}. Số và ngày phiếu được lưu riêng cho phiếu này.</p>
   <div className="voucher-sheet-stack">
    {layout.format==="two-up-a5"?<div className="voucher-sheet voucher-sheet-two-up">
-    <VoucherCopyPreview voucher={voucher} lines={voucher.lines} copy={1} page={1} pages={1} plannedDay={plannedDay} documentDay={documentDay} compact/>
-    <VoucherCopyPreview voucher={voucher} lines={voucher.lines} copy={2} page={1} pages={1} plannedDay={plannedDay} documentDay={documentDay} compact/>
+    <VoucherCopyPreview voucher={voucher} lines={voucher.lines} copy={1} page={1} pages={1} plannedDay={plannedDay} documentDay={detail.documentDay} documentNumber={detail.documentNumber} kind={kind} company={company} department={department} warehouse={warehouse} compact/>
+    <VoucherCopyPreview voucher={voucher} lines={voucher.lines} copy={2} page={1} pages={1} plannedDay={plannedDay} documentDay={detail.documentDay} documentNumber={detail.documentNumber} kind={kind} company={company} department={department} warehouse={warehouse} compact/>
    </div>:[1,2].flatMap(copy=>chunks.map((lines,pageIndex)=><div className="voucher-sheet voucher-sheet-full" key={`${copy}:${pageIndex}`}>
-    <VoucherCopyPreview voucher={voucher} lines={lines} copy={copy as 1|2} page={pageIndex+1} pages={chunks.length} plannedDay={plannedDay} documentDay={documentDay} compact={false}/>
+    <VoucherCopyPreview voucher={voucher} lines={lines} copy={copy as 1|2} page={pageIndex+1} pages={chunks.length} plannedDay={plannedDay} documentDay={detail.documentDay} documentNumber={detail.documentNumber} kind={kind} company={company} department={department} warehouse={warehouse} compact={false}/>
    </div>))}
   </div>
  </article>;
 }
 
-export function RequisitionPlanForm({workspace,equipment,materials,today,saveAction}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string;saveAction:(data:FormData)=>Promise<ActionResult>}){
+export function RequisitionPlanForm({workspace,equipment,materials,today,completedEquipmentCodes,saveAction}:{workspace:string;workspaceName:string;equipment:EquipmentOption[];materials:MaterialOption[];today:string;completedEquipmentCodes:string[];saveAction:(data:FormData)=>Promise<ActionResult>}){
  const [groups,setGroups]=useState<PlanGroup[]>(allGroups);
- const [selectedEquipment,setSelectedEquipment]=useState<string[]>(()=>octoberMaintenancePlan.map(row=>row.equipmentCode));
+ const [selectedEquipment,setSelectedEquipment]=useState<string[]>([]);
  const [grouping,setGrouping]=useState<VoucherGrouping>("group");
- const [plannedDay,setPlannedDay]=useState("2026-10-21");
- const [documentDay,setDocumentDay]=useState(today);
+ const plannedDay=octoberPlanDocumentDay;
+ const [voucherDetails,setVoucherDetails]=useState<Record<string,VoucherDetail>>({});
+ const [company,setCompany]=useState("CHI NHÁNH CẢNG TÂN VŨ");
+ const [department,setDepartment]=useState("BAN KỸ THUẬT");
+ const [recipient,setRecipient]=useState("");
+ const [warehouse,setWarehouse]=useState("Chi nhánh Cảng Tân Vũ");
+ const [consumableWarehouse,setConsumableWarehouse]=useState("Chi nhánh Cảng Tân Vũ");
  const [voucherKind,setVoucherKind]=useState<VoucherKind>("planned");
  const [supplementNote,setSupplementNote]=useState("");
  const [supplementEquipment,setSupplementEquipment]=useState("");
@@ -68,13 +95,17 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
  const [savedRun,setSavedRun]=useState("");
  const [saving,setSaving]=useState(false);
  const available=useMemo(()=>new Map(equipment.map(item=>[item.code,item])),[equipment]);
+ const completedSet=useMemo(()=>new Set(completedEquipmentCodes),[completedEquipmentCodes]);
+ const selectablePlannedRows=useMemo(()=>octoberMaintenancePlan.filter(row=>!completedSet.has(row.equipmentCode)),[completedSet]);
  const selectedMaterialSet=useMemo(()=>new Set(selectedMaterials),[selectedMaterials]);
- const visiblePlanRows=useMemo(()=>octoberMaintenancePlan.filter(row=>groups.includes(row.group)&&selectedEquipment.includes(row.equipmentCode)),[groups,selectedEquipment]);
+ const visiblePlanRows=useMemo(()=>selectablePlannedRows.filter(row=>groups.includes(row.group)&&selectedEquipment.includes(row.equipmentCode)),[selectablePlannedRows,groups,selectedEquipment]);
  const plannedRows=useMemo(()=>visiblePlanRows.map(row=>({...row,materials:row.materials.filter(item=>selectedMaterialSet.has(materialSelectionKey(row.equipmentCode,item)))})).filter(row=>row.materials.length>0),[visiblePlanRows,selectedMaterialSet]);
  const supplementBase=octoberMaintenancePlan.find(row=>row.equipmentCode===supplementEquipment);
  const rows=useMemo(()=>voucherKind==="planned"?plannedRows:supplementBase&&supplementLines.length?[{...supplementBase,materials:supplementLines}]:[],[voucherKind,plannedRows,supplementBase,supplementLines]);
  const previewGroups=useMemo(()=>voucherKind==="planned"?groups:supplementBase?[supplementBase.group]:[],[voucherKind,groups,supplementBase]);
  const previews=useMemo(()=>buildVoucherPreviews(rows,previewGroups,grouping,plannedDay),[rows,previewGroups,grouping,plannedDay]);
+ const currentVoucherDetails=useMemo(()=>previews.map(voucher=>voucherDetails[voucher.id]??{id:voucher.id,documentNumber:"",documentDay:today}),[previews,voucherDetails,today]);
+ const voucherMetadataReady=currentVoucherDetails.every(detail=>detail.documentNumber.trim().length>0&&detail.documentDay.length===10);
  const unresolved=rows.filter(row=>!available.has(row.equipmentCode));
  const saveRows=rows.flatMap(row=>{const match=available.get(row.equipmentCode);return match?[{...row,equipmentId:match.id,equipmentName:match.name}]:[];});
 
@@ -93,6 +124,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
  }
  function toggleEquipment(code:string){setSelectedEquipment(current=>current.includes(code)?current.filter(value=>value!==code):[...current,code]);}
  function toggleMaterial(key:string){setSelectedMaterials(current=>current.includes(key)?current.filter(value=>value!==key):[...current,key]);}
+ function updateVoucherDetail(detail:VoucherDetail){setVoucherDetails(current=>({...current,[detail.id]:detail}));}
  function setVisibleMaterials(enabled:boolean){
   const keys=new Set(visiblePlanRows.flatMap(row=>row.materials.map(item=>materialSelectionKey(row.equipmentCode,item))));
   setSelectedMaterials(current=>enabled?[...new Set([...current,...keys])]:current.filter(key=>!keys.has(key)));
@@ -120,10 +152,10 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
    <div className="plan-live-controls">
     <div className="plan-form-grid">
      <label>Tháng kế hoạch<input type="month" value="2026-10" readOnly aria-describedby="plan-month-note"/></label>
-     <label>Ngày theo kế hoạch bảo dưỡng<input type="date" required value={plannedDay} min="2026-10-01" max="2026-10-31" onChange={event=>setPlannedDay(event.target.value)}/></label>
-     <label>Ngày lập phiếu lĩnh thực tế<input type="date" required value={documentDay} onChange={event=>setDocumentDay(event.target.value)}/></label>
+     <label>Ngày văn bản kế hoạch (từ PDF)<input type="date" value={plannedDay} readOnly/></label>
     </div>
-    <p id="plan-month-note" className="muted">Ngày kế hoạch dùng để liên kết vụ việc bảo dưỡng. Mã vụ việc được sinh khi lưu; chưa ghi nhận ngày thực hiện. Ngày lập phiếu là ngày in trên chứng từ; hai ngày không bắt buộc phải trùng nhau.</p>
+    <p id="plan-month-note" className="muted">Ngày 01/10/2026 lấy từ đầu văn bản PDF “Kế hoạch sửa chữa, bảo dưỡng tháng 10/2026” và không cho sửa tay. Ngày phiếu chỉ là ngày dự kiến ban đầu; anh có thể sửa riêng từng phiếu ở phần xem trước trước khi xác nhận.</p>
+    {completedEquipmentCodes.length?<p className="plan-ok"><strong>{completedEquipmentCodes.length} phương tiện đã có phiếu kế hoạch trong tháng 10/2026</strong> và đã được ẩn khỏi danh sách lập phiếu mới. Phiếu bổ sung vẫn có thể chọn lại các phương tiện này.</p>:null}
     <fieldset className="plan-choice"><legend>Loại phiếu</legend>
      <label><input type="radio" name="voucher_kind" checked={voucherKind==="planned"} onChange={()=>setVoucherKind("planned")}/>Phiếu theo kế hoạch</label>
      <label><input type="radio" name="voucher_kind" checked={voucherKind==="supplemental"} onChange={()=>setVoucherKind("supplemental")}/>Phiếu bổ sung khi thực hiện</label>
@@ -146,11 +178,11 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
     <label><input type="radio" name="grouping" checked={grouping==="date"} onChange={()=>setGrouping("date")}/>Theo ngày cùng thực hiện</label>
     </fieldset>
     {voucherKind==="planned"?<fieldset className="plan-choice"><legend>Nhóm phương tiện</legend>
-     {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({octoberMaintenancePlan.filter(row=>row.group===group).length})</small></label>)}
+     {allGroups.map(group=><label key={group}><input type="checkbox" checked={groups.includes(group)} onChange={()=>toggleGroup(group)}/>{planGroupLabels[group]} <small>({selectablePlannedRows.filter(row=>row.group===group).length})</small></label>)}
     </fieldset>:null}
     {voucherKind==="planned"?<fieldset className="plan-choice plan-equipment-choice"><legend>Chọn phương tiện đưa vào phiếu</legend>
-     <div className="plan-choice-actions"><button type="button" className="button button-secondary" onClick={()=>setSelectedEquipment(current=>[...new Set([...current,...octoberMaintenancePlan.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode)])])}>Chọn tất cả đang hiển thị</button><button type="button" className="button button-secondary" onClick={()=>{const visible=new Set(octoberMaintenancePlan.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode));setSelectedEquipment(current=>current.filter(code=>!visible.has(code)));}}>Bỏ chọn đang hiển thị</button></div>
-     {octoberMaintenancePlan.filter(row=>groups.includes(row.group)).map(row=><label key={row.equipmentCode}><input type="checkbox" checked={selectedEquipment.includes(row.equipmentCode)} onChange={()=>toggleEquipment(row.equipmentCode)}/>{row.sourceLabel}</label>)}
+     <div className="plan-choice-actions"><button type="button" className="button button-secondary" onClick={()=>setSelectedEquipment(current=>[...new Set([...current,...selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode)])])}>Chọn tất cả đang hiển thị</button><button type="button" className="button button-secondary" onClick={()=>{const visible=new Set(selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=>row.equipmentCode));setSelectedEquipment(current=>current.filter(code=>!visible.has(code)));}}>Bỏ chọn đang hiển thị</button></div>
+     {selectablePlannedRows.filter(row=>groups.includes(row.group)).map(row=><label key={row.equipmentCode}><input type="checkbox" checked={selectedEquipment.includes(row.equipmentCode)} onChange={()=>toggleEquipment(row.equipmentCode)}/>{row.sourceLabel}</label>)}
     </fieldset>:null}
     <div className="plan-source-note"><strong>Hệ thống luôn tách thành hai nguồn:</strong><span>Vật tư kho vật tư</span><span>Nguyên liệu, nhiên liệu bảo dưỡng</span></div>
     <p className="plan-ok plan-live-note" role="status">Bản xem trước bên dưới tự cập nhật ngay khi chọn phương tiện, vật tư, ngày hoặc cách gom phiếu.</p>
@@ -183,15 +215,16 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,saveAct
     const sourceVouchers=previews.filter(voucher=>voucher.source===source);
     if(!sourceVouchers.length)return null;
     return <section className="voucher-source" key={source}><h3>{supplySourceLabels[source]} <span>{sourceVouchers.length} phiếu</span></h3><div className="voucher-preview-grid">
-     {sourceVouchers.map((voucher,index)=><VoucherLivePreview voucher={voucher} index={index} kind={voucherKind} plannedDay={plannedDay} documentDay={documentDay} key={voucher.id}/>)}
+     {sourceVouchers.map(voucher=>{const globalIndex=previews.findIndex(item=>item.id===voucher.id),detail=currentVoucherDetails[globalIndex];return <VoucherLivePreview voucher={voucher} index={globalIndex} kind={voucherKind} plannedDay={plannedDay} detail={detail} onDetailChange={updateVoucherDetail} company={company} department={department} warehouse={voucher.source==="warehouse"?warehouse:consumableWarehouse} key={voucher.id}/>;})}
     </div></section>;
    })}
    <div className="plan-next-step"><strong>Kiểm soát trước khi nhập</strong><span>Chỉ các dòng đã khớp đúng phương tiện mới được xác nhận.</span></div>
    {!savedRun?<section className="plan-confirm"><h3>4. Xác nhận nhập dữ liệu và tạo vụ việc</h3>
-    {(!source||!rows.length||!previews.length||unresolved.length>0)?<p className="plan-warning">Chưa thể xác nhận: {!source?"chưa kiểm tra tệp PDF. ":""}{!rows.length||!previews.length?"chưa chọn đủ phương tiện và vật tư. ":""}{unresolved.length?"còn phương tiện chưa khớp danh mục.":""}</p>:<AsyncForm action={saveAction} label="Xác nhận bố cục, lưu & tạo vụ việc" onPendingChange={setSaving} onSuccess={result=>setSavedRun(result.id??"")}>
-     <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="planned_day" value={plannedDay}/><input type="hidden" name="document_day" value={documentDay}/><input type="hidden" name="voucher_kind" value={voucherKind}/><input type="hidden" name="supplement_note" value={voucherKind==="supplemental"?supplementNote.trim():""}/><input type="hidden" name="grouping" value={grouping}/>
+    {(!source||!rows.length||!previews.length||unresolved.length>0||!voucherMetadataReady)?<p className="plan-warning">Chưa thể xác nhận: {!source?"chưa kiểm tra tệp PDF. ":""}{!rows.length||!previews.length?"chưa chọn đủ phương tiện và vật tư. ":""}{unresolved.length?"còn phương tiện chưa khớp danh mục. ":""}{previews.length&&!voucherMetadataReady?"cần nhập số phiếu và ngày cho từng phiếu.":""}</p>:<AsyncForm action={saveAction} label="Xác nhận bố cục, lưu & tạo vụ việc" onPendingChange={setSaving} onSuccess={result=>setSavedRun(result.id??"")}>
+     <input type="hidden" name="workspace" value={workspace}/><input type="hidden" name="planned_day" value={plannedDay}/><input type="hidden" name="document_day" value={currentVoucherDetails[0]?.documentDay??today}/><input type="hidden" name="voucher_details" value={JSON.stringify(currentVoucherDetails)}/><input type="hidden" name="voucher_kind" value={voucherKind}/><input type="hidden" name="supplement_note" value={voucherKind==="supplemental"?supplementNote.trim():""}/><input type="hidden" name="grouping" value={grouping}/>
      <input type="hidden" name="rows" value={JSON.stringify(saveRows)}/><input type="hidden" name="source_filename" value={source?.name??""}/><input type="hidden" name="source_sha256" value={source?.sha256??""}/>
-     <div className="plan-form-grid"><label>Đơn vị<input name="company" defaultValue="CHI NHÁNH CẢNG TÂN VŨ" required/></label><label>Tên đơn vị lĩnh<input name="department" defaultValue="BAN KỸ THUẬT" required/></label><label>Người nhận<input name="recipient" placeholder="Có thể bổ sung khi in"/></label><label>Lĩnh tại kho vật tư<input name="warehouse" defaultValue="Chi nhánh Cảng Tân Vũ"/></label><label>Lĩnh tại kho nguyên liệu, nhiên liệu<input name="consumable_warehouse" defaultValue="Chi nhánh Cảng Tân Vũ"/></label><label>Ngày chứng từ<input type="date" value={documentDay} readOnly/></label></div>
+     <div className="plan-form-grid"><label>Đơn vị<input name="company" value={company} onChange={event=>setCompany(event.target.value)} required/></label><label>Tên đơn vị lĩnh<input name="department" value={department} onChange={event=>setDepartment(event.target.value)} required/></label><label>Người nhận<input name="recipient" value={recipient} onChange={event=>setRecipient(event.target.value)} placeholder="Có thể bổ sung khi in"/></label><label>Lĩnh tại kho vật tư<input name="warehouse" value={warehouse} onChange={event=>setWarehouse(event.target.value)}/></label><label>Lĩnh tại kho nguyên liệu, nhiên liệu<input name="consumable_warehouse" value={consumableWarehouse} onChange={event=>setConsumableWarehouse(event.target.value)}/></label></div>
+     <p className="muted">Số phiếu và ngày phiếu được nhập tại từng bản xem trước phía trên; mỗi phiếu lưu độc lập để có thể sửa trước khi xác nhận.</p>
      <label><input type="checkbox" name="confirmed" required/> Tôi đã đối chiếu tệp nguồn, phương tiện và số lượng xin lĩnh.</label>
     </AsyncForm>}
    </section>:<p className="plan-ok"><strong>Đã nhập thành công.</strong> Mã lần nhập: <code>{savedRun}</code>. <a href={`/requisitions/${savedRun}`}>Mở kế hoạch đã lưu và in BM.08.06 →</a></p>}
