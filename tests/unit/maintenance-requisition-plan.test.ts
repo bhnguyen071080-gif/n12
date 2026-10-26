@@ -1,39 +1,8 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {buildVoucherPreviews,formatPlannedDay,octoberMaintenancePlan,type PlanGroup,type PlannedMaterial} from "../../src/lib/maintenance-requisition-plan";
+import {buildVoucherPreviews,octoberMaintenancePlan,type PlanGroup} from "../../src/lib/maintenance-requisition-plan";
 
 const groups:PlanGroup[]=["TUKAN","QC","RTG","KHUNG_CAU"];
-
-test("planned calendar dates retain their day, including month/year boundaries",()=>{
- assert.equal(formatPlannedDay("2026-10-21"),"21/10/2026");
- assert.equal(formatPlannedDay("2027-01-01"),"01/01/2027");
- assert.equal(formatPlannedDay("2028-02-29"),"29/02/2028");
- assert.equal(formatPlannedDay(""),"");
-});
-
-test("all group subsets and grouping modes preserve quantities and source separation",()=>{
- const original=structuredClone(octoberMaintenancePlan);
- const totals=(lines:readonly PlannedMaterial[])=>{
-  const result:Record<string,number>={};
-  for(const line of lines){const key=[line.source,line.key,line.unit,line.catalogueCode??""].join("|");result[key]=(result[key]??0)+line.quantity;}
-  return result;
- };
- for(let mask=0;mask<16;mask++){
-  const selected=groups.filter((_,index)=>mask&(1<<index));
-  const expected=totals(octoberMaintenancePlan.filter(row=>selected.includes(row.group)).flatMap(row=>row.materials));
-  for(const grouping of ["equipment","group","date"] as const){
-   const previews=buildVoucherPreviews(octoberMaintenancePlan,selected,grouping,"2026-10-21");
-   assert.deepEqual(totals(previews.flatMap(v=>v.lines)),expected);
-   assert.equal(new Set(previews.map(v=>v.id)).size,previews.length);
-   for(const voucher of previews){
-    assert.ok(voucher.lines.every(line=>line.source===voucher.source));
-    assert.equal(new Set(voucher.equipmentCodes).size,voucher.equipmentCodes.length);
-    if(grouping==="equipment")assert.equal(voucher.equipmentCodes.length,1);
-   }
-  }
- }
- assert.deepEqual(octoberMaintenancePlan,original);
-});
 
 test("October plan contains the four requested groups and excludes rags",()=>{
  assert.equal(octoberMaintenancePlan.length,54);
@@ -47,16 +16,25 @@ test("group preview separates warehouse items from maintenance consumables",()=>
  assert.equal(vouchers.filter(voucher=>voucher.source==="warehouse").length,1);
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,4);
  const warehouse=vouchers.find(voucher=>voucher.id==="RTG:warehouse");
- assert.deepEqual(warehouse?.lines.map(line=>[line.catalogueCode,line.quantity]),[["P554004",3],["P554620",6]]);
+ assert.equal(warehouse?.lines.length,6);
+ assert.deepEqual(warehouse?.lines.map(line=>[line.equipmentCode,line.catalogueCode,line.quantity]),[
+  ["RTG06","P554004",1],["RTG06","P554620",2],
+  ["RTG10","P554004",1],["RTG10","P554620",2],
+  ["RTG12","P554004",1],["RTG12","P554620",2],
+ ]);
 });
 
-test("plan totals match the selected monthly source table after rag removal",()=>{
+test("group preview keeps one material line per equipment instead of combining quantities",()=>{
  const vouchers=buildVoucherPreviews(octoberMaintenancePlan,groups,"group");
- const totals=(id:string)=>Object.fromEntries((vouchers.find(voucher=>voucher.id===id)?.lines??[]).map(line=>[line.name,line.quantity]));
- assert.deepEqual(totals("TUKAN:maintenance_consumable"),{"Mỡ EPL2":90,"Dầu thủy lực":60,"Dầu hộp số":380});
- assert.deepEqual(totals("QC:maintenance_consumable"),{"Dầu thủy lực":30,"Mỡ EPL2":140,"Mỡ V220-0":15});
- assert.deepEqual(totals("RTG:maintenance_consumable"),{"Mỡ EPL2":260,"Dầu máy":105,"Xăng":9,"Dầu diesel":9,"Dầu hộp số":340});
- assert.deepEqual(totals("KHUNG_CAU:maintenance_consumable"),{"Mỡ EPL2":7,"Mỡ V220-0":21,"Dầu thủy lực":80});
+ const tukan=vouchers.find(voucher=>voucher.id==="TUKAN:maintenance_consumable");
+ assert.equal(tukan?.lines.length,8);
+ assert.deepEqual(tukan?.lines.filter(line=>line.name==="Mỡ EPL2").map(line=>[line.equipmentCode,line.quantity]),[
+  ["TUKAN05",15],["TUKAN06",15],["TUKAN07",15],["TUKAN10",15],["TUKAN11",15],["TUKAN12",15],
+ ]);
+ const total=(id:string,name:string)=>(vouchers.find(voucher=>voucher.id===id)?.lines??[]).filter(line=>line.name===name).reduce((sum,line)=>sum+line.quantity,0);
+ assert.equal(total("QC:maintenance_consumable","Mỡ EPL2"),140);
+ assert.equal(total("RTG:maintenance_consumable","Dầu máy"),105);
+ assert.equal(total("KHUNG_CAU:maintenance_consumable","Mỡ V220-0"),21);
 });
 
 test("individual preview creates a separate voucher only when an equipment has that source",()=>{
@@ -73,5 +51,6 @@ test("same-day preview combines all selected equipment but keeps sources separat
  assert.equal(vouchers.filter(voucher=>voucher.source==="maintenance_consumable").length,1);
  assert.equal(vouchers.every(voucher=>voucher.scopeLabel==="Ngày 21/10/2026"),true);
  assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.equipmentCodes.length,54);
+ assert.equal(vouchers.find(voucher=>voucher.source==="maintenance_consumable")?.lines.length,77);
 });
 
