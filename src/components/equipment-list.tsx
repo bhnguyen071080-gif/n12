@@ -8,12 +8,12 @@ import {categoryLabels} from "@/lib/equipment-catalog";
 import {Icon} from "./icons";
 import {TablePagination} from "./table-pagination";
 import {paginate} from "@/lib/pagination";
-const pageSize=30;
 
 export function EquipmentList({equipment}:{equipment:EquipmentCard[]}){
- const [query,setQuery]=useState(""),[status,setStatus]=useState(""),[page,setPage]=useState(1),deferredQuery=useDeferredValue(query);
+ const [query,setQuery]=useState(""),[status,setStatus]=useState(""),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(25),deferredQuery=useDeferredValue(query);
  const filtered=useMemo(()=>filterEquipment(equipment,deferredQuery,status),[equipment,deferredQuery,status]);
  const pagination=paginate(filtered,page,pageSize),currentPage=pagination.page,visible=pagination.items;
+ const changePageSize=(size:number)=>{setPageSize(size);setPage(1);};
  return <section aria-labelledby="equipment-heading" className="equipment-section">
   <div className="section-heading">
    <div><p className="eyebrow">HỒ SƠ KỸ THUẬT</p><h2 id="equipment-heading">Danh mục phương tiện</h2></div>
@@ -44,7 +44,7 @@ export function EquipmentList({equipment}:{equipment:EquipmentCard[]}){
      </tr>)}</tbody>
     </table>
    </div>:<div className="panel empty-search">Không tìm thấy phương tiện. Hãy thử tên khác hoặc chọn tất cả trạng thái.</div>}
-   <TablePagination page={currentPage} total={filtered.length} pageSize={pageSize} onChange={setPage}/>
+   <TablePagination page={currentPage} total={filtered.length} pageSize={pageSize} onChange={setPage} onPageSizeChange={changePageSize}/>
   </>:<div className="panel empty-catalog"><span className="empty-symbol"><Icon name="crane" width="48" height="48"/></span><div><h3>Sẵn sàng cho những phương tiện đầu tiên</h3><p>Chưa có thiết bị; cần nhập danh mục trước khi đồng bộ sản lượng.</p><p className="muted">Chuẩn bị mã phương tiện, tên và loại thiết bị. Sau khi nhập danh mục, hồ sơ và trạng thái sẽ xuất hiện tại đây.</p></div></div>}
  </section>;
 }
