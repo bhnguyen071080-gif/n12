@@ -13,8 +13,8 @@ select test.fails($q$select public.import_container_months('00000000-0000-0000-0
  '[{"equipment_code":"QC11","month":"2026-09-01","boxes":3382,"teu":null}]','f0000000-0000-0000-0000-000000000002')$q$,'22023','count API rejects even an empty legacy unit field');
 select test.fails($q$select public.import_container_months('00000000-0000-0000-0000-000000000001',
  '[{"equipment_code":"QC11","month":"2026-09-01","boxes":1.5}]','f0000000-0000-0000-0000-000000000003')$q$,'22023','database rejects fractional counts rather than rounding them');
-select test.fails($q$update public.monthly_production set teu=999 where equipment_id='20000000-0000-0000-0000-000000000003' and month='2026-09-01'$q$,'22023','direct table write cannot change dormant unit field');
-select test.fails($q$insert into public.monthly_production(equipment_id,month,boxes,teu) values('20000000-0000-0000-0000-000000000003','2026-11-01',10,20)$q$,'22023','direct insert cannot record converted unit');
+select test.fails($q$update public.monthly_production set teu=999 where equipment_id='20000000-0000-0000-0000-000000000003' and month='2026-09-01'$q$,'42501','direct table writes are denied; dormant unit cannot change');
+select test.fails($q$insert into public.monthly_production(equipment_id,month,boxes,teu) values('20000000-0000-0000-0000-000000000003','2026-11-01',10,20)$q$,'42501','direct inserts are denied; only audited functions may write');
 select public.import_container_months('00000000-0000-0000-0000-000000000001',
  '[{"equipment_code":"QC11","month":"2026-11-01","boxes":0}]','f0000000-0000-0000-0000-000000000004');
 select test.ok((select boxes=0 and teu is null from public.monthly_production where equipment_id='20000000-0000-0000-0000-000000000003' and month='2026-11-01'),'new count row never calculates converted quantity, zero is explicit');
