@@ -24,7 +24,8 @@ export function SheetEntry({workspace,sources}:{workspace:string;sources:Source[
  }
  return <div className="grid gap-5 lg:grid-cols-2"><section className="panel"><h2>Cập nhật từ tab TH</h2>
   <p>Đọc giá trị số gốc. Giờ máy có thể có phần thập phân; container là số chiếc nguyên. Bỏ dòng tổng/trung bình, giữ ô trống là chưa có dữ liệu. Không sửa file nguồn.</p>
-  <label>Nguồn đã cấu hình<select value={source} disabled={pending} onChange={e=>{setSource(e.target.value);setPreview(undefined);}}>{sources.map(s=><option key={s.id} value={s.id}>{s.name} · {s.source_kind==="hours"?"Giờ hoạt động":"Container (chiếc)"}</option>)}</select></label>
+  <label>Nguồn đã cấu hình<select value={source} disabled={pending||sources.length===0} onChange={e=>{setSource(e.target.value);setPreview(undefined);}}>{sources.length===0?<option value="">Chưa có nguồn phù hợp</option>:sources.map(s=><option key={s.id} value={s.id}>{s.name} · {s.source_kind==="hours"?"Giờ hoạt động":"Container (chiếc)"}</option>)}</select></label>
+  {sources.length===0&&<p role="status" className="muted">Chưa có nguồn cho loại dữ liệu đang xem. Đăng ký link Google Sheets ở khung bên cạnh; sau khi lưu, nguồn sẽ xuất hiện tại đây để đọc và đối chiếu.</p>}
   <button type="button" disabled={pending||!source} onClick={read}>{pending?"Đang đọc…":"Đọc nguồn & xem trước"}</button><p role="alert">{error}</p>
   {preview && <><p>{preview.count} dòng phương tiện/tháng · {preview.kind==="hours"?"Tổng giờ máy thực chạy; từ "+preview.startMonth?.slice(0,7):"Chỉ số container (chiếc), không quy đổi"}.</p>
    <pre className="overflow-x-auto text-xs">{JSON.stringify(preview.sample,null,2)}</pre>
@@ -46,3 +47,4 @@ export function SheetEntry({workspace,sources}:{workspace:string;sources:Source[
   <p>TH dạng ma trận: hàng 3 tên phương tiện, B năm, C tháng. Vùng mở rộng có giới hạn giúp đọc các tháng mới; bỏ dòng tổng và ô trống. Kết nối cần quyền Viewer, không cần Publish to web.</p>
  </section></div>;
 }
+
