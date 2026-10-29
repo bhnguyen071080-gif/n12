@@ -144,23 +144,24 @@ export function voucherSignatureMetrics(titleLines:number,nameLines:number){
  return {titleHeight,captionOffset,blankHeight,nameOffset,height:nameOffset+(nameLines-1)*11+3};
 }
 function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pageHeight=A5,forcedChunks?:readonly (readonly number[])[]):PDFPage[]{
- const d=s.payload,modern=d.voucher_template==="bm0806",x=10*MM,width=W-20*MM,size=8.2;
- const widths=(modern?[.04,.27,.09,.07,.08,.08,.09,.11,.17]:[.04,.30,.10,.06,.09,.09,.10,.12]).map(v=>v*width/(modern?1:.9));
+ const d=s.payload,modern=d.voucher_template==="bm0806",compact=pageHeight===A5,x=10*MM,width=W-20*MM,size=compact?8.5:11,textSize=compact?8.5:11,signatureSize=compact?8:10.5;
+ // Tỷ lệ chín cột theo hai mẫu Excel BM.08.06 người dùng cung cấp.
+ const widths=(modern?[.047,.208,.104,.108,.111,.112,.111,.110,.089]:[.04,.30,.10,.06,.09,.09,.10,.12]).map(v=>v*width/(modern?1:.9));
  const headings=modern?["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","Đơn vị tính","Xin lĩnh","Thực phát","Đơn giá","Thành tiền","Ghi chú"]:["Stt","Tên, nhãn hiệu, quy cách vật tư, dụng cụ","Danh điểm","ĐVT","Xin lĩnh","Thực phát","Đơn giá","Thành tiền"];
  const head=mergedHeader(f.bold,size,widths,headings,"Số lượng");
  const headHeight=head.height;
- const reason=wrapPdfText("Lý do xuất kho: "+d.reason,f.regular,9,width),warehouse=wrapPdfText("Lĩnh tại kho: "+d.warehouse,f.regular,9,width);
- const unitLines=modern?wrapPdfText("Đơn vị: "+d.company,f.bold,9,width-60):wrapPdfText("Đơn vị: "+d.unit,f.bold,9,width),place=wrapPdfText(modern?"Tên đơn vị lĩnh: "+d.department:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,9,width);
+ const reason=wrapPdfText("Lý do xuất kho: "+d.reason,f.regular,textSize,width),warehouse=wrapPdfText("Lĩnh tại kho: "+d.warehouse,f.regular,textSize,width);
+ const unitLines=modern?wrapPdfText("Đơn vị: "+d.company,f.bold,textSize,width-60):wrapPdfText("Đơn vị: "+d.unit,f.bold,textSize,width),place=wrapPdfText(modern?"Tên đơn vị lĩnh: "+d.department:`${d.location}, ${day(d.document_at)} · Số: ${d.document_number||"........"}`,f.regular,textSize,width);
  const headerFields=voucherHeaderFields(d.document_at,d.document_number),voucherDate=modern?headerFields.date:"",voucherNumber=modern?headerFields.number:"";
- const headerSpace=unitLines.length*12+place.length*12+reason.length*12+warehouse.length*12+(modern?58:38);
- const words=wrapPdfText("Cộng thành tiền (viết bằng chữ): "+(d.amount_words||"........................"),f.regular,8.5,width);
- const signatures=modern?["Phòng TCKT","Thủ kho","Người nhận","Lãnh đạo Phòng"]:["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"];
- const sigCols=signatures.map((label,i)=>({title:wrapPdfText(label,f.bold,8,width/signatures.length-6),name:wrapPdfText(d.signer_names[i],f.regular,8,width/signatures.length-6)}));
+ const headerSpace=unitLines.length*(textSize+3)+place.length*(textSize+3)+reason.length*(textSize+3)+warehouse.length*(textSize+3)+(modern?58:38);
+ const words=wrapPdfText("Cộng thành tiền (viết bằng chữ): "+(d.amount_words||"........................"),f.regular,Math.max(8,textSize-1),width);
+ const signatures=modern?["Phụ trách cung tiêu","Thủ kho","Người nhận","Phụ trách đơn vị"]:["Phụ trách cung tiêu","Phòng TCKT","Thủ kho","Người nhận","Người lập"];
+ const sigCols=signatures.map((label,i)=>({title:wrapPdfText(label,f.bold,signatureSize,width/signatures.length-6),name:wrapPdfText(d.signer_names[i],f.regular,signatureSize,width/signatures.length-6)}));
  const signing=voucherSignatureMetrics(Math.max(...sigCols.map(c=>c.title.length)),Math.max(...sigCols.map(c=>c.name.length)));
  const sigHeight=modern?signing.height:Math.max(...sigCols.map(c=>c.title.length))*11+Math.max(...sigCols.map(c=>c.name.length))*11+25;
  // Sum row (23 pt), amount in words, gap, then the complete signing area.
  // All wrapped header/name lines participate in the A5 height budget.
- const footerSpace=modern?23+words.length*11.5+4+sigHeight:words.length*11.5+sigHeight+32;
+ const footerSpace=modern?words.length*(textSize+2.5)+4+sigHeight:words.length*11.5+sigHeight+32;
  const rowBudget=pageHeight-20*MM-headerSpace-headHeight-footerSpace;
  if(rowBudget<(modern?size+3+8:25))throw new Error("Phần đầu/ghi chú quá dài cho trang in. Rút gọn nội dung trước khi xuất.");
  const prepared=d.lines.map((line,index)=>{
@@ -181,20 +182,19 @@ function vouchers(doc:PDFDocument,f:Fonts,s:PrintableSnapshot,revision:number,pa
  return chunks.map((ch,part)=>{
   const page=doc.addPage([W,pageHeight]);let y=pageHeight-10*MM;
   if(d.form_code&&!modern)drawText(page,d.form_code,x+width-f.bold.widthOfTextAtSize(d.form_code,8),pageHeight-15,8,f.bold);
-  const paragraph=(lines:string[],font:PDFFont,size=9)=>{lines.forEach(line=>{drawText(page,line,x,y-size,size,font);y-=size+3;});};
+  const paragraph=(lines:string[],font:PDFFont,paragraphSize=textSize)=>{lines.forEach(line=>{drawText(page,line,x,y-paragraphSize,paragraphSize,font);y-=paragraphSize+3;});};
   if(modern){const boxWidth=52,boxHeight=14;page.drawRectangle({x:x+width-boxWidth,y:y-boxHeight,width:boxWidth,height:boxHeight,borderWidth:.7,borderColor:BLACK});centered(page,d.form_code||"BM.08.06",y-10,8,f.bold,x+width-boxWidth,boxWidth);}
   paragraph(unitLines,f.bold);y-=2;centered(page,"PHIẾU LĨNH VẬT TƯ",y-14,14,f.bold,x,width);y-=22;
-  if(modern){centered(page,voucherNumber,y-9,9,f.bold,x,width);y-=13;centered(page,voucherDate,y-9,9,f.regular,x,width);y-=15;}
+  if(modern){centered(page,voucherNumber,y-textSize,textSize,f.regular,x,width);y-=textSize+4;centered(page,voucherDate,y-textSize,textSize,f.regular,x,width);y-=textSize+6;}
   paragraph(place,f.regular);paragraph(reason,f.regular);paragraph(warehouse,f.regular);y-=3;
   drawMergedHeader(page,x,y,widths,head,size,f.bold);y-=headHeight;
   ch.rows.forEach(r=>{tableRow(page,x,y,widths,r.cells,r.height,size,f.regular);y-=r.height;});
-  const total=knownTotal(ch.rows.map(r=>r.line)),sumCells:Cell[]=modern?[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"},{lines:[""]}]:[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}];tableRow(page,x,y,widths,sumCells,18,size,f.regular);y-=23;
-  paragraph(words,f.regular,8.5);y-=4;
+  if(!modern){const total=knownTotal(ch.rows.map(r=>r.line)),sumCells:Cell[]=[{lines:[""]},{lines:["Cộng"]},...Array.from({length:5},()=>({lines:[""]})),{lines:[number(total)],align:"center"}];tableRow(page,x,y,widths,sumCells,18,size,f.regular);y-=23;}
+  paragraph(words,f.regular,Math.max(8,textSize-1));y-=4;
   if(modern&&y-signing.height<10*MM-.1)throw new Error("Nội dung vượt khuôn trang in; rút gọn phần đầu hoặc dòng vật tư trước khi xuất.");
   const titleHeight=Math.max(...sigCols.map(c=>c.title.length))*11;
-  sigCols.forEach((c,i)=>{const col=width/signatures.length; c.title.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.bold.widthOfTextAtSize(line,8))/2,y-8-j*11,8,f.bold));
-   centered(page,modern&&i===3?"(Ký, họ tên, đóng dấu)":"(Ký, ghi rõ họ tên)",y-titleHeight-8,7.5,f.regular,x+i*col,col);
-   c.name.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.regular.widthOfTextAtSize(line,8))/2,y-(modern?signing.nameOffset:titleHeight+32)-j*11,8,f.regular));
+  sigCols.forEach((c,i)=>{const col=width/signatures.length; c.title.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.bold.widthOfTextAtSize(line,signatureSize))/2,y-signatureSize-j*(signatureSize+3),signatureSize,f.bold));
+   c.name.forEach((line,j)=>drawText(page,line,x+i*col+(col-f.regular.widthOfTextAtSize(line,signatureSize))/2,y-(modern?signing.nameOffset:titleHeight+32)-j*(signatureSize+3),signatureSize,f.regular));
   });
   if(!modern)drawText(page,`${s.source.case_code} · v${revision} · Phần ${part+1}/${chunks.length}`,x,10,7.5,f.regular);
   else if(chunks.length>1)page.drawText(`Phần ${part+1}/${chunks.length}`,{x,y:5*MM,size:6,font:f.regular,color:rgb(.65,.65,.65)});
@@ -239,4 +239,6 @@ async function renderPrintable(s:PrintableSnapshot,revision:number,createdAt:str
  }
  return doc.save();
 }
+
+
 
