@@ -16,9 +16,15 @@ const col=(n:number)=>{let s="";for(;n;n=Math.floor((n-1)/26))s=String.fromCharC
 async function data(request:Request){
  if(!configured())throw new Error("config");const p=new URL(request.url).searchParams,workspace=uuid.parse(p.get("workspace")),bounds=inclusiveRange(p.get("from")??"",p.get("to")??""),group=(p.get("group")??"").trim();
  const client=await serverClient(),user=await client.auth.getUser();if(!user.data.user)throw new Error("auth");
- const [equipment,activity]=await Promise.all([client.from("equipment").select("id,code,category").eq("workspace_id",workspace),client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",workspace).gte("month",bounds.from).lte("month",bounds.to).limit(5000)]);
- if(equipment.error||activity.error)throw new Error("permission");const byId=new Map(equipment.data.map(row=>[row.id,row])),summary=new Map<string,Row>();
- for(const item of activity.data){const eq=byId.get(item.equipment_id);if(!eq||(group&&eq.category!==group))continue;const row=summary.get(eq.id)??{category:eq.category,equipment:eq.code,hours:0,months:0,boxes:0};row.hours+=Number(item.operating_hours??0);row.boxes+=Number(item.boxes??0);if(item.operating_hours!==null)row.months+=1;summary.set(eq.id,row);}
+ const equipment=await client.from("equipment").select("id,code,category").eq("workspace_id",workspace);
+ if(equipment.error)throw new Error("permission");
+ const activityRows:{equipment_id:string;operating_hours:number|null;boxes:number|null}[]=[];
+ for(let offset=0;;offset+=1000){
+  const activity=await client.rpc("read_monthly_activity",{p_workspace:workspace,p_from:bounds.from,p_to:bounds.to,p_group:group||null,p_offset:offset,p_limit:1000});
+  if(activity.error)throw new Error("permission");const page=activity.data??[];activityRows.push(...page);if(page.length<1000)break;
+ }
+ const byId=new Map(equipment.data.map(row=>[row.id,row])),summary=new Map<string,Row>();
+ for(const item of activityRows){const eq=byId.get(item.equipment_id);if(!eq)continue;const row=summary.get(eq.id)??{category:eq.category,equipment:eq.code,hours:0,months:0,boxes:0};row.hours+=Number(item.operating_hours??0);row.boxes+=Number(item.boxes??0);if(item.operating_hours!==null)row.months+=1;summary.set(eq.id,row);}
  return {rows:[...summary.values()].sort((a,b)=>a.equipment.localeCompare(b.equipment,"vi")),from:bounds.from.slice(0,7),to:bounds.to.slice(0,7),group:group||"Tất cả"};
 }
 

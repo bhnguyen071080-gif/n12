@@ -89,3 +89,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/maintenance_requisition_runs.sql
       - name: Verify contractor material warranty, quality and RLS
         run: psql -v ON_ERROR_STOP=1 -f tests/sql/contractor_materials.sql
+      - name: Verify scoped task-flow reads, pagination and workspace isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/task_flow_performance.sql
