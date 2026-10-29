@@ -12,7 +12,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{workspa
  const [result,debt,materialAlerts]=await Promise.all([
   c.client.from("equipment").select("*").eq("workspace_id",c.workspace.id).order("code"),
   c.client.from("vw_case_followup_backlog").select("*",{count:"exact"}).eq("workspace_id",c.workspace.id).limit(100),
-  c.client.rpc("report_workspace_material_hours",{p_workspace:c.workspace.id,p_to:monthStart(localInputNow().slice(0,7))}),
+  c.client.rpc("report_workspace_material_alerts",{p_workspace:c.workspace.id,p_to:monthStart(localInputNow().slice(0,7)),p_limit:12}),
  ]);
  if(result.error)throw new Error("Không đọc được PTTB");
  if(debt.error)throw new Error("Không đọc được cảnh báo trả phiếu.");
@@ -25,7 +25,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{workspa
   {label:"Vụ việc nợ trả phiếu",value:debt.count??0,note:"Trong luồng theo dõi mới",icon:"layers",tone:"violet"},
  ];
  const workspaceQuery="?workspace="+c.workspace.id;
- const importantAlerts=(materialAlerts.data??[]).filter(row=>row.alert_level==="overdue"||row.alert_level==="due_soon");
+ const importantAlerts=materialAlerts.data??[];
  const alertExamples=[
   {level:"due_soon",label:"Vàng · gần tới hạn",equipment:"RTG12",material:"Lốp di chuyển",used:"1.900 h",remaining:"100 h"},
   {level:"overdue",label:"Đỏ · quá hạn",equipment:"TUKAN12",material:"Ắc quy khởi động",used:"2.150 h",remaining:"-150 h"},

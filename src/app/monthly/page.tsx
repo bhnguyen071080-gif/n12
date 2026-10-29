@@ -21,20 +21,25 @@ type SheetSource={id:string;name:string;source_kind:"container"|"hours"};
 export default async function Monthly({searchParams}:{searchParams:Promise<Params>}){
  const p=await searchParams,c=await context(p.workspace);if(!c.workspace)return <p>Chưa được cấp workspace.</p>;
  const kind=p.kind==="container"?"container":p.kind==="other"?"other":"hours",w=c.workspace.id;
- const [eq,cargo,metrics,other,memberships]=await Promise.all([
+ const cargoRequest=kind==="other"?c.client.from("cargo_types").select("code,name,unit").eq("workspace_id",w):Promise.resolve({data:[],error:null});
+ const metricsRequest=kind==="container"?c.client.rpc("read_monthly_activity",{p_workspace:w,p_from:null,p_to:null,p_group:null,p_offset:0,p_limit:500}):Promise.resolve({data:[],error:null});
+ const otherRequest=kind==="other"?c.client.from("vw_other_cargo_monthly").select("equipment_code,month,cargo_name,quantity,unit").eq("workspace_id",w).order("month",{ascending:false}).limit(500):Promise.resolve({data:[],error:null});
+ const [eq,cargo,memberships,metrics,other]=await Promise.all([
   c.client.from("equipment").select("id,code,category,initial_hours,accumulated_hours,hours_start_month").eq("workspace_id",w).order("code"),
-  c.client.from("cargo_types").select("code,name,unit").eq("workspace_id",w),
-  c.client.from("vw_monthly_activity").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
-  c.client.from("vw_other_cargo_monthly").select("*").eq("workspace_id",w).order("month",{ascending:false}).limit(500),
-  c.client.from("workspace_memberships").select("role").eq("workspace_id",w).eq("user_id",c.user.id).eq("active",true)
+  cargoRequest,
+  c.client.from("workspace_memberships").select("role").eq("workspace_id",w).eq("user_id",c.user.id).eq("active",true),
+  metricsRequest,otherRequest
  ]);
- if(eq.error||cargo.error||metrics.error||other.error||memberships.error)throw new Error("Không đọc được bảng theo dõi tháng");
- const canConfirm=memberships.data.some(row=>row.role==="TRUONG_BO_PHAN_KY_THUAT"),roles=memberships.data.map(row=>row.role),selectedGroup=p.group??"";
+ if(eq.error||cargo.error||memberships.error||metrics.error||other.error)throw new Error("Không đọc được bảng theo dõi tháng");
+ const requestedGroup=p.group??"",selectedGroup=(eq.data??[]).some(row=>row.category===requestedGroup)?requestedGroup:"";
+ const canConfirm=memberships.data.some(row=>row.role==="TRUONG_BO_PHAN_KY_THUAT"),roles=memberships.data.map(row=>row.role);
  const filteredEquipment=(eq.data??[]).filter(row=>!selectedGroup||row.category===selectedGroup);
  const selected=filteredEquipment.find(row=>row.id===p.equipment)??filteredEquipment[0]??eq.data?.[0];
  if(p.equipment&&!(eq.data??[]).some(row=>row.id===p.equipment))return <p>Phương tiện không hợp lệ hoặc chưa có quyền.</p>;
 
  let from=localInputNow().slice(0,4)+"-01",to=localInputNow().slice(0,7),hours:z.infer<typeof hourRow>[]=[],activityRows:MonthlyActivity[]=[];
+ const metricRows=(metrics.data??[]).map(row=>({...row,operating_hours:row.operating_hours===null?null:Number(row.operating_hours),boxes:row.boxes===null?null:Number(row.boxes)}));
+ const otherRows=(other.data??[]).map(row=>({...row,quantity:Number(row.quantity)}));
  if(kind==="hours"&&selected){
   const current=await c.client.from("monthly_operating_hours").select("id").eq("equipment_id",selected.id).eq("month",monthStart(localInputNow().slice(0,7))).maybeSingle();
   if(current.error)throw new Error("Không đọc được giờ tháng hiện tại.");
@@ -43,7 +48,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<Param
   const detail=await c.client.rpc("report_operating_hours",{p_equipment:selected.id,p_from:bounds.from,p_to:bounds.to});
   if(detail.error)throw new Error("Không tổng hợp được giờ tháng.");hours=hourRow.array().parse(detail.data);
   for(let offset=0;;offset+=1000){
-   const activity=await c.client.from("vw_monthly_activity").select("equipment_id,equipment_code,month,operating_hours,boxes").eq("workspace_id",w).gte("month",bounds.from).lte("month",bounds.to).order("equipment_code").order("month").range(offset,offset+999);
+   const activity=await c.client.rpc("read_monthly_activity",{p_workspace:w,p_from:bounds.from,p_to:bounds.to,p_group:selectedGroup||null,p_offset:offset,p_limit:1000});
    if(activity.error)throw new Error("Không đọc được bảng tổng thể.");
    const page=activity.data??[];activityRows.push(...page.map(row=>({...row,operating_hours:row.operating_hours===null?null:Number(row.operating_hours),boxes:row.boxes===null?null:Number(row.boxes)})));if(page.length<1000)break;
   }
@@ -56,7 +61,7 @@ export default async function Monthly({searchParams}:{searchParams:Promise<Param
   if(!runs.error)syncRuns=runs.data??[];
  }
  const editCode=(eq.data??[]).some(row=>row.code===p.editEquipment)?p.editEquipment:"",editMonth=/^\d{4}-\d{2}$/.test(p.editMonth??"")?p.editMonth:"",parsedValue=Number(p.editValue),editValue=p.editValue!==undefined&&Number.isFinite(parsedValue)&&parsedValue>=0?parsedValue:undefined;
- const rows=(metrics.data??[]).filter(row=>kind==="hours"?row.operating_hours!==null:row.boxes!==null),otherRows=other.data??[];
+ const rows=metricRows.filter(row=>row.boxes!==null);
  const title=kind==="hours"?"Giờ hoạt động":kind==="container"?"Sản lượng container":"Sản lượng hàng khác";
  const savedRows:MonthlySavedRecord[]=kind==="container"?rows.map(row=>({id:`${row.equipment_id}:${row.month}`,equipmentCode:row.equipment_code,month:row.month,boxes:row.boxes===null?null:Number(row.boxes)})):otherRows.map((row,index)=>({id:`${row.equipment_code}:${row.month}:${row.cargo_name}:${index}`,equipmentCode:row.equipment_code,month:row.month,cargoName:row.cargo_name,quantity:Number(row.quantity),unit:row.unit}));
  return <>

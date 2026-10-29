@@ -15,6 +15,7 @@ const itemSchema=z.object({
 }).strip();
 
 type HistoryParams={workspace?:string;equipment?:string;from?:string;to?:string};
+type HistoryEvent={equipment_id:string;event_key:string;event_at:string;case_code:string|null;order_code:string|null;title:string;work_items:unknown};
 
 function validDay(value:string){return /^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T00:00:00+07:00"));}
 function displayDay(value:string){return new Date(value+"T00:00:00+07:00").toLocaleDateString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Asia/Bangkok"});}
@@ -27,14 +28,15 @@ export default async function EquipmentHistory({searchParams}:{searchParams:Prom
  if(equipment.error)throw new Error("Không đọc được danh mục phương tiện.");
  const selected=p.equipment?equipment.data.find(row=>row.id===p.equipment):undefined;
  if(p.equipment&&!selected)return <p>Phương tiện không hợp lệ hoặc chưa có quyền xem.</p>;
- const ids=selected?[selected.id]:equipment.data.map(row=>row.id);
- let events:{equipment_id:string;event_key:string;event_at:string;case_code:string|null;order_code:string|null;title:string;work_items:unknown}[]=[];
- if(ids.length){
+ let events:HistoryEvent[]=[];
+ if(equipment.data.length){
   const pageSize=1000;
-  for(let offset=0;;offset+=pageSize){
-   const result=await c.client.from("vw_equipment_history").select("equipment_id,event_key,event_at,case_code,order_code,title,work_items").in("equipment_id",ids).gte("event_at",from+"T00:00:00+07:00").lte("event_at",to+"T23:59:59.999+07:00").order("event_at",{ascending:true}).order("event_key",{ascending:true}).range(offset,offset+pageSize-1);
+  let afterEventAt:string|null=null,afterEventKey:string|null=null;
+  for(;;){
+   const result:{data:HistoryEvent[]|null;error:unknown}=await c.client.rpc("read_equipment_history",{p_workspace:w,p_equipment:selected?.id??null,p_from:from,p_to:to,p_after_event_at:afterEventAt,p_after_event_key:afterEventKey,p_limit:pageSize});
    if(result.error)throw new Error("Không đọc được dữ liệu lý lịch.");
    const page=result.data??[];events.push(...page);if(page.length<pageSize)break;
+   const last=page.at(-1);if(!last)break;afterEventAt=last.event_at;afterEventKey=last.event_key;
   }
  }
  const equipmentById=new Map(equipment.data.map(row=>[row.id,row]));
