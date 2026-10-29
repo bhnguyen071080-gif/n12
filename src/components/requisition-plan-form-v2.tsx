@@ -37,7 +37,7 @@ type VoucherDetail={id:string;documentNumber:string;documentDay:string};
 function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDay,documentNumber,kind,company,department,warehouse,compact}:{voucher:VoucherPreview;lines:PlannedMaterial[];copy:1|2;page:number;pages:number;plannedDay:string;documentDay:string;documentNumber:string;kind:VoucherKind;company:string;department:string;warehouse:string;compact:boolean}){
  const reason=kind==="supplemental"?"Bổ sung vật tư phát sinh khi bảo dưỡng":"Phục vụ bảo dưỡng theo kế hoạch";
  return <div className={compact?"voucher-copy voucher-copy-compact":"voucher-copy voucher-copy-a4"}>
-  <div className="voucher-copy-meta">Liên {copy}/2{pages>1?` · Trang ${page}/${pages}`:""}</div>
+  <div className="voucher-copy-meta" aria-label={`Liên ${copy}/2`}>Liên {copy}/2{pages>1?` · Trang ${page}/${pages}`:""}</div>
   <div className="voucher-form-top"><strong>Đơn vị: {company}</strong><strong>BM.08.06</strong></div>
   <h4>PHIẾU LĨNH VẬT TƯ</h4>
   <p className="voucher-number">Số phiếu: {documentNumber||"........................"}</p>
@@ -45,10 +45,9 @@ function VoucherCopyPreview({voucher,lines,copy,page,pages,plannedDay,documentDa
   <p><strong>Tên đơn vị lĩnh:</strong> {department}</p>
   <p><strong>Lý do xuất kho:</strong> {reason} ({voucher.equipmentLabels.join(", ")})</p>
   <p><strong>Lĩnh tại kho:</strong> {warehouse}</p>
-  <table><thead><tr><th rowSpan={2}>STT</th><th rowSpan={2}>Tên, nhãn hiệu, quy cách vật tư, dụng cụ</th><th rowSpan={2}>Danh điểm</th><th rowSpan={2}>Đơn vị tính</th><th colSpan={2}>Số lượng</th><th rowSpan={2}>Đơn giá</th><th rowSpan={2}>Thành tiền</th><th rowSpan={2}>Ghi chú</th></tr><tr><th>Xin lĩnh</th><th>Thực phát</th></tr></thead><tbody>{lines.map((line,lineIndex)=><tr key={`${line.equipmentCode??""}:${line.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{line.name}</td><td>{line.catalogueCode??""}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td><td></td><td></td><td></td><td>{line.equipmentLabel??line.equipmentCode??""}</td></tr>)}<tr><td></td><td><strong>Cộng</strong></td><td colSpan={7}></td></tr></tbody></table>
+  <table><thead><tr><th rowSpan={2}>STT</th><th rowSpan={2}>Tên, nhãn hiệu, quy cách,<br/>vật tư, dụng cụ</th><th rowSpan={2}>Danh điểm</th><th rowSpan={2}>Đơn<br/>vị<br/>tính</th><th colSpan={2}>Số lượng</th><th rowSpan={2}>Đơn giá</th><th rowSpan={2}>Thành tiền</th><th rowSpan={2}>Ghi chú</th></tr><tr><th>Xin<br/>lĩnh</th><th>Thực<br/>phát</th></tr></thead><tbody>{lines.map((line,lineIndex)=><tr key={`${line.equipmentCode??""}:${line.key}:${lineIndex}`}><td>{lineIndex+1}</td><td>{line.name}</td><td>{line.catalogueCode??line.name}</td><td>{line.unit}</td><td>{line.quantity.toLocaleString("vi-VN")}</td><td></td><td></td><td></td><td>{line.equipmentLabel??line.equipmentCode??""}</td></tr>)}</tbody></table>
   <p className="voucher-amount">Cộng thành tiền (viết bằng chữ): ...........................................................................................................</p>
-  <div className="voucher-signatures">{["PHÒNG TCKT","THỦ KHO","NGƯỜI NHẬN","LÃNH ĐẠO PHÒNG"].map((title,index)=><div key={title}><strong>{title}</strong><span>{index===3?"(Ký, họ tên, đóng dấu)":"(Ký, ghi rõ họ tên)"}</span></div>)}</div>
-  <p className="voucher-plan-source">Nguồn kế hoạch: {formatPlannedDay(plannedDay)}</p>
+  <div className="voucher-signatures">{["Phụ trách cung tiêu","Thủ kho","Người nhận","Phụ trách đơn vị"].map(title=><div key={title}><strong>{title}</strong></div>)}</div>
  </div>;
 }
 
@@ -88,8 +87,8 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
  const grouping:VoucherGrouping="date";
  const plannedDay=octoberPlanDocumentDay;
  const [voucherDetails,setVoucherDetails]=useState<Record<string,VoucherDetail>>({});
- const [company,setCompany]=useState("CHI NHÁNH CẢNG TÂN VŨ");
- const [department,setDepartment]=useState("BAN KỸ THUẬT");
+ const [company,setCompany]=useState("PHÒNG KỸ THUẬT");
+ const [department,setDepartment]=useState("Ban Kỹ thuật");
  const [recipient,setRecipient]=useState("");
  const [warehouse,setWarehouse]=useState("Chi nhánh Cảng Tân Vũ");
  const [consumableWarehouse,setConsumableWarehouse]=useState("Chi nhánh Cảng Tân Vũ");
@@ -236,7 +235,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
      <p className="muted">Số phiếu và ngày phiếu được nhập tại từng bản xem trước phía trên; mỗi phiếu lưu độc lập để có thể sửa trước khi xác nhận.</p>
      <label><input type="checkbox" name="confirmed" required/> Tôi đã đối chiếu tệp nguồn, phương tiện và số lượng xin lĩnh.</label>
     </AsyncForm>}
-   </section>:<p className="plan-ok"><strong>Đã nhập thành công.</strong> Mã lần nhập: <code>{savedRun}</code>. <a href={`/requisitions/${savedRun}`}>Mở kế hoạch đã lưu và in BM.08.06 →</a></p>}
+   </section>:<div className="plan-ok"><p><strong>Đã lưu phiếu thành công.</strong> Mã lần nhập: <code>{savedRun}</code>.</p><a className="button" href={`/requisitions/${savedRun}`}>Mở bản in PDF / In phiếu BM.08.06</a></div>}
   </section>
  </fieldset>;
 }
