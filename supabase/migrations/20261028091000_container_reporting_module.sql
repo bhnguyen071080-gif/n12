@@ -55,9 +55,6 @@ begin
   raise exception using errcode='42501',message='Không xóa cứng số liệu container; quản trị viên phải dùng tác vụ hủy có lý do';
  end if;
  select * into strict e from public.equipment where id=new.equipment_id;
- if e.category not in ('TUKAN','QC','RTG') then
-  raise exception using errcode='22023',message='Báo cáo container chỉ nhận phương tiện nhóm TK, QC hoặc RTG';
- end if;
  if tg_op='INSERT' then
   new.created_by:=coalesce(new.created_by,auth.uid());
   new.created_at:=coalesce(new.created_at,now());
