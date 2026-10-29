@@ -20,6 +20,12 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await expect(page.getByLabel("Ngày văn bản kế hoạch (từ PDF)")).toHaveValue("2026-10-01");
   await page.getByRole("button",{name:"Chọn tất cả đang hiển thị"}).click();
   await expect(page.locator(".voucher-preview")).toHaveCount(2);
+  const printedCopy=page.locator(".voucher-copy").first();
+  await expect(printedCopy).toContainText("Đơn vị: PHÒNG KỸ THUẬT");
+  await expect(printedCopy).toContainText("PHIẾU LĨNH VẬT TƯ");
+  await expect(printedCopy).toContainText("Phụ trách cung tiêu");
+  await expect(printedCopy).toContainText("Phụ trách đơn vị");
+  await expect(printedCopy.getByText("Cộng",{exact:true})).toHaveCount(0);
   await expect(page.getByText("Tất cả phương tiện đã khớp danh mục.")).toBeVisible();
   await expect(page.getByRole("checkbox",{name:"No57",exact:true})).toBeVisible();
   await expect(page.locator(".voucher-preview").filter({hasText:"No57"})).toHaveCount(1);
@@ -37,7 +43,7 @@ for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=
   await save.click();expect(await page.evaluate(()=>((window as unknown as {requests:unknown[]}).requests).length)).toBe(0);
   await page.getByRole("checkbox",{name:"Tôi đã đối chiếu tệp nguồn, phương tiện và số lượng xin lĩnh."}).check();
   await save.click();await expect(page.getByText("Mất xác nhận, hãy gửi lại")).toBeVisible();await save.click();
-  await expect(page.getByRole("link",{name:/Mở kế hoạch đã lưu/})).toHaveAttribute("href","/requisitions/70000000-0000-4000-8000-000000000100");
+  await expect(page.getByRole("link",{name:/Mở bản in PDF/})).toHaveAttribute("href","/requisitions/70000000-0000-4000-8000-000000000100");
   const requests=await page.evaluate(()=>((window as unknown as {requests:Record<string,string>[]}).requests));
   expect(requests).toHaveLength(2);expect(requests[0].request_key).toBe(requests[1].request_key);
   expect(requests[1].document_day).toBe("2026-10-24");expect(requests[1].planned_day).toBe("2026-10-01");
