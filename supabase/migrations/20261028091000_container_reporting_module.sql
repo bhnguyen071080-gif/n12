@@ -31,9 +31,13 @@ alter table public.monthly_production
  add column anomaly_acknowledged boolean not null default false,
  add column version_no integer not null default 1 check(version_no>0);
 
+-- Preserve historical actor/time without letting the normal app-write stamp
+-- replace updated_by with NULL while migrations run outside an auth session.
+alter table public.monthly_production disable trigger monthly_production_stamp;
 update public.monthly_production
 set status='summarized', created_by=updated_by, created_at=updated_at
 where created_by is null;
+alter table public.monthly_production enable trigger monthly_production_stamp;
 
 alter table public.monthly_production alter column created_by set default auth.uid();
 create index monthly_production_active_month_idx on public.monthly_production(month,equipment_id) where cancelled_at is null;
