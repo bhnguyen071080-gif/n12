@@ -106,7 +106,7 @@ returns text language sql stable security definer set search_path='' as $$
  select case
   when p_boxes=0 and exists(select 1 from prior where month=p_month-interval '1 month' and boxes>0)
    then 'zero_after_positive'
-  when (select n from a)>0 and (select avg_boxes from a)>0
+ when (select n from a)=3 and (select avg_boxes from a)>0
    and abs(p_boxes-(select avg_boxes from a))/(select avg_boxes from a)>.5
    then 'change_over_50_pct'
   else null end;
