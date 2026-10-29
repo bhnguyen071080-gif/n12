@@ -115,7 +115,7 @@ export function RequisitionPlanForm({workspace,equipment,materials,today,complet
  const resolvedRows=useMemo(()=>rows.map(row=>({row,match:matchEquipment(row.equipmentCode,row.sourceLabel)})),[rows,matchEquipment]);
  const previewRows=useMemo(()=>resolvedRows.map(({row,match})=>match?{...row,equipmentCode:match.code,equipmentName:match.name}:row),[resolvedRows]);
  const previewGroups=useMemo(()=>voucherKind==="planned"?groups:supplementBase?[supplementBase.group]:[],[voucherKind,groups,supplementBase]);
- const previews=useMemo(()=>buildVoucherPreviews(previewRows,previewGroups,grouping,plannedDay,{period:"2026-10",strictBoundaries:false}),[previewRows,previewGroups,plannedDay]);
+ const previews=useMemo(()=>buildVoucherPreviews(previewRows,previewGroups,grouping,plannedDay),[previewRows,previewGroups,plannedDay]);
  const currentVoucherDetails=useMemo(()=>previews.map(voucher=>voucherDetails[voucher.id]??{id:voucher.id,documentNumber:"",documentDay:today}),[previews,voucherDetails,today]);
  const voucherMetadataReady=currentVoucherDetails.every(detail=>detail.documentNumber.trim().length>0&&detail.documentDay.length===10);
  const unresolved=resolvedRows.filter(item=>!item.match).map(item=>item.row);
