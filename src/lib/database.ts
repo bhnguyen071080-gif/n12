@@ -32,7 +32,7 @@ export interface Database {
    equipment:Table<Equipment>;
    workspace_memberships:Table<{workspace_id:string;user_id:string;role:string;active:boolean}>;
    monthly_operating_hours:Table<{id:string;equipment_id:string;month:string;operating_hours:number}>;
-   monthly_production:Table<{id:string;equipment_id:string;month:string;boxes:number}>;
+   monthly_production:Table<{id:string;equipment_id:string;month:string;boxes:number;status:"draft"|"summarized"|"checked"|"locked";notes:string;compiler_name:string;created_by:string;created_at:string;checked_by:string|null;checked_at:string|null;locked_by:string|null;locked_at:string|null;cancelled_by:string|null;cancelled_at:string|null;cancel_reason:string|null;admin_action_reason:string|null;anomaly_acknowledged:boolean;version_no:number}>;
    monthly_other_cargo:Table<{id:string;equipment_id:string;cargo_type_id:string;month:string;quantity:number}>;
    cargo_types:Table<{id:string;workspace_id:string;code:string;name:string;unit:string}>;
    failure_incidents:Table<{id:string;equipment_id:string;repair_order_id:string;occurred_at:string;restored_at:string|null;confirmed:boolean;primary_cause_group:Cause["cause"];created_by:string}>;
@@ -46,6 +46,7 @@ export interface Database {
    vw_technical_backlog:View<TechBacklog>;
    vw_procedural_backlog:View<ProceduralBacklog>;
    vw_monthly_activity:View<{workspace_id:string;equipment_id:string;equipment_code:string;month:string;boxes:number|null;operating_hours:number|null;accumulated_hours:number|null}>;
+   vw_container_report_monthly:View<{id:string;workspace_id:string;equipment_id:string;equipment_code:string;equipment_name:string;equipment_group:"TK"|"QC"|"RTG";month:string;boxes:number;status:"draft"|"summarized"|"checked"|"locked";notes:string;compiler_name:string;created_at:string;updated_at:string;version_no:number;anomaly_acknowledged:boolean;cancelled_at:string|null;cancel_reason:string|null;admin_action_reason:string|null;anomaly_kind:"zero_after_positive"|"change_over_50_pct"|null}>;
    vw_other_cargo_monthly:View<{workspace_id:string;equipment_code:string;month:string;cargo_code:string;cargo_name:string;unit:string;quantity:number}>;
    vw_maintenance_due:View<{workspace_id:string;equipment_code:string;name:string;accumulated_hours:number|null;due_hours:number|null;due_date:string|null;alert_level:string}>;
   };
@@ -81,6 +82,10 @@ export interface Database {
    report_failure_causes:{Args:PeriodArgs;Returns:Cause[]};
    import_operating_months:{Args:ImportArgs;Returns:number};
    import_container_months:{Args:ImportArgs;Returns:number};
+   save_container_report_month:{Args:{p_workspace:string;p_id:string|null;p_expected_version:number|null;p_equipment:string;p_month:string;p_boxes:number;p_notes:string;p_status:string;p_anomaly_acknowledged:boolean;p_key:string};Returns:string};
+   set_container_report_status:{Args:{p_id:string;p_expected_version:number;p_status:string};Returns:string};
+   admin_reopen_container_report:{Args:{p_id:string;p_expected_version:number;p_reason:string};Returns:string};
+   admin_cancel_container_report:{Args:{p_id:string;p_expected_version:number;p_reason:string};Returns:string};
    import_other_cargo_months:{Args:ImportArgs;Returns:number};
    report_equipment_fault:{Args:{p_equipment:string;p_when:string;p_symptom:string;p_stopped:boolean;p_key:string};Returns:string};
    submit_quick_inspection:{Args:{p_equipment:string;p_when:string;p_notes:string;p_abnormal:boolean;p_key:string};Returns:string};
@@ -89,5 +94,4 @@ export interface Database {
   Enums:Record<string,never>;CompositeTypes:Record<string,never>;
  };
 }
-
 

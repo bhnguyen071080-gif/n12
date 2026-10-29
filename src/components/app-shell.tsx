@@ -13,6 +13,7 @@ const navigation:{href:string;label:string;icon:IconName}[]=[
  {href:"/requisitions",label:"Phiếu lĩnh vật tư",icon:"check"},
  {href:"/contractor-materials",label:"Vật tư nhà thầu",icon:"shield"},
  {href:"/monthly",label:"Giám sát giờ & sản lượng",icon:"calendar"},
+ {href:"/container-reports",label:"Báo cáo container",icon:"chart"},
  {href:"/life",label:"Thay thế & định mức",icon:"clock"},
  {href:"/reports",label:"Báo cáo kỹ thuật",icon:"chart"},
  {href:"/login",label:"Tài khoản",icon:"user"},
@@ -36,5 +37,4 @@ export function AppShell({children}:{children:ReactNode}){
   </div>
  </div>;
 }
-
 
