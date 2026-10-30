@@ -1,0 +1,74 @@
+"use server";
+import {z} from "zod";
+import {revalidatePath} from "next/cache";
+import {session} from "@/lib/supabase";
+import {actualTimestamp,uuid} from "@/lib/domain";
+import {actualDay} from "@/lib/monthly-hours";
+import {kinds,itemPayload,standardWorkContents} from "@/lib/followup";
+import type {ActionResult} from "./actions";
+const field=(data:FormData,key:string)=>String(data.get(key)??"");
+const fail=(code?:string):ActionResult=>({ok:false,message:code==="40001"?"Dữ liệu đã thay đổi; tải lại trang trước khi lưu.":"Chưa lưu được. Kiểm tra quyền, ngày thực hiện và trạng thái hồ sơ."});
+function refresh(){for(const path of ["/cases","/equipment","/life","/reports","/"])revalidatePath(path,"layout");}
+export async function createTrackingCase(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const kind=z.enum(kinds).parse(field(data,"kind")),standard=z.string().trim().min(1).max(300).parse(field(data,"standard_summary"));
+ if(!(standardWorkContents[kind] as readonly string[]).includes(standard))return {ok:false,message:"Nội dung chuẩn không phù hợp loại việc đã chọn."};
+ const detail=z.string().trim().max(7600).parse(field(data,"summary_detail"));
+ const summary=detail?standard+" — "+detail:standard;
+ const r=await client.rpc("create_tracking_case",{p_equipment:uuid.parse(field(data,"equipment")),p_kind:kind,
+ p_day:actualDay(field(data,"performed_on")),p_summary:summary,p_key:uuid.parse(field(data,"request_key"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã tạo vụ việc; mã theo thời điểm nhập, ngày thực hiện lưu riêng.",id:r.data};}catch{return fail();}
+}
+export async function saveTrackingItem(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const payload:Record<string,string|null>={};for(const key of Object.keys(itemPayload.shape))payload[key]=key==="performed_on"?(field(data,key)||null):field(data,key);
+ const id=field(data,"item"),r=await client.rpc("save_tracking_item_v2",{p_order:uuid.parse(field(data,"order")),p_item:id?uuid.parse(id):null,
+ p_version:id?z.coerce.number().int().positive().parse(field(data,"version")):null,p_data:itemPayload.parse(payload),p_minutes:z.coerce.number().int().min(0).max(43200).parse(field(data,"work_duration_minutes")),p_key:uuid.parse(field(data,"request_key"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật hạng mục và lý lịch từ cùng dữ liệu.",id:r.data};}catch{return fail();}
+}
+export async function addTrackingMaterial(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const r=await client.rpc("add_tracking_material",{p_item:uuid.parse(field(data,"item")),p_material:uuid.parse(field(data,"material")),
+ p_quantity:z.coerce.number().finite().positive().parse(field(data,"quantity")),p_supply:z.enum(["planned","borrowed","issued"]).parse(field(data,"supply")),
+ p_installed:data.get("installed")==="on",p_position:z.string().max(200).parse(field(data,"position")),p_key:uuid.parse(field(data,"request_key"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã thêm vật tư; phần bổ sung mở lại trạng thái trả phiếu nếu trước đó đã hoàn tất.",id:r.data};}catch{return fail();}
+}
+export async function updateTrackingMaterial(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const r=await client.rpc("update_tracking_material",{p_usage:uuid.parse(field(data,"usage")),p_supply:z.enum(["planned","borrowed","issued"]).parse(field(data,"supply")),p_installed:data.get("installed")==="on"});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật; ngày thay lấy từ hạng mục trong lý lịch."};}catch{return fail();}
+}
+export async function setMaterialReturn(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const status=z.enum(["pending","completed"]).parse(field(data,"return_status")),r=await client.rpc("set_material_return",{
+ p_case:uuid.parse(field(data,"case")),p_status:status,p_completed:status==="completed"?actualTimestamp(field(data,"completed_at")):null,
+ p_version:z.coerce.number().int().positive().parse(field(data,"version")),p_notes:z.string().max(4000).parse(field(data,"notes"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật trả phiếu chung; ngày thay không thay đổi."};}catch{return fail();}
+}
+export async function saveTrackingCaseSummary(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const r=await client.rpc("save_tracking_case_summary",{p_case:uuid.parse(field(data,"case")),p_expected:z.string().max(8000).parse(field(data,"expected")),p_summary:z.string().trim().min(1).max(8000).parse(field(data,"summary"))});
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã cập nhật nội dung khái quát. Nội dung hạng mục và lý lịch vẫn chỉnh riêng bên dưới."};}catch{return fail();}
+}
+export async function cancelTrackingCase(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{if(data.get("confirmed")!=="on")return {ok:false,message:"Cần xác nhận hủy vụ việc."};
+ const r=await client.rpc("cancel_tracking_case",{p_case:uuid.parse(field(data,"case")),p_reason:z.string().trim().min(5).max(500).parse(field(data,"reason"))});
+ if(r.error){if(r.error.code==="42501")return {ok:false,message:"Chỉ trưởng bộ phận kỹ thuật được hủy vụ việc."};return fail(r.error.code);}refresh();return {ok:true,message:"Đã hủy vụ việc và lưu lý do trong nhật ký; dữ liệu không bị xóa mất."};}catch{return {ok:false,message:"Cần ghi rõ lý do hủy từ 5 đến 500 ký tự."};}
+}
+export async function saveMaterialCatalogue(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const limit=field(data,"limit"),id=field(data,"material"),values={service_limit_hours:limit?z.coerce.number().finite().positive().parse(limit):null,
+ service_warning_hours:z.coerce.number().finite().nonnegative().parse(field(data,"warning"))};
+ const r=id?await client.from("materials").update(values).eq("id",uuid.parse(id)).select("id").single():
+ await client.from("materials").insert({...values,workspace_id:uuid.parse(field(data,"workspace")),code:z.string().trim().min(1).max(50).parse(field(data,"code")),
+ name:z.string().trim().min(1).max(200).parse(field(data,"name")),unit:z.string().trim().min(1).max(40).parse(field(data,"unit"))}).select("id").single();
+ if(r.error)return fail(r.error.code);refresh();return {ok:true,message:"Đã lưu danh mục/định mức; không phải nhập tồn kho."};}catch{return fail();}
+}
+export async function saveMaterialStandard(data:FormData):Promise<ActionResult>{
+ const {client}=await session();
+ try{const limit=z.coerce.number().finite().positive().parse(field(data,"limit")),warning=z.coerce.number().finite().nonnegative().parse(field(data,"warning"));if(warning>=limit)return {ok:false,message:"Mốc cảnh báo phải nhỏ hơn định mức giờ."};
+ const row={workspace_id:uuid.parse(field(data,"workspace")),material_id:uuid.parse(field(data,"material")),effective_from:actualDay(field(data,"effective_from")),limit_hours:limit,warning_hours:warning,source_document:z.string().trim().min(1).max(300).parse(field(data,"source_document")),notes:z.string().trim().max(1000).parse(field(data,"notes")),request_key:uuid.parse(field(data,"request_key"))};
+ const r=await client.from("material_limit_versions").insert(row).select("id").single();if(r.error){if(r.error.code==="23505")return {ok:false,message:"Vật tư này đã có một định mức bắt đầu cùng ngày hiệu lực."};if(r.error.code==="42501")return {ok:false,message:"Bạn chưa có quyền ban hành phiên bản định mức."};return fail(r.error.code);}refresh();return {ok:true,message:"Đã lưu phiên bản định mức mới; bản cũ được giữ để tra cứu."};}catch{return {ok:false,message:"Kiểm tra ngày hiệu lực, số giờ, nguồn văn bản và quyền cập nhật."};}
+}
+

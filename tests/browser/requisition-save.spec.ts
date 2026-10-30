@@ -1,0 +1,50 @@
+import {test,expect} from "@playwright/test";
+import {buildSync} from "esbuild";
+import {PDFDocument} from "pdf-lib";
+const bundle=buildSync({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
+ import {RequisitionPlanForm} from './src/components/requisition-plan-form-v2';
+ import {octoberMaintenancePlan} from './src/lib/maintenance-requisition-plan';
+ const frameAliases=new Map([['KHUNG57',['N57','No57']],['KHUNG60',['N60','No60']],['KHUNG64',['N64','No64']],['KHUNG66',['N66','No66']]]);
+ const equipment=octoberMaintenancePlan.map((r,i)=>{const alias=frameAliases.get(r.equipmentCode);return {id:'70000000-0000-4000-8000-'+String(i+1).padStart(12,'0'),code:alias?.[0]??r.equipmentCode,name:alias?.[1]??r.sourceLabel,category:r.group};});
+ window.requests=[];
+ const save=async(data)=>{window.requests.push(Object.fromEntries(data));return window.requests.length===1?{ok:false,message:'Mất xác nhận, hãy gửi lại'}:{ok:true,message:'Đã lưu',id:'70000000-0000-4000-8000-000000000100'};};
+ createRoot(document.getElementById('root')).render(<RequisitionPlanForm workspaceName="Fixture" workspace="70000000-0000-4000-8000-000000000101" equipment={equipment} materials={[]} today="2026-10-23" completedEquipmentCodes={[]} saveAction={save}/>);`,resolveDir:process.cwd(),loader:"tsx"},bundle:true,write:false,platform:"browser",format:"iife",jsx:"automatic",define:{"process.env.NODE_ENV":'"production"'}}).outputFiles[0].text;
+for(const timezoneId of ["UTC","Asia/Ho_Chi_Minh"]){test.describe(timezoneId,()=>{
+ test.use({timezoneId});
+ test("monthly form uses the PDF plan date and preserves editable metadata for every voucher",async({page})=>{
+  await page.goto("/login");await page.setContent('<main id="root"></main>');await page.addScriptTag({content:bundle});
+  const pdf=await PDFDocument.create();pdf.addPage();
+  await page.getByLabel("Tệp kế hoạch sửa chữa, bảo dưỡng tháng (.pdf)").setInputFiles({name:"fixture.pdf",mimeType:"application/pdf",buffer:Buffer.from(await pdf.save())});
+  await expect(page.getByText("Đã chọn tệp:")).toBeVisible();
+  await expect(page.locator(".voucher-preview")).toHaveCount(0);
+  await expect(page.getByLabel("Ngày văn bản kế hoạch (từ PDF)")).toHaveValue("2026-10-01");
+  await page.getByRole("button",{name:"Chọn tất cả đang hiển thị"}).click();
+  await expect(page.locator(".voucher-preview")).toHaveCount(5);
+  await expect(page.getByText("Tất cả phương tiện đã khớp danh mục.")).toBeVisible();
+  await expect(page.getByRole("checkbox",{name:"No57",exact:true})).toBeVisible();
+  await expect(page.locator(".voucher-preview").filter({hasText:"No57"})).toHaveCount(1);
+  await expect(page.locator(".voucher-preview").first()).toContainText("Ngày kế hoạch lấy từ PDF: 01/10/2026");
+  const numberFields=await page.getByLabel("Số phiếu").all();
+  for(let i=0;i<numberFields.length;i++)await numberFields[i].fill(`CTV/PLVT/2026_${String(i+1).padStart(4,"0")}`);
+  const dateFields=await page.getByLabel("Ngày phiếu (anh chọn)").all();
+  await dateFields[0].fill("2026-10-24");
+  await expect(page.locator(".voucher-preview").first()).toContainText("Số phiếu: CTV/PLVT/2026_0001");
+  await expect(page.locator(".voucher-preview").first()).toContainText("Ngày 24 tháng 10 năm 2026");
+  await page.getByRole("checkbox",{name:"RTG 06",exact:true}).uncheck();
+  await expect(page.locator(".voucher-preview").first()).not.toContainText("RTG06");
+  await page.getByRole("checkbox",{name:"RTG 06",exact:true}).check();
+  const save=page.getByRole("button",{name:"Xác nhận bố cục, lưu & tạo vụ việc"});
+  await save.click();expect(await page.evaluate(()=>((window as unknown as {requests:unknown[]}).requests).length)).toBe(0);
+  await page.getByRole("checkbox",{name:"Tôi đã đối chiếu tệp nguồn, phương tiện và số lượng xin lĩnh."}).check();
+  await save.click();await expect(page.getByText("Mất xác nhận, hãy gửi lại")).toBeVisible();await save.click();
+  await expect(page.getByRole("link",{name:/Mở kế hoạch đã lưu/})).toHaveAttribute("href","/requisitions/70000000-0000-4000-8000-000000000100");
+  const requests=await page.evaluate(()=>((window as unknown as {requests:Record<string,string>[]}).requests));
+  expect(requests).toHaveLength(2);expect(requests[0].request_key).toBe(requests[1].request_key);
+  expect(requests[1].document_day).toBe("2026-10-24");expect(requests[1].planned_day).toBe("2026-10-01");
+  const details=JSON.parse(requests[1].voucher_details);expect(details).toHaveLength(5);expect(details[0].documentNumber).toBe("CTV/PLVT/2026_0001");expect(details[0].documentDay).toBe("2026-10-24");
+  const savedRows=JSON.parse(requests[1].rows) as Array<{sourceLabel:string;equipmentCode:string;equipmentName:string}>;
+  expect(savedRows.find(row=>row.sourceLabel==="Khung cẩu No57")).toMatchObject({equipmentCode:"N57",equipmentName:"No57"});
+  await expect(page.getByLabel("Số phiếu").first()).toBeDisabled();
+ });
+});}
+
