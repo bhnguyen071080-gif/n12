@@ -32,10 +32,14 @@ export async function saveMaintenanceRequisition(data:FormData):Promise<ActionRe
   if(result.error){
    if(result.error.code==="42501")return {ok:false,message:"Bạn chưa có quyền xác nhận kế hoạch bảo dưỡng."};
    if(result.error.code==="42883")return {ok:false,message:"Cơ sở dữ liệu chưa được nâng cấp chức năng ngày phiếu lĩnh. Chưa ghi dữ liệu."};
+   if(result.error.message.includes("thông tin in"))return {ok:false,message:"Số phiếu hoặc ngày phiếu chưa khớp bản xem trước. Hãy kiểm tra lại từng phiếu rồi thử lưu."};
+   if(result.error.message.includes("Phương tiện"))return {ok:false,message:"Có phương tiện chưa khớp danh mục hoặc đã ngừng quản lý. Chưa ghi dữ liệu."};
    return {ok:false,message:"Chưa lưu được kế hoạch. Kiểm tra mã phương tiện, vật tư và tệp PDF; không có dữ liệu nhập dở."};
   }
   revalidatePath("/requisitions");revalidatePath("/cases");revalidatePath("/history");revalidatePath("/");
   return {ok:true,message:voucherKind==="supplemental"?"Đã lưu phiếu bổ sung với ngày lĩnh thực tế riêng và liên kết cùng công việc bảo dưỡng.":"Đã xác nhận kế hoạch, lưu ngày lĩnh thực tế và tạo vụ việc bảo dưỡng. Có thể mở phiếu để in.",id:result.data};
  }catch{return {ok:false,message:"Dữ liệu kế hoạch hoặc tệp PDF chưa hợp lệ. Hãy bấm kiểm tra trước khi xác nhận nhập."};}
 }
+
+
 
