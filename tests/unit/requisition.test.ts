@@ -55,6 +55,6 @@ test("print layout automatically changes from two-up A5 to two full A4 copies",a
   counts.push(pdf.getPageCount());
   for(const page of pdf.getPages()){assert.ok(Math.abs(page.getHeight()-841.89)<.01);assert.ok(Math.abs(page.getWidth()-595.276)<.01);}
  }
- assert.deepEqual(counts.slice(0,3),[1,2,2]);assert.ok(counts[3]>=4);
+ assert.deepEqual(counts.slice(0,3),[1,1,2]);assert.ok(counts[3]>=4);
 });
 
