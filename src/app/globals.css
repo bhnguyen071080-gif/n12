@@ -282,7 +282,7 @@ p { margin-bottom:.65rem; }
 .voucher-source { margin-top:1.2rem; }
 .voucher-source h3 { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.8rem 1rem; border-radius:.65rem; background:#eaf2f7; }
 .voucher-source h3 span { color:var(--muted); font-size:.72rem; font-weight:600; }
-.voucher-preview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.voucher-preview-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; }
 .voucher-preview { min-width:0; padding:1rem; border:1px solid var(--line); border-radius:.8rem; background:white; box-shadow:0 3px 10px #183d550d; }
 .voucher-preview-heading { display:grid; grid-template-columns:1fr auto; align-items:center; gap:.25rem 1rem; margin-bottom:.7rem; }
 .voucher-preview-heading span { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
@@ -290,18 +290,32 @@ p { margin-bottom:.65rem; }
 .voucher-preview-heading small { grid-column:1/-1; color:var(--muted); }
 .voucher-preview table { margin-top:.7rem; font-size:.8rem; }
 .voucher-preview th,.voucher-preview td { padding:.5rem; }
-.voucher-sheet-stack { display:grid; gap:.8rem; max-height:900px; padding:.2rem; overflow:auto; background:#e9eef1; border-radius:.55rem; }
-.voucher-sheet { aspect-ratio:210/297; display:grid; padding:.55rem; background:#fff; box-shadow:0 3px 10px #183d5526; }
+.voucher-sheet-stack { display:grid; gap:1.25rem; padding:1rem; overflow:visible; background:#e9eef1; border-radius:.55rem; }
+.voucher-sheet { aspect-ratio:210/297; display:grid; width:min(100%,794px); margin:0 auto; padding:28px 38px; box-sizing:border-box; background:#fff; color:#000; box-shadow:0 3px 10px #183d5526; }
 .voucher-sheet-two-up { grid-template-rows:1fr 1fr; gap:0; }
 .voucher-sheet-two-up .voucher-copy+.voucher-copy { border-top:1px dashed #526b7d; }
 .voucher-sheet-full { grid-template-rows:1fr; }
-.voucher-copy { min-height:0; overflow:hidden; padding:.5rem; border:1px solid #9fb1bd; font-size:.7rem; }
-.voucher-copy header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:.45rem; }
-.voucher-copy header span { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
-.voucher-copy table { font-size:.66rem; margin-top:.3rem; }
-.voucher-copy th,.voucher-copy td { padding:.22rem .3rem; }
-.voucher-copy-a4 { font-size:.75rem; padding:.75rem; }
-.voucher-copy-a4 table { font-size:.72rem; }
+.voucher-copy { min-height:0; overflow:hidden; padding:0; border:0; color:#000; font-family:"Times New Roman",Times,serif; font-size:9.5pt; line-height:1.18; }
+.voucher-copy-meta { display:none; }
+.voucher-form-top { display:grid; grid-template-columns:1fr 88px; align-items:start; min-height:32px; font-size:10.5pt; }
+.voucher-form-top strong:first-child { font-size:11pt; }
+.voucher-form-top strong:last-child { padding:4px 6px; border:1px solid #000; text-align:center; }
+.voucher-copy h4 { margin:4px 0 2px; text-align:center; font-size:14pt; line-height:1.15; }
+.voucher-copy p { margin:3px 0; color:#000; line-height:1.18; }
+.voucher-copy .voucher-number { margin-top:1px; text-align:center; }
+.voucher-copy .voucher-date { margin-bottom:8px; text-align:center; font-style:italic; }
+.voucher-copy table { width:100%; margin-top:6px; border-collapse:collapse; table-layout:fixed; color:#000; font-family:"Times New Roman",Times,serif; font-size:9pt; }
+.voucher-copy th,.voucher-copy td { padding:4px 5px; border:1px solid #000; vertical-align:top; line-height:1.15; overflow-wrap:anywhere; background:#fff; color:#000; }
+.voucher-copy th { text-align:center; vertical-align:middle; font-weight:400; }
+.voucher-copy th:nth-child(1) { width:4.8%; }.voucher-copy th:nth-child(2) { width:21.1%; }.voucher-copy th:nth-child(3) { width:10.6%; }.voucher-copy th:nth-child(4) { width:11%; }.voucher-copy th:nth-child(5),.voucher-copy th:nth-child(6) { width:11.35%; }.voucher-copy th:nth-child(7) { width:11.3%; }.voucher-copy th:nth-child(8) { width:11.15%; }.voucher-copy th:nth-child(9) { width:8.95%; }
+.voucher-copy td:nth-child(1),.voucher-copy td:nth-child(4),.voucher-copy td:nth-child(5),.voucher-copy td:nth-child(6),.voucher-copy td:nth-child(7),.voucher-copy td:nth-child(8) { text-align:center; }
+.voucher-amount { margin-top:8px!important; }
+.voucher-signatures { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; min-height:95px; padding-top:6px; text-align:center; }
+.voucher-signatures strong { display:block; font-size:9.5pt; }
+.voucher-copy-a4 { font-size:12pt; }
+.voucher-copy-a4 .voucher-form-top { font-size:12pt; }.voucher-copy-a4 .voucher-form-top strong:first-child { font-size:14pt; }
+.voucher-copy-a4 table { font-size:12pt; }.voucher-copy-a4 .voucher-signatures strong { font-size:12pt; }
+.voucher-copy-compact { padding:0 4px; }
 .plan-choice-actions { display:flex; align-items:center; gap:.45rem; flex-wrap:wrap; }
 .plan-choice-actions .button { min-height:32px; padding:.35rem .6rem; font-size:.72rem; }
 .material-toggle { display:flex; align-items:flex-start; gap:.4rem; cursor:pointer; }
