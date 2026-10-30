@@ -26,9 +26,10 @@ begin
  or p_print is null or jsonb_typeof(p_print)<>'object' then
   raise exception using errcode='22023',message='Sai dữ liệu kế hoạch'; end if;
  if (p_print-array['company','department','recipient','warehouse','consumableWarehouse','documentDay','voucherDetails','voucherKind','supplementNote'])<>'{}'
- or not p_print ?& array['company','department','recipient','warehouse','consumableWarehouse','documentDay','voucherDetails'] then
+ or not p_print ?& array['company','department','recipient','warehouse','consumableWarehouse','documentDay'] then
   raise exception using errcode='22023',message='Sai thông tin in'; end if;
- if jsonb_typeof(p_print->'voucherDetails')<>'array'
+ if p_print ? 'voucherDetails' and (
+ jsonb_typeof(p_print->'voucherDetails')<>'array'
  or jsonb_array_length(p_print->'voucherDetails') not between 1 and 200
  or exists(
   select 1 from jsonb_array_elements(p_print->'voucherDetails') as d(value)
@@ -45,7 +46,7 @@ begin
    or (d.value->>'id') ~ '[[:cntrl:]]'
    or (d.value->>'documentNumber') ~ '[[:cntrl:]]'
  )
- or (select count(*)<>count(distinct d.value->>'id') from jsonb_array_elements(p_print->'voucherDetails') as d(value)) then
+ or (select count(*)<>count(distinct d.value->>'id') from jsonb_array_elements(p_print->'voucherDetails') as d(value))) then
   raise exception using errcode='22023',message='Sai thông tin số hoặc ngày từng phiếu';
  end if;
  for k,v in select * from jsonb_each(p_print) where key<>'voucherDetails' loop
