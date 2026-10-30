@@ -5,9 +5,10 @@ import {WorkspaceSelect} from "@/components/workspace-select";
 import {context} from "@/lib/supabase";
 import {formatNumber,localInputNow} from "@/lib/domain";
 import {equipmentLabel} from "@/lib/equipment-display";
+import {RequisitionRunDirectory,type RequisitionRunDirectoryRow} from "@/components/requisition-run-directory";
 
 export const dynamic="force-dynamic";
-type Params={workspace?:string;type?:string;equipment?:string;from?:string;to?:string;material?:string};
+type Params={workspace?:string;type?:string;mode?:string;equipment?:string;from?:string;to?:string;material?:string};
 type AppClient=Awaited<ReturnType<typeof context>>["client"];
 const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d").toLowerCase();
 
@@ -16,29 +17,38 @@ export default async function RequisitionsPage({searchParams}:{searchParams:Prom
  const w=current.workspace.id,equipment=await current.client.from("equipment").select("id,code,name,category").eq("workspace_id",w).order("code");
  if(equipment.error)throw new Error("Không đọc được danh mục phương tiện.");
  const kind=params.type==="repair"?"repair":"maintenance",workspaceQuery="workspace="+w;
- return <><WorkspaceSelect workspaces={current.workspaces} selected={w}/>
-  <section className="panel requisition-type-picker"><p className="eyebrow">HAI LOẠI PHIẾU LĨNH</p><h1>Phiếu lĩnh vật tư</h1><div className="flex flex-wrap gap-4">
+ return <><section className="panel requisition-screen-heading"><div><p className="eyebrow">QUẢN LÝ VẬT TƯ</p><h1>Phiếu lĩnh vật tư</h1></div><WorkspaceSelect workspaces={current.workspaces} selected={w}/><nav aria-label="Loại phiếu lĩnh">
    <Link className={kind==="repair"?"button":"button button-secondary"} href={"/requisitions?"+workspaceQuery+"&type=repair"}>1. Sửa chữa, thay thế · theo vụ việc</Link>
    <Link className={kind==="maintenance"?"button":"button button-secondary"} href={"/requisitions?"+workspaceQuery+"&type=maintenance"}>2. Vật tư, vật liệu phục vụ bảo dưỡng</Link>
-  </div></section>
-  {kind==="repair"?<RepairRequisitions workspace={w} params={params} equipment={equipment.data}/>:<MaintenanceRequisitions workspace={w} workspaceName={current.workspace.name} equipment={equipment.data} client={current.client}/>}</>;
+  </nav></section>
+  {kind==="repair"?<RepairRequisitions workspace={w} params={params} equipment={equipment.data}/>:<MaintenanceRequisitions workspace={w} workspaceName={current.workspace.name} equipment={equipment.data} client={current.client} mode={params.mode==="new"?"new":"list"}/>}</>;
 }
 
-async function MaintenanceRequisitions({workspace,workspaceName,equipment,client}:{workspace:string;workspaceName:string;equipment:{id:string;code:string;name:string;category:string}[];client:AppClient}){
- const materials=await client.from("materials").select("id,code,name,unit").eq("workspace_id",workspace).order("code");
- if(materials.error)throw new Error("Không đọc được danh mục vật tư chuẩn.");
- const [runs,completedRuns]=await Promise.all([
-  client.from("maintenance_requisition_runs").select("id,planned_day,document_day,voucher_kind,supplement_note,grouping_mode,created_at,source_filename").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(10),
+async function MaintenanceRequisitions({workspace,workspaceName,equipment,client,mode}:{workspace:string;workspaceName:string;equipment:{id:string;code:string;name:string;category:string}[];client:AppClient;mode:"list"|"new"}){
+ const [materials,completedRuns]=await Promise.all([
+  client.from("materials").select("id,code,name,unit").eq("workspace_id",workspace).order("code"),
   client.from("maintenance_requisition_runs").select("snapshot").eq("workspace_id",workspace).eq("voucher_kind","planned").gte("planned_day","2026-10-01").lt("planned_day","2026-11-01"),
  ]);
+ if(materials.error)throw new Error("Không đọc được danh mục vật tư chuẩn.");
  if(completedRuns.error)throw new Error("Không đọc được danh sách phương tiện đã lập phiếu trong tháng.");
  const completedEquipmentCodes=[...new Set((completedRuns.data??[]).flatMap(run=>{
   const snapshot=run.snapshot&&typeof run.snapshot==="object"&&!Array.isArray(run.snapshot)?run.snapshot as {rows?:unknown}:null;
   return Array.isArray(snapshot?.rows)?snapshot.rows.flatMap(row=>row&&typeof row==="object"&&"equipmentCode" in row&&typeof row.equipmentCode==="string"?[row.equipmentCode]:[]):[];
  }))];
- return <><RequisitionPlanForm key={workspace} saveAction={saveMaintenanceRequisition} workspace={workspace} workspaceName={workspaceName} equipment={equipment} materials={materials.data} today={localInputNow().slice(0,10)} completedEquipmentCodes={completedEquipmentCodes}/>
-  {runs.error?<p role="alert">Không đọc được lịch sử phiếu đã lưu. Kiểm tra kết nối cơ sở dữ liệu.</p>:<section className="panel"><h2>Lịch sử phiếu lĩnh gần nhất</h2>{runs.data?.length?<div className="overflow-x-auto"><table><thead><tr><th>Loại phiếu</th><th>Ngày kế hoạch</th><th>Ngày phiếu lĩnh</th><th>Cách gom</th><th>Tệp PDF nguồn</th><th>Lý do bổ sung</th><th>Thời điểm xác nhận</th><th>Thao tác</th></tr></thead><tbody>{runs.data.map(run=><tr key={run.id}><td><Link href={`/requisitions/${run.id}`}>{run.voucher_kind==="supplemental"?"Bổ sung phát sinh":"Theo kế hoạch"}</Link></td><td>{run.planned_day}</td><td>{run.document_day??run.planned_day}</td><td>{run.grouping_mode}</td><td>{run.source_filename??"Bản cũ chưa lưu tên tệp"}</td><td>{run.supplement_note??"—"}</td><td>{new Date(run.created_at).toLocaleString("vi-VN",{timeZone:"Asia/Bangkok"})}</td><td><Link className="button button-secondary" href={`/requisitions/${run.id}`}>Xem trước / In</Link></td></tr>)}</tbody></table></div>:<p>Chưa có phiếu lĩnh được xác nhận.</p>}</section>}
- </>;
+ const planForm=<RequisitionPlanForm key={workspace} saveAction={saveMaintenanceRequisition} workspace={workspace} workspaceName={workspaceName} equipment={equipment} materials={materials.data} today={localInputNow().slice(0,10)} completedEquipmentCodes={completedEquipmentCodes}/>;
+ if(mode==="list"){
+  const runs=await client.from("maintenance_requisition_runs").select("id,planned_day,document_day,voucher_kind,supplement_note,grouping_mode,created_at,source_filename,snapshot").eq("workspace_id",workspace).order("created_at",{ascending:false}).limit(500);
+  if(runs.error)throw new Error("Không đọc được danh sách phiếu đã lưu.");
+  const rows:RequisitionRunDirectoryRow[]=(runs.data??[]).map(run=>{
+   const snapshot=run.snapshot&&typeof run.snapshot==="object"&&!Array.isArray(run.snapshot)?run.snapshot as {rows?:unknown;print?:unknown}:null;
+   const print=snapshot?.print&&typeof snapshot.print==="object"&&!Array.isArray(snapshot.print)?snapshot.print as {voucherDetails?:unknown}:null;
+   const details=Array.isArray(print?.voucherDetails)?print.voucherDetails:[];
+   const documentNumbers=details.flatMap(detail=>detail&&typeof detail==="object"&&"documentNumber" in detail&&typeof detail.documentNumber==="string"&&detail.documentNumber.trim()?[detail.documentNumber.trim()]:[]);
+   return {id:run.id,plannedDay:run.planned_day,documentDay:run.document_day??run.planned_day,voucherKind:run.voucher_kind, supplementNote:run.supplement_note,groupingMode:run.grouping_mode,createdAt:run.created_at,sourceFilename:run.source_filename,documentNumbers,voucherCount:Math.max(details.length,1),equipmentCount:Array.isArray(snapshot?.rows)?snapshot.rows.length:0};
+  });
+  return <div className="data-workbench requisition-workbench"><div id="lap-phieu-moi" className="data-workbench-entry requisition-entry-pane">{planForm}</div><RequisitionRunDirectory rows={rows} newHref="#lap-phieu-moi"/></div>;
+ }
+ return <><div className="requisition-new-toolbar"><Link className="button button-secondary" href={`/requisitions?workspace=${workspace}&type=maintenance`}>← Quay lại danh sách</Link><strong>Lập phiếu lĩnh mới</strong></div>{planForm}</>;
 }
 
 async function RepairRequisitions({workspace,params,equipment}:{workspace:string;params:Params;equipment:{id:string;code:string;name:string}[]}){
