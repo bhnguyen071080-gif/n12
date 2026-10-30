@@ -31,4 +31,3 @@ export function AsyncForm({action,children,prepare,onSuccess,onReset,onPendingCh
   {result?.ok && <button type="button" onClick={event=>{if(resetOnNew)event.currentTarget.form?.reset();request.current=undefined;setResult(undefined);onReset?.();}}>{resetLabel}</button>}
  </form>;
 }
-

@@ -28,4 +28,3 @@ export function EquipmentEditor({workspace,equipment}:{workspace:string;equipmen
  </section>;
 }
 
-

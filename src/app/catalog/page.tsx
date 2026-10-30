@@ -24,4 +24,3 @@ export default async function Catalog({searchParams}:{searchParams:Promise<{work
   <p className="muted catalog-safety-note">Không xóa cứng phương tiện đã có lịch sử. Khi không còn khai thác, mở “Sửa” và chọn “Ngừng sử dụng” để giữ nguyên hồ sơ, vật tư và số liệu trước đây.</p></>;
 }
 
-

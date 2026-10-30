@@ -33,4 +33,3 @@ export function EquipmentCatalogDirectory({workspace,equipment,canEdit}:{workspa
  </section>;
 }
 
-
